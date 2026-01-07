@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 interface Option {
   value: string;
@@ -8,6 +8,9 @@ interface Option {
 interface SelectProps {
   options: Option[];
   placeholder?: string;
+  placeholderValue?: string;
+  placeholderDisabled?: boolean;
+  placeholderClassName?: string;
   onChange: (value: string) => void;
   className?: string;
   defaultValue?: string;
@@ -17,6 +20,9 @@ interface SelectProps {
 const Select: React.FC<SelectProps> = ({
   options,
   placeholder = "Select an option",
+  placeholderValue = "",
+  placeholderDisabled = true,
+  placeholderClassName = "",
   onChange,
   className = "",
   defaultValue = "",
@@ -24,6 +30,11 @@ const Select: React.FC<SelectProps> = ({
 }) => {
   // Manage the selected value
   const [selectedValue, setSelectedValue] = useState<string>(defaultValue);
+
+  // Keep internal state in sync when defaultValue prop changes
+  useEffect(() => {
+    setSelectedValue(defaultValue ?? "");
+  }, [defaultValue]);
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
@@ -42,14 +53,16 @@ const Select: React.FC<SelectProps> = ({
       onChange={handleChange}
       disabled={disabled}
     >
-      {/* Placeholder option */}
-      <option
-        value=""
-        disabled
-        className="text-gray-700 dark:bg-gray-900 dark:text-gray-400"
-      >
-        {placeholder}
-      </option>
+      {/* Placeholder option (configurable) */}
+      {placeholder !== undefined && (
+        <option
+          value={placeholderValue}
+          disabled={placeholderDisabled}
+          className={`text-gray-700 dark:bg-gray-900 dark:text-gray-400 ${placeholderClassName}`}
+        >
+          {placeholder}
+        </option>
+      )}
       {/* Map over options */}
       {options.map((option) => (
         <option

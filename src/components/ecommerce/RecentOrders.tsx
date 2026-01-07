@@ -180,10 +180,10 @@ export default function RecentOrders() {
               </label>
               <Select
                 options={[
-                  { value: "", label: "-- Chọn khoa --" },
                   ...khoaList.map((k) => ({ value: k.id.toString(), label: k.name })),
                 ]}
                 placeholder="-- Chọn khoa --"
+                placeholderDisabled={false}
                 onChange={(value) => {
                   const khoa = khoaList.find((k) => k.id === Number(value)) || null;
                   setSelectedKhoa(khoa);
@@ -200,7 +200,6 @@ export default function RecentOrders() {
               </label>
               <Select
                 options={[
-                  { value: "", label: "-- Chọn ngành --" },
                   ...(selectedKhoa
                     ? nganhByKhoa[selectedKhoa.id]?.map((n) => ({
                         value: n.id.toString(),
@@ -209,6 +208,7 @@ export default function RecentOrders() {
                     : []),
                 ]}
                 placeholder="-- Chọn ngành --"
+                placeholderDisabled={false}
                 onChange={(value) => {
                   const nganh =
                     nganhByKhoa[selectedKhoa?.id]?.find((n) => n.id === Number(value)) || null;
@@ -226,9 +226,10 @@ export default function RecentOrders() {
               </label>
               <Select
                 options={[
-                  { value: "", label: "-- Chọn môn học --" },
                   ...monHocList.map((m) => ({ value: m.id.toString(), label: m.name })),
                 ]}
+                placeholder="-- Chọn môn học --"
+                placeholderDisabled={false}
                 onChange={(value) =>
                   setSelectedMonHoc(monHocList.find((m) => m.id === Number(value)) || null)
                 }
@@ -238,17 +239,18 @@ export default function RecentOrders() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Giảng viên
+              Giảng viên
               </label>
               <Select
-                options={[
-                  { value: "", label: "-- Chọn giảng viên --" },
-                  ...giangVienList.map((g) => ({ value: g.id.toString(), label: g.name })),
-                ]}
-                onChange={(value) =>
-                  setSelectedGiangVien(giangVienList.find((g) => g.id === Number(value)) || null)
-                }
-                defaultValue={selectedGiangVien?.id?.toString() || ""}
+              options={[
+                ...giangVienList.map((g) => ({ value: g.id.toString(), label: g.name })),
+              ]}
+              placeholder="-- Chọn giảng viên --"
+              placeholderDisabled={false}
+              onChange={(value: string) =>
+                setSelectedGiangVien(giangVienList.find((g) => g.id === Number(value)) || null)
+              }
+              defaultValue={selectedGiangVien?.id?.toString() || ""}
               />
             </div>
 
@@ -258,9 +260,10 @@ export default function RecentOrders() {
               </label>
               <Select
                 options={[
-                  { value: "", label: "-- Chọn niên khóa --" },
                   ...nienKhoaList.map((n) => ({ value: n.id.toString(), label: n.name })),
                 ]}
+                placeholder="--Chọn niên khoá--"
+                placeholderDisabled={false}
                 onChange={(value) =>
                   setSelectedNienKhoa(nienKhoaList.find((n) => n.id === Number(value)) || null)
                 }
@@ -274,9 +277,10 @@ export default function RecentOrders() {
               </label>
               <Select
                 options={[
-                  { value: "", label: "-- Chọn học kỳ --" },
                   ...hocKyList.map((h) => ({ value: h.id.toString(), label: h.name })),
                 ]}
+                placeholder="-- Chọn học kỳ --"
+                placeholderDisabled={false}
                 onChange={(value) =>
                   setSelectedHocKy(hocKyList.find((h) => h.id === Number(value)) || null)
                 }
