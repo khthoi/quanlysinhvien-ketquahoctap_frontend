@@ -1,0 +1,827 @@
+"use client";
+
+import React, { useEffect, useState } from "react";
+import PageBreadcrumb from "@/components/common/PageBreadCrumb";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
+import Pagination from "@/components/tables/Pagination";
+import { Modal } from "@/components/ui/modal";
+import Button from "@/components/ui/button/Button";
+import Alert from "@/components/ui/alert/Alert";
+import Input from "@/components/form/input/InputField";
+import Label from "@/components/form/Label";
+import Badge from "@/components/ui/badge/Badge";
+import Select from "@/components/form/Select";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
+import { ChevronDownIcon } from "@/icons";
+
+interface Lop {
+    id: number;
+    maLop: string;
+    tenLop: string;
+    nganh: {
+        id: number;
+        maNganh: string;
+        tenNganh: string;
+        khoa: {
+            id: number;
+            maKhoa: string;
+            tenKhoa: string;
+        };
+    };
+    nienKhoa: {
+        id: number;
+        maNienKhoa: string;
+        tenNienKhoa: string;
+    };
+}
+
+interface KhoaOption {
+    id: number;
+    maKhoa: string;
+    tenKhoa: string;
+}
+
+interface NganhOption {
+    id: number;
+    maNganh: string;
+    tenNganh: string;
+    khoa?: {
+        id: number;
+        maKhoa: string;
+        tenKhoa: string;
+    };
+}
+
+interface NienKhoaOption {
+    id: number;
+    maNienKhoa: string;
+    tenNienKhoa: string;
+}
+
+interface PaginationData {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+}
+
+const getCookie = (name: string): string | null => {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop()?.split(";").shift() || null;
+    return null;
+};
+
+// ==================== LỚP MODAL ====================
+interface LopModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    isEdit: boolean;
+    maLop: string;
+    tenLop: string;
+    khoaId: number | "";
+    nganhId: number | "";
+    nienKhoaId: number | "";
+    khoaOptions: KhoaOption[];
+    nganhOptions: NganhOption[];
+    nienKhoaOptions: NienKhoaOption[];
+    onMaLopChange: (value: string) => void;
+    onTenLopChange: (value: string) => void;
+    onKhoaIdChange: (value: number | "") => void;
+    onNganhIdChange: (value: number | "") => void;
+    onNienKhoaIdChange: (value: number | "") => void;
+    onSubmit: () => void;
+    errors: {
+        maLop: boolean;
+        tenLop: boolean;
+        khoaId: boolean;
+        nganhId: boolean;
+        nienKhoaId: boolean;
+    };
+}
+
+const LopModal: React.FC<LopModalProps> = ({
+    isOpen,
+    onClose,
+    isEdit,
+    maLop,
+    tenLop,
+    khoaId,
+    nganhId,
+    nienKhoaId,
+    khoaOptions,
+    nganhOptions,
+    nienKhoaOptions,
+    onMaLopChange,
+    onTenLopChange,
+    onKhoaIdChange,
+    onNganhIdChange,
+    onNienKhoaIdChange,
+    onSubmit,
+    errors,
+}) => {
+    if (!isOpen) return null;
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} className="max-w-2xl">
+            <div className="p-6 sm:p-8">
+                <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
+                    {isEdit ? "Sửa Lớp niên chế" : "Tạo mới Lớp niên chế"}
+                </h3>
+                <div className="space-y-5">
+                    <div>
+                        <Label>Mã Lớp</Label>
+                        <Input
+                            defaultValue={maLop}
+                            onChange={(e) => onMaLopChange(e.target.value)}
+                            error={errors.maLop}
+                            hint={errors.maLop ? "Mã lớp không được để trống" : ""}
+                        />
+                    </div>
+                    <div>
+                        <Label>Tên Lớp</Label>
+                        <Input
+                            defaultValue={tenLop}
+                            onChange={(e) => onTenLopChange(e.target.value)}
+                            error={errors.tenLop}
+                            hint={errors.tenLop ? "Tên lớp không được để trống" : ""}
+                        />
+                    </div>
+
+                    {/* Chọn Khoa */}
+                    <div>
+                        <Label>Chọn Khoa</Label>
+                        <div className="relative">
+                            <Select
+                                options={khoaOptions.map((khoa) => ({
+                                    value: khoa.id.toString(),
+                                    label: khoa.maKhoa,
+                                    secondary: khoa.tenKhoa,
+                                }))}
+                                placeholder="Chọn khoa"
+                                onChange={(value) => onKhoaIdChange(value ? Number(value) : "")}
+                                defaultValue={khoaId ? khoaId.toString() : undefined}
+                                className="dark:bg-dark-900"
+                                showSecondary={true}
+                            />
+                            <span className="absolute text-gray-500 -translate-y-1/2 pointer-events-none right-3 top-1/2 dark:text-gray-400">
+                                <ChevronDownIcon />
+                            </span>
+                        </div>
+                        {errors.khoaId && (
+                            <p className="mt-1 text-sm text-error-500">Vui lòng chọn khoa</p>
+                        )}
+                    </div>
+
+                    {/* Chọn Ngành - chỉ hiển thị khi đã chọn khoa */}
+                    <div>
+                        <Label>Chọn Ngành</Label>
+                        <div className="relative">
+                            <Select
+                                options={nganhOptions
+                                    .filter(nganh => !khoaId || nganh.khoa?.id === khoaId)
+                                    .map(nganh => ({
+                                        value: nganh.id.toString(),
+                                        label: nganh.maNganh,
+                                        secondary: nganh.tenNganh,
+                                    }))}
+                                placeholder={khoaId ? "Chọn ngành" : "Vui lòng chọn khoa trước"}
+                                onChange={(value) => onNganhIdChange(value ? Number(value) : "")}
+                                defaultValue={nganhId ? nganhId.toString() : undefined}
+                                className="dark:bg-dark-900"
+                                showSecondary={true}
+                                disabled={!khoaId}
+                            />
+                            <span className="absolute text-gray-500 -translate-y-1/2 pointer-events-none right-3 top-1/2 dark:text-gray-400">
+                                <ChevronDownIcon />
+                            </span>
+                        </div>
+                        {errors.nganhId && (
+                            <p className="mt-1 text-sm text-error-500">Vui lòng chọn ngành</p>
+                        )}
+                    </div>
+
+                    {/* Chọn Niên khóa */}
+                    <div>
+                        <Label>Chọn Niên khóa</Label>
+                        <div className="relative">
+                            <Select
+                                options={nienKhoaOptions.map((nk) => ({
+                                    value: nk.id.toString(),
+                                    label: nk.maNienKhoa,
+                                    secondary: nk.tenNienKhoa,
+                                }))}
+                                placeholder="Chọn niên khóa"
+                                onChange={(value) => onNienKhoaIdChange(value ? Number(value) : "")}
+                                defaultValue={nienKhoaId ? nienKhoaId.toString() : undefined}
+                                className="dark:bg-dark-900"
+                                showSecondary={true}
+                            />
+                            <span className="absolute text-gray-500 -translate-y-1/2 pointer-events-none right-3 top-1/2 dark:text-gray-400">
+                                <ChevronDownIcon />
+                            </span>
+                        </div>
+                        {errors.nienKhoaId && (
+                            <p className="mt-1 text-sm text-error-500">Vui lòng chọn niên khóa</p>
+                        )}
+                    </div>
+                </div>
+
+                <div className="mt-8 flex justify-end gap-3">
+                    <Button variant="outline" onClick={onClose}>
+                        Hủy
+                    </Button>
+                    <Button onClick={onSubmit}>
+                        {isEdit ? "Cập nhật" : "Tạo mới"}
+                    </Button>
+                </div>
+            </div>
+        </Modal>
+    );
+};
+
+// ==================== ITEMS COUNT INFO COMPONENT ====================
+interface ItemsCountInfoProps {
+    pagination: PaginationData;
+}
+
+const ItemsCountInfo: React.FC<ItemsCountInfoProps> = ({ pagination }) => {
+    const { total, page, limit } = pagination;
+
+    // Tính số items đang hiển thị
+    const startItem = total === 0 ? 0 : (page - 1) * limit + 1;
+    const endItem = Math.min(page * limit, total);
+
+    return (
+        <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+            <span>
+                Hiển thị{" "}
+                <span className="font-medium text-gray-700 dark:text-gray-300">
+                    {startItem}
+                </span>
+                {" - "}
+                <span className="font-medium text-gray-700 dark:text-gray-300">
+                    {endItem}
+                </span>
+                {" "}trên{" "}
+                <span className="font-medium text-gray-700 dark: text-gray-300">
+                    {total}
+                </span>
+                {" "}kết quả
+            </span>
+        </div>
+    );
+};
+
+
+// ==================== TRANG CHÍNH QUẢN LÝ LỚP NIÊN CHẾ ====================
+export default function QuanLyLopNienChePage() {
+    const [lops, setLops] = useState<Lop[]>([]);
+    const [pagination, setPagination] = useState<PaginationData>({
+        total: 0,
+        page: 1,
+        limit: 10,
+        totalPages: 1,
+    });
+    const [currentPage, setCurrentPage] = useState(1);
+
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [deletingLop, setDeletingLop] = useState<Lop | null>(null);
+    const [editingLop, setEditingLop] = useState<Lop | null>(null);
+    const [searchKeyword, setSearchKeyword] = useState("");
+
+    // State cho form
+    const [maLop, setMaLop] = useState("");
+    const [tenLop, setTenLop] = useState("");
+    const [khoaId, setKhoaId] = useState<number | "">("");
+    const [nganhId, setNganhId] = useState<number | "">("");
+    const [nienKhoaId, setNienKhoaId] = useState<number | "">("");
+
+    // Danh sách options
+    const [khoaOptions, setKhoaOptions] = useState<KhoaOption[]>([]);
+    const [nganhOptions, setNganhOptions] = useState<NganhOption[]>([]);
+    const [nienKhoaOptions, setNienKhoaOptions] = useState<NienKhoaOption[]>([]);
+
+    // State cho filter
+    const [filterKhoaId, setFilterKhoaId] = useState<number | "">("");
+    const [filterNganhId, setFilterNganhId] = useState<number | "">("");
+    const [filterNienKhoaId, setFilterNienKhoaId] = useState<number | "">("");
+
+    const [errors, setErrors] = useState({
+        maLop: false,
+        tenLop: false,
+        khoaId: false,
+        nganhId: false,
+        nienKhoaId: false,
+    });
+
+    const [alert, setAlert] = useState<{
+        variant: "success" | "error" | "warning" | "info";
+        title: string;
+        message: string;
+    } | null>(null);
+
+    const fetchLops = async (page: number = 1, search: string = "", nganhFilter: number | "" = "", nienKhoaFilter: number | "" = "") => {
+        try {
+            const accessToken = getCookie("access_token");
+            let url = `http://localhost:3000/danh-muc/lop?page=${page}&limit=10`;
+            if (search) url += `&search=${encodeURIComponent(search)}`;
+            if (nganhFilter) url += `&nganhId=${nganhFilter}`;
+            if (nienKhoaFilter) url += `&nienKhoaId=${nienKhoaFilter}`;
+
+            const res = await fetch(url, {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+            });
+            const json = await res.json();
+            if (json.data) {
+                setLops(json.data);
+                setPagination(json.pagination);
+
+                // Cập nhật filters từ API
+                if (json.filters?.khoa) setKhoaOptions(json.filters.khoa);
+                if (json.filters?.nganh) setNganhOptions(json.filters.nganh);
+                if (json.filters?.nienKhoa) setNienKhoaOptions(json.filters.nienKhoa);
+            }
+        } catch (err) {
+            showAlert("error", "Lỗi", "Không thể tải danh sách lớp niên chế");
+        }
+    };
+
+    useEffect(() => {
+        fetchLops(currentPage, searchKeyword);
+    }, [currentPage]);
+
+    const handleSearch = () => {
+        setCurrentPage(1);
+        fetchLops(1, searchKeyword.trim(), filterNganhId, filterNienKhoaId);
+    };
+
+    const handleFilter = () => {
+        setCurrentPage(1);
+        fetchLops(1, searchKeyword.trim(), filterNganhId, filterNienKhoaId);
+    };
+
+    // Lọc ngành theo khoa đã chọn trong modal
+    // Khi chọn khoa trong modal → lọc lại danh sách ngành
+    useEffect(() => {
+        if (khoaId && nganhOptions.length > 0) {
+            const filtered = nganhOptions.filter(nganh => nganh.khoa?.id === khoaId);
+            // Không setNganhOptions ở đây vì sẽ làm mất danh sách gốc
+            // Thay vào đó, trong Select Ngành, ta sẽ dùng filtered list động
+        }
+    }, [khoaId, nganhOptions]);
+
+    const showAlert = (
+        variant: "success" | "error" | "warning" | "info",
+        title: string,
+        message: string
+    ) => {
+        setAlert({ variant, title, message });
+        setTimeout(() => setAlert(null), 5000);
+    };
+
+    const validateForm = () => {
+        const newErrors = {
+            maLop: !maLop.trim(),
+            tenLop: !tenLop.trim(),
+            khoaId: khoaId === "",
+            nganhId: nganhId === "",
+            nienKhoaId: nienKhoaId === "",
+        };
+        setErrors(newErrors);
+        return !Object.values(newErrors).some((e) => e);
+    };
+
+    const resetForm = () => {
+        setMaLop("");
+        setTenLop("");
+        setKhoaId("");
+        setNganhId("");
+        setNienKhoaId("");
+        setErrors({
+            maLop: false,
+            tenLop: false,
+            khoaId: false,
+            nganhId: false,
+            nienKhoaId: false,
+        });
+    };
+
+    const handleCreate = async () => {
+        if (!validateForm()) return;
+
+        try {
+            const accessToken = getCookie("access_token");
+            const res = await fetch("http://localhost:3000/danh-muc/lop", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${accessToken}`,
+                },
+                body: JSON.stringify({
+                    maLop: maLop.trim(),
+                    tenLop: tenLop.trim(),
+                    nganhId: Number(nganhId),
+                    nienKhoaId: Number(nienKhoaId),
+                }),
+            });
+
+            setIsCreateModalOpen(false);
+            if (res.ok) {
+                showAlert("success", "Thành công", "Tạo mới lớp niên chế thành công");
+                resetForm();
+                fetchLops(currentPage, searchKeyword);
+            } else {
+                setIsEditModalOpen(false);
+                const err = await res.json();
+                showAlert("error", "Lỗi", err.message || "Tạo mới thất bại");
+            }
+        } catch (err) {
+            showAlert("error", "Lỗi", "Có lỗi xảy ra khi tạo lớp");
+        }
+    };
+
+    const handleUpdate = async () => {
+        if (!editingLop || !validateForm()) return;
+
+        try {
+            const accessToken = getCookie("access_token");
+            const res = await fetch(`http://localhost:3000/danh-muc/lop/${editingLop.id}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${accessToken}`,
+                },
+                body: JSON.stringify({
+                    maLop: maLop.trim(),
+                    tenLop: tenLop.trim(),
+                    nganhId: Number(nganhId),
+                    nienKhoaId: Number(nienKhoaId),
+                }),
+            });
+
+            setIsEditModalOpen(false);
+            if (res.ok) {
+                showAlert("success", "Thành công", "Cập nhật lớp thành công");
+                resetForm();
+                fetchLops(currentPage, searchKeyword);
+            } else {
+                setIsEditModalOpen(false);
+                const err = await res.json();
+                showAlert("error", "Lỗi", err.message || "Cập nhật thất bại");
+            }
+        } catch (err) {
+            setIsEditModalOpen(false);
+            showAlert("error", "Lỗi", "Có lỗi xảy ra khi cập nhật");
+        }
+    };
+
+    const openDeleteModal = (lop: Lop) => {
+        setDeletingLop(lop);
+        setIsDeleteModalOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!deletingLop) return;
+
+        try {
+            const accessToken = getCookie("access_token");
+            const res = await fetch(`http://localhost:3000/danh-muc/lop/${deletingLop.id}`, {
+                method: "DELETE",
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+            });
+
+
+            setIsDeleteModalOpen(false);
+            if (res.ok) {
+                showAlert("success", "Thành công", "Xóa lớp thành công");
+                setDeletingLop(null);
+                fetchLops(currentPage, searchKeyword);
+            } else {
+                const err = await res.json();
+                showAlert("error", "Lỗi", err.message || "Xóa thất bại");
+            }
+        } catch (err) {
+            setIsDeleteModalOpen(false);
+            showAlert("error", "Lỗi", "Có lỗi xảy ra khi xóa");
+        }
+    };
+
+    const openEditModal = (lop: Lop) => {
+        setEditingLop(lop);
+        setMaLop(lop.maLop);
+        setTenLop(lop.tenLop);
+        setKhoaId(lop.nganh.khoa.id);
+        setNganhId(lop.nganh.id);
+        setNienKhoaId(lop.nienKhoa.id);
+        setIsEditModalOpen(true);
+    };
+
+    const DeleteConfirmModal = () => (
+        <div className="p-6 sm:p-8 max-w-md w-full">
+            <h3 className="mb-4 text-xl font-semibold text-gray-800 dark:text-white/90">
+                Xác nhận xóa lớp
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-8">
+                Bạn có chắc chắn muốn xóa lớp{" "}
+                <span className="font-semibold text-gray-900 dark:text-white">
+                    {deletingLop?.tenLop}
+                </span>{" "}
+                (mã: {deletingLop?.maLop})?
+                Hành động này không thể hoàn tác.
+            </p>
+            <div className="flex justify-end gap-3">
+                <Button
+                    variant="outline"
+                    onClick={() => {
+                        setIsDeleteModalOpen(false);
+                        setDeletingLop(null);
+                    }}
+                >
+                    Hủy
+                </Button>
+                <Button variant="primary" onClick={confirmDelete}>
+                    Xóa
+                </Button>
+            </div>
+        </div>
+    );
+
+    return (
+        <div>
+            <PageBreadcrumb pageTitle="Quản lý Lớp niên chế" />
+
+            <div className="rounded-2xl border border-gray-200 bg-white px-5 py-7 dark:border-gray-800 dark:bg-white/[0.03] xl:px-10 xl:py-12">
+                {alert && (
+                    <div className="mb-6">
+                        <Alert
+                            variant={alert.variant}
+                            title={alert.title}
+                            message={alert.message}
+                            autoDismiss
+                        />
+                    </div>
+                )}
+
+                <div className="flex flex-col gap-4 mb-6 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="hidden lg:block w-full lg:max-w-md">
+                        <div className="relative">
+                            <button
+                                onClick={handleSearch}
+                                className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-auto"
+                            >
+                                <FontAwesomeIcon
+                                    icon={faMagnifyingGlass}
+                                    className="h-5 w-5 text-gray-500 dark:text-gray-400"
+                                />
+                            </button>
+                            <input
+                                type="text"
+                                placeholder="Tìm kiếm lớp..."
+                                value={searchKeyword}
+                                onChange={(e) => setSearchKeyword(e.target.value)}
+                                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                                className="h-11 w-full rounded-lg border border-gray-200 bg-transparent py-2.5 pl-12 pr-4 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-800 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
+                            />
+                        </div>
+                    </div>
+
+                    <Button
+                        onClick={() => {
+                            resetForm();
+                            setIsCreateModalOpen(true);
+                        }}
+                    >
+                        Tạo mới Lớp
+                    </Button>
+                </div>
+
+                {/* Khối cha - Layout chính */}
+                <div className="flex gap-6 mb-6">
+                    {/* Khối bên trái - Filter theo chiều dọc */}
+                    <div className="w-full lg:w-1/3">
+                        <Label className="block mb-3 text-lg font-medium">Lọc theo</Label>
+
+                        <div className="flex flex-col gap-4">
+                            {/* Chọn Khoa */}
+                            <div>
+                                <Label className="block mb-2">Khoa</Label>
+                                <div className="relative">
+                                    <Select
+                                        options={[
+                                            { value: "", label: "Tất cả khoa" },
+                                            ...khoaOptions.map(khoa => ({
+                                                value: khoa.id.toString(),
+                                                label: khoa.maKhoa,
+                                                secondary: khoa.tenKhoa,
+                                            }))
+                                        ]}
+                                        placeholder="Tất cả khoa"
+                                        onChange={(value) => {
+                                            setFilterKhoaId(value ? Number(value) : "");
+                                            setFilterNganhId(""); // reset ngành khi đổi khoa
+                                        }}
+                                        defaultValue={filterKhoaId ? filterKhoaId.toString() : ""}
+                                        className="dark:bg-dark-900"
+                                        showSecondary={true}
+                                    />
+                                    <span className="absolute text-gray-500 -translate-y-1/2 pointer-events-none right-3 top-1/2 dark:text-gray-400">
+                                        <ChevronDownIcon />
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Chọn Ngành */}
+                            <div>
+                                <Label className="block mb-2">Ngành</Label>
+                                <div className="relative">
+                                    <Select
+                                        options={[
+                                            { value: "", label: filterKhoaId ? "Tất cả ngành" : "Chọn khoa trước" },
+                                            ...nganhOptions
+                                                .filter(nganh => !filterKhoaId || nganh.khoa?.id === filterKhoaId)
+                                                .map(nganh => ({
+                                                    value: nganh.id.toString(),
+                                                    label: nganh.maNganh,
+                                                    secondary: nganh.tenNganh,
+                                                }))
+                                        ]}
+                                        placeholder={filterKhoaId ? "Tất cả ngành" : "Chọn khoa trước"}
+                                        onChange={(value) => setFilterNganhId(value ? Number(value) : "")}
+                                        defaultValue={filterNganhId ? filterNganhId.toString() : ""}
+                                        className="dark:bg-dark-900"
+                                        showSecondary={true}
+                                        disabled={!filterKhoaId}
+                                    />
+                                    <span className="absolute text-gray-500 -translate-y-1/2 pointer-events-none right-3 top-1/2 dark:text-gray-400">
+                                        <ChevronDownIcon />
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Chọn Niên khóa */}
+                            <div>
+                                <Label className="block mb-2">Niên khóa</Label>
+                                <div className="relative">
+                                    <Select
+                                        options={[
+                                            { value: "", label: "Tất cả niên khóa" },
+                                            ...nienKhoaOptions.map(nk => ({
+                                                value: nk.id.toString(),
+                                                label: nk.maNienKhoa,
+                                                secondary: nk.tenNienKhoa,
+                                            }))
+                                        ]}
+                                        placeholder="Tất cả niên khóa"
+                                        onChange={(value) => setFilterNienKhoaId(value ? Number(value) : "")}
+                                        defaultValue={filterNienKhoaId ? filterNienKhoaId.toString() : ""}
+                                        className="dark: bg-dark-900"
+                                        showSecondary={true}
+                                    />
+                                    <span className="absolute text-gray-500 -translate-y-1/2 pointer-events-none right-3 top-1/2 dark:text-gray-400">
+                                        <ChevronDownIcon />
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Nút Lọc */}
+                            <div>
+                                <Button onClick={handleFilter} className="w-full h-11">
+                                    Lọc
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
+                    <div className="max-w-full overflow-x-auto">
+                        <div className="min-w-[900px]">
+                            <Table>
+                                <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
+                                    <TableRow className="grid grid-cols-[15%_25%_20%_20%_20%]">
+                                        <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-theme-xs">
+                                            Mã Lớp
+                                        </TableCell>
+                                        <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-theme-xs">
+                                            Tên Lớp
+                                        </TableCell>
+                                        <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-theme-xs">
+                                            Mã Ngành
+                                        </TableCell>
+                                        <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-theme-xs">
+                                            Mã Niên khóa
+                                        </TableCell>
+                                        <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-theme-xs">
+                                            Hành động
+                                        </TableCell>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05] text-center text-theme-sm">
+                                    {lops.map((lop) => (
+                                        <TableRow key={lop.id} className="grid grid-cols-[15%_25%_20%_20%_20%] items-center">
+                                            <TableCell className="px-5 py-4 text-gray-800 dark:text-white/90">
+                                                {lop.maLop}
+                                            </TableCell>
+                                            <TableCell className="px-5 py-4 text-gray-800 dark:text-white/90">
+                                                {lop.tenLop}
+                                            </TableCell>
+                                            <TableCell className="px-5 py-4">
+                                                <Badge variant="solid" color="primary">
+                                                    {lop.nganh.maNganh}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="px-5 py-4">
+                                                <Badge variant="solid" color="primary">
+                                                    {lop.nienKhoa.maNienKhoa}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="px-5 py-4">
+                                                <div className="flex gap-2 justify-center">
+                                                    <Button size="sm" variant="primary" onClick={() => openEditModal(lop)}>
+                                                        Sửa
+                                                    </Button>
+                                                    <Button size="sm" variant="primary" onClick={() => openDeleteModal(lop)}>
+                                                        Xóa
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Pagination và Items Count Info */}
+                <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    {/* Items Count Info - Bên trái */}
+                    <ItemsCountInfo pagination={pagination} />
+
+                    {/* Pagination - Bên phải hoặc giữa */}
+                    {pagination.totalPages > 1 && (
+                        <div className="flex justify-center sm:justify-end">
+                            <Pagination
+                                currentPage={currentPage}
+                                totalPages={pagination.totalPages}
+                                onPageChange={(page) => setCurrentPage(page)}
+                            />
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Modal Tạo mới & Sửa */}
+            <LopModal
+                isOpen={isCreateModalOpen || isEditModalOpen}
+                onClose={() => {
+                    setIsCreateModalOpen(false);
+                    setIsEditModalOpen(false);
+                    resetForm();
+                    setEditingLop(null);
+                }}
+                isEdit={isEditModalOpen}
+                maLop={maLop}
+                tenLop={tenLop}
+                khoaId={khoaId}
+                nganhId={nganhId}
+                nienKhoaId={nienKhoaId}
+                khoaOptions={khoaOptions}
+                nganhOptions={nganhOptions}
+                nienKhoaOptions={nienKhoaOptions}
+                onMaLopChange={setMaLop}
+                onTenLopChange={setTenLop}
+                onKhoaIdChange={setKhoaId}
+                onNganhIdChange={setNganhId}
+                onNienKhoaIdChange={setNienKhoaId}
+                onSubmit={isEditModalOpen ? handleUpdate : handleCreate}
+                errors={errors}
+            />
+
+            {/* Modal Xóa */}
+            <Modal
+                isOpen={isDeleteModalOpen}
+                onClose={() => {
+                    setIsDeleteModalOpen(false);
+                    setDeletingLop(null);
+                }}
+                className="max-w-md"
+            >
+                <DeleteConfirmModal />
+            </Modal>
+        </div>
+    );
+}

@@ -10,7 +10,6 @@ import React, { useState } from "react";
 
 export default function SignInForm() {
   const [showPassword, setShowPassword] = useState(false);
-  const [isChecked, setIsChecked] = useState(false);
   const [tenDangNhap, setTenDangNhap] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -20,6 +19,21 @@ export default function SignInForm() {
   // Validation states
   const [tenDangNhapError, setTenDangNhapError] = useState(false);
   const [passwordError, setPasswordError] = useState(false);
+
+  // Decode JWT token to get role
+  const decodeToken = (token: string | null): { vaiTro?: string } | null => {
+    if (!token) return null;
+    try {
+      const parts = token.split('.');
+      if (parts.length !== 3) return null;
+      const payload = parts[1];
+      const decodedStr = atob(payload);
+      return JSON.parse(decodedStr);
+    } catch (error) {
+      console.error("Error decoding token:", error);
+      return null;
+    }
+  };
 
   const validateTenDangNhap = (value: string) => {
     const isValid = value.trim().length > 0;
@@ -83,12 +97,25 @@ export default function SignInForm() {
         const data = await response.json();
         
         // Lưu JWT vào cookies
-        if (data.token) {
-          document. cookie = `jwt=${data.token}; path=/; ${isChecked ? 'max-age=604800' : 'session'}; SameSite=Strict`;
+        if (data.access_token) {
+          document.cookie = `access_token=${data.access_token}; path=/; max-age=604800; SameSite=Strict`;
+          
+          // Decode token để lấy vaiTro
+          const decoded = decodeToken(data.access_token);
+          const vaiTro = decoded?.vaiTro;
+
+          // Nếu vaiTro là SINH_VIEN, hiển thị error và không redirect
+          if (vaiTro === "SINH_VIEN") {
+            // Xóa access_token từ cookies
+            document.cookie = "access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+            setErrorMessage("Bạn không đủ quyền để truy cập vào hệ thống");
+            setShowError(true);
+            return;
+          }
         }
         
         // Chuyển hướng hoặc thực hiện hành động sau khi đăng nhập thành công
-        window.location. href = "/"; // Hoặc route mong muốn
+        window.location.href = "/"; // Hoặc route mong muốn
         
       } else if (response.status === 401) {
         setErrorMessage("Tên đăng nhập hoặc mật khẩu không chính xác");
@@ -190,6 +217,8 @@ export default function SignInForm() {
                   variant="error"
                   title="Lỗi đăng nhập"
                   message={errorMessage}
+                  autoDismiss={true}
+                  duration={5000}
                 />
               </div>
             )}
