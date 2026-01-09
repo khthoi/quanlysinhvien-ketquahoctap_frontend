@@ -16,6 +16,8 @@ import {
   PlugInIcon,
   TableIcon,
   UserCircleIcon,
+  GroupIcon
+
 } from "../icons/index";
 import SidebarWidget from "./SidebarWidget";
 
@@ -51,7 +53,25 @@ const navItems: NavItem[] = [
       { name: "Ngành", path: "/quan-ly-nganh", pro: false },
       { name: "Niên Khoá", path: "/quan-ly-nien-khoa", pro: false },
       { name: "Lớp niên chế", path: "/quan-ly-lop-nien-che", pro: false },
-      { name: "Môn học", path: "/quan-ly-mon-hoc", pro: false },],
+      { name: "Môn học", path: "/quan-ly-mon-hoc", pro: false },
+      { name: "Giảng viên", path: "/quan-ly-giang-vien", pro: false },
+      { name: "Năm học & Học kỳ", path: "/quan-ly-namhoc-hocky", pro: false },],
+  },
+
+  {
+    name: "Quản lý CTDT",
+    icon: <CalenderIcon />,
+    subItems:
+      [{ name: "Chương trình đào tạo", path: "/quan-ly-ctdt", pro: false },
+      { name: "Học phần", path: "/quan-ly-hoc-phan", pro: false },],
+  },
+
+  {
+    name: "Quản lý Sinh viên",
+    icon: <GroupIcon />,
+    subItems:
+      [{ name: "Quản lý Sinh viên", path: "/quan-ly-sinh-vien", pro: false },
+      { name: "Quản lý Điểm Sinh viên", path: "/quan-ly-diem-sinh-vien", pro: false },],
   },
 
   {

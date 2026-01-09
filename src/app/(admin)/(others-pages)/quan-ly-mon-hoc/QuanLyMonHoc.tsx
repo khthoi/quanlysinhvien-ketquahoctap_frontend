@@ -21,6 +21,7 @@ import Select from "@/components/form/Select";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
 import { ChevronDownIcon } from "@/icons";
+import SearchableSelect from "@/components/form/SelectCustom";
 
 type LoaiMon = "DAI_CUONG" | "TU_CHON" | "CHUYEN_NGANH";
 
@@ -38,6 +39,12 @@ interface PaginationData {
     page: number;
     limit: number;
     totalPages: number;
+}
+
+interface GiangVienOption {
+    id: number;
+    maGiangVien: string;
+    hoTen: string;
 }
 
 const getCookie = (name: string): string | null => {
@@ -58,6 +65,17 @@ const getLoaiMonLabel = (loai: LoaiMon): string => {
             return "Chuyên Ngành";
         default:
             return loai;
+    }
+};
+
+const getLoaiMonColor = (loai: LoaiMon): "success" | "warning" | "primary" => {
+    switch (loai) {
+        case "DAI_CUONG":
+            return "success";
+        case "TU_CHON":
+            return "warning";
+        case "CHUYEN_NGANH":
+            return "primary";
     }
 };
 
@@ -253,6 +271,16 @@ export default function QuanLyMonHocPage() {
     // State cho filter loại môn
     const [filterLoaiMon, setFilterLoaiMon] = useState<LoaiMon | "">("");
 
+    // State cho modal phân công
+    const [isPhanCongModalOpen, setIsPhanCongModalOpen] = useState(false);
+    const [monHocOptionsForPhanCong, setMonHocOptionsForPhanCong] = useState<MonHoc[]>([]);
+    const [giangVienOptions, setGiangVienOptions] = useState<GiangVienOption[]>([]);
+    const [selectedMonHocId, setSelectedMonHocId] = useState<string>("");
+    const [selectedGiangVienId, setSelectedGiangVienId] = useState<string>("");
+    const [monHocSearchKeyword, setMonHocSearchKeyword] = useState("");
+    const [giangVienSearchKeyword, setGiangVienSearchKeyword] = useState("");
+    const [isPhanCongLoading, setIsPhanCongLoading] = useState(false);
+
     const [errors, setErrors] = useState({
         maMonHoc: false,
         tenMonHoc: false,
@@ -286,6 +314,123 @@ export default function QuanLyMonHocPage() {
             }
         } catch (err) {
             showAlert("error", "Lỗi", "Không thể tải danh sách môn học");
+        }
+    };
+
+    // Fetch môn học cho phân công
+    const fetchMonHocForPhanCong = async (search: string = "") => {
+        try {
+            const accessToken = getCookie("access_token");
+            let url = `http://localhost:3000/danh-muc/mon-hoc`;
+            if (search) url += `?search=${encodeURIComponent(search)}`;
+
+            const res = await fetch(url, {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+            });
+            const json = await res.json();
+            if (Array.isArray(json)) {
+                setMonHocOptionsForPhanCong(json);
+            }
+        } catch (err) {
+            console.error("Không thể tải danh sách môn học:", err);
+        }
+    };
+
+    // Fetch giảng viên cho phân công
+    const fetchGiangVienForPhanCong = async (search: string = "") => {
+        try {
+            const accessToken = getCookie("access_token");
+            let url = `http://localhost:3000/danh-muc/giang-vien? page=1&limit=9999`;
+            if (search) url += `&search=${encodeURIComponent(search)}`;
+
+            const res = await fetch(url, {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+            });
+            const json = await res.json();
+            if (json.data && Array.isArray(json.data)) {
+                setGiangVienOptions(
+                    json.data.map((gv: any) => ({
+                        id: gv.id,
+                        maGiangVien: gv.maGiangVien,
+                        hoTen: gv.hoTen,
+                    }))
+                );
+            }
+        } catch (err) {
+            console.error("Không thể tải danh sách giảng viên:", err);
+        }
+    };
+
+    // Xử lý tìm kiếm môn học trong modal phân công
+    const handleSearchMonHocForPhanCong = () => {
+        fetchMonHocForPhanCong(monHocSearchKeyword.trim());
+    };
+
+    // Xử lý tìm kiếm giảng viên trong modal phân công
+    const handleSearchGiangVienForPhanCong = () => {
+        fetchGiangVienForPhanCong(giangVienSearchKeyword.trim());
+    };
+
+    // Mở modal phân công
+    const openPhanCongModal = () => {
+        setSelectedMonHocId("");
+        setSelectedGiangVienId("");
+        setMonHocSearchKeyword("");
+        setGiangVienSearchKeyword("");
+        fetchMonHocForPhanCong();
+        fetchGiangVienForPhanCong();
+        setIsPhanCongModalOpen(true);
+    };
+
+    // Đóng modal phân công
+    const closePhanCongModal = () => {
+        setIsPhanCongModalOpen(false);
+        setSelectedMonHocId("");
+        setSelectedGiangVienId("");
+        setMonHocSearchKeyword("");
+        setGiangVienSearchKeyword("");
+        setMonHocOptionsForPhanCong([]);
+        setGiangVienOptions([]);
+    };
+
+    // Xử lý phân công môn học
+    const handlePhanCong = async () => {
+        if (!selectedMonHocId || !selectedGiangVienId) {
+            showAlert("warning", "Cảnh báo", "Vui lòng chọn cả môn học và giảng viên");
+            return;
+        }
+
+        setIsPhanCongLoading(true);
+        try {
+            const accessToken = getCookie("access_token");
+            const res = await fetch("http://localhost:3000/danh-muc/giang-vien/phancongmonhoc", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${accessToken}`,
+                },
+                body: JSON.stringify({
+                    giangVienId: Number(selectedGiangVienId),
+                    monHocId: Number(selectedMonHocId),
+                }),
+            });
+
+            closePhanCongModal();
+            if (res.ok) {
+                showAlert("success", "Thành công", "Phân công môn học thành công");
+            } else {
+                const err = await res.json();
+                showAlert("error", "Lỗi", err.message || "Phân công thất bại");
+            }
+        } catch (err) {
+            closePhanCongModal();
+            showAlert("error", "Lỗi", "Có lỗi xảy ra khi phân công môn học");
+        } finally {
+            setIsPhanCongLoading(false);
         }
     };
 
@@ -520,14 +665,22 @@ export default function QuanLyMonHocPage() {
                         </div>
                     </div>
 
-                    <Button
-                        onClick={() => {
-                            resetForm();
-                            setIsCreateModalOpen(true);
-                        }}
-                    >
-                        Tạo mới Môn học
-                    </Button>
+                    <div className="flex gap-3">
+                        <Button
+                            variant="primary"
+                            onClick={openPhanCongModal}
+                        >
+                            Phân công môn học
+                        </Button>
+                        <Button
+                            onClick={() => {
+                                resetForm();
+                                setIsCreateModalOpen(true);
+                            }}
+                        >
+                            Tạo mới Môn học
+                        </Button>
+                    </div>
                 </div>
 
                 {/* Khối lọc loại môn */}
@@ -597,7 +750,7 @@ export default function QuanLyMonHocPage() {
                                                 {mh.tenMonHoc}
                                             </TableCell>
                                             <TableCell className="px-5 py-4">
-                                                <Badge variant="solid" color="primary">
+                                                <Badge variant="solid" color={getLoaiMonColor(mh.loaiMon)}>
                                                     {getLoaiMonLabel(mh.loaiMon)}
                                                 </Badge>
                                             </TableCell>
@@ -630,7 +783,7 @@ export default function QuanLyMonHocPage() {
                     </div>
                 </div>
 
-               {/* Pagination và Items Count Info */}
+                {/* Pagination và Items Count Info */}
                 <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     {/* Items Count Info - Bên trái */}
                     <ItemsCountInfo pagination={pagination} />
@@ -682,6 +835,157 @@ export default function QuanLyMonHocPage() {
                 className="max-w-md"
             >
                 <DeleteConfirmModal />
+            </Modal>
+
+            {/* Modal Phân công môn học */}
+            <Modal
+                isOpen={isPhanCongModalOpen}
+                onClose={closePhanCongModal}
+                className="max-w-2xl"
+            >
+                <div className="p-6 sm:p-8">
+                    <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
+                        Phân công môn học cho giảng viên
+                    </h3>
+
+                    <div className="space-y-6">
+                        {/* Khối tìm kiếm Môn học */}
+                        <div>
+                            <Label className="block mb-2">Chọn Môn học</Label>
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                                <div className="flex-1">
+                                    <div className="relative">
+                                        <input
+                                            type="text"
+                                            placeholder="Nhập mã hoặc tên môn học để tìm..."
+                                            value={monHocSearchKeyword}
+                                            onChange={(e) => setMonHocSearchKeyword(e.target.value)}
+                                            onKeyDown={(e) => e.key === "Enter" && handleSearchMonHocForPhanCong()}
+                                            className="h-11 w-full rounded-lg border border-gray-200 bg-transparent py-2.5 pl-4 pr-4 text-sm text-gray-800 shadow-theme-xs placeholder: text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
+                                        />
+                                    </div>
+                                </div>
+                                <Button
+                                    variant="outline"
+                                    onClick={handleSearchMonHocForPhanCong}
+                                    className="h-11 whitespace-nowrap"
+                                >
+                                    <FontAwesomeIcon icon={faMagnifyingGlass} className="w-4 h-4 mr-2" />
+                                    Tìm kiếm
+                                </Button>
+                            </div>
+                            <div className="mt-3">
+                                <SearchableSelect
+                                    options={monHocOptionsForPhanCong.map((mh) => ({
+                                        value: mh.id.toString(),
+                                        label: mh.maMonHoc,
+                                        secondary: mh.tenMonHoc,
+                                    }))}
+                                    placeholder="Chọn môn học"
+                                    onChange={(value) => setSelectedMonHocId(value)}
+                                    defaultValue={selectedMonHocId}
+                                    showSecondary={true}
+                                    maxDisplayOptions={10}
+                                    searchPlaceholder="Tìm trong danh sách..."
+                                />
+                            </div>
+                            {selectedMonHocId && (
+                                <div className="mt-2 p-3 bg-brand-50 dark:bg-brand-500/10 rounded-lg">
+                                    <p className="text-sm text-brand-600 dark:text-brand-400">
+                                        <span className="font-medium">Đã chọn:  </span>
+                                        {monHocOptionsForPhanCong.find(mh => mh.id.toString() === selectedMonHocId)?.maMonHoc} -
+                                        {monHocOptionsForPhanCong.find(mh => mh.id.toString() === selectedMonHocId)?.tenMonHoc}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Divider */}
+                        <div className="border-t border-gray-200 dark: border-gray-700" />
+
+                        {/* Khối tìm kiếm Giảng viên */}
+                        <div>
+                            <Label className="block mb-2">Chọn Giảng viên</Label>
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                                <div className="flex-1">
+                                    <div className="relative">
+                                        <input
+                                            type="text"
+                                            placeholder="Nhập mã hoặc tên giảng viên để tìm..."
+                                            value={giangVienSearchKeyword}
+                                            onChange={(e) => setGiangVienSearchKeyword(e.target.value)}
+                                            onKeyDown={(e) => e.key === "Enter" && handleSearchGiangVienForPhanCong()}
+                                            className="h-11 w-full rounded-lg border border-gray-200 bg-transparent py-2.5 pl-4 pr-4 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus: ring-brand-500/10 dark: border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
+                                        />
+                                    </div>
+                                </div>
+                                <Button
+                                    variant="outline"
+                                    onClick={handleSearchGiangVienForPhanCong}
+                                    className="h-11 whitespace-nowrap"
+                                >
+                                    <FontAwesomeIcon icon={faMagnifyingGlass} className="w-4 h-4 mr-2" />
+                                    Tìm kiếm
+                                </Button>
+                            </div>
+                            <div className="mt-3">
+                                <SearchableSelect
+                                    options={giangVienOptions.map((gv) => ({
+                                        value: gv.id.toString(),
+                                        label: gv.maGiangVien,
+                                        secondary: gv.hoTen,
+                                    }))}
+                                    placeholder="Chọn giảng viên"
+                                    onChange={(value) => setSelectedGiangVienId(value)}
+                                    defaultValue={selectedGiangVienId}
+                                    showSecondary={true}
+                                    maxDisplayOptions={10}
+                                    searchPlaceholder="Tìm trong danh sách..."
+                                />
+                            </div>
+                            {selectedGiangVienId && (
+                                <div className="mt-2 p-3 bg-success-50 dark: bg-success-500/10 rounded-lg">
+                                    <p className="text-sm text-success-600 dark: text-success-400">
+                                        <span className="font-medium">Đã chọn: </span>
+                                        {giangVienOptions.find(gv => gv.id.toString() === selectedGiangVienId)?.maGiangVien} -
+                                        {giangVienOptions.find(gv => gv.id.toString() === selectedGiangVienId)?.hoTen}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Thông tin tổng hợp */}
+                        {selectedMonHocId && selectedGiangVienId && (
+                            <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Xác nhận phân công:
+                                </h4>
+                                <p className="text-sm text-gray-600 dark: text-gray-400">
+                                    Phân công giảng viên{" "}
+                                    <span className="font-semibold text-gray-800 dark:text-white">
+                                        {giangVienOptions.find(gv => gv.id.toString() === selectedGiangVienId)?.hoTen}
+                                    </span>{" "}
+                                    giảng dạy môn{" "}
+                                    <span className="font-semibold text-gray-800 dark:text-white">
+                                        {monHocOptionsForPhanCong.find(mh => mh.id.toString() === selectedMonHocId)?.tenMonHoc}
+                                    </span>
+                                </p>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="mt-8 flex justify-end gap-3">
+                        <Button variant="outline" onClick={closePhanCongModal}>
+                            Hủy
+                        </Button>
+                        <Button
+                            onClick={handlePhanCong}
+                            disabled={!selectedMonHocId || !selectedGiangVienId || isPhanCongLoading}
+                        >
+                            {isPhanCongLoading ? "Đang xử lý..." : "Xác nhận phân công"}
+                        </Button>
+                    </div>
+                </div>
             </Modal>
         </div>
     );

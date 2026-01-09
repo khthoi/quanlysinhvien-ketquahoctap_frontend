@@ -28,7 +28,7 @@ export default function UserInfoCard() {
 
   // Form states
   const [hoTen, setHoTen] = useState("");
-  const [ngaySinh, setNgaySinh] = useState("");
+  const [ngaySinh, setNgaySinh] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [sdt, setSdt] = useState("");
   const [gioiTinh, setGioiTinh] = useState("NAM");
@@ -221,7 +221,7 @@ export default function UserInfoCard() {
 
     // Validate all fields
     const isHoTenValid = validateHoTen(hoTen);
-    const isNgaySinhValid = validateNgaySinh(ngaySinh);
+    const isNgaySinhValid = validateNgaySinh(ngaySinh || "");
     const isEmailValid = validateEmail(email);
     const isSdtValid = validateSdt(sdt);
     const isDiaChiValid = validateDiaChi(diaChi);
@@ -322,6 +322,14 @@ export default function UserInfoCard() {
       </div>
     );
   }
+
+  function formatDateNoTimezone(date: Date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 
   return (
     <div className="p-5 border border-gray-200 rounded-2xl dark:border-gray-800 lg:p-6">
@@ -494,10 +502,11 @@ export default function UserInfoCard() {
                   <Label>Ngày sinh <span className="text-error-500">*</span></Label>
                   <DatePicker
                     id="ngaySinh"
-                    defaultDate={ngaySinh}
+                    defaultDate={ngaySinh || undefined}
                     onChange={(dates: Date[]) => {
                       if (dates && dates.length > 0) {
-                        setNgaySinh(dates[0].toISOString().split('T')[0]);
+                        const formatted = formatDateNoTimezone(dates[0]);
+                        setNgaySinh(formatted);
                       }
                     }}
                     placeholder="Chọn ngày sinh"

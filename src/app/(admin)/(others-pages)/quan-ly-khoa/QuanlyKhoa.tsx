@@ -24,7 +24,7 @@ interface Khoa {
   id: number;
   maKhoa: string;
   tenKhoa: string;
-  moTa:  string;
+  moTa: string;
   ngayThanhLap: string;
 }
 
@@ -49,11 +49,11 @@ interface ItemsCountInfoProps {
 
 const ItemsCountInfo: React.FC<ItemsCountInfoProps> = ({ pagination }) => {
   const { total, page, limit } = pagination;
-  
+
   // Tính số items đang hiển thị
   const startItem = total === 0 ? 0 : (page - 1) * limit + 1;
   const endItem = Math.min(page * limit, total);
-  
+
   return (
     <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
       <span>
@@ -87,7 +87,7 @@ interface KhoaModalProps {
   onMaKhoaChange: (value: string) => void;
   onTenKhoaChange: (value: string) => void;
   onMoTaChange: (value: string) => void;
-  onDateChange: (date:  string) => void;
+  onDateChange: (date: string) => void;
   onSubmit: () => void;
   errors: {
     maKhoa: boolean;
@@ -96,6 +96,14 @@ interface KhoaModalProps {
     ngayThanhLap: boolean;
   };
 }
+
+function formatDateNoTimezone(date: Date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 
 const KhoaModal: React.FC<KhoaModalProps> = ({
   isOpen,
@@ -134,10 +142,31 @@ const KhoaModal: React.FC<KhoaModalProps> = ({
             <Label>Tên Khoa</Label>
             <Input
               defaultValue={tenKhoa}
-              onChange={(e) => onTenKhoaChange(e.target. value)}
+              onChange={(e) => onTenKhoaChange(e.target.value)}
               error={errors.tenKhoa}
               hint={errors.tenKhoa ? "Tên khoa không được để trống" : ""}
             />
+          </div>
+          <div>
+            <Label>Ngày thành lập</Label>
+            <DatePicker
+              id={isEdit ? "edit-ngayThanhLap" : "create-ngayThanhLap"}
+              defaultDate={selectedDate ?? undefined} // cần đảm bảo selectedDate là string!
+              onChange={([date]: any) => {
+                if (date) {
+                  const f = formatDateNoTimezone(date);
+                  onDateChange(f);
+                } else {
+                  onDateChange("");
+                }
+              }}
+            />
+
+            {errors.ngayThanhLap && (
+              <p className="mt-1 text-sm text-error-500">
+                Ngày thành lập không được để trống
+              </p>
+            )}
           </div>
           <div>
             <Label>Mô tả</Label>
@@ -147,28 +176,8 @@ const KhoaModal: React.FC<KhoaModalProps> = ({
               defaultValue={moTa}
               onChange={onMoTaChange}
               error={errors.moTa}
-              hint={errors.moTa ? "Mô tả không được để trống" :  ""}
+              hint={errors.moTa ? "Mô tả không được để trống" : ""}
             />
-          </div>
-          <div>
-            <Label>Ngày thành lập</Label>
-            <DatePicker
-              id={isEdit ? "edit-ngayThanhLap" : "create-ngayThanhLap"}
-              defaultDate={selectedDate}
-              onChange={([date]:  any) => {
-                if (date) {
-                  const formatted = date.toISOString().split("T")[0];
-                  onDateChange(formatted);
-                } else {
-                  onDateChange("");
-                }
-              }}
-            />
-            {errors.ngayThanhLap && (
-              <p className="mt-1 text-sm text-error-500">
-                Ngày thành lập không được để trống
-              </p>
-            )}
           </div>
         </div>
         <div className="mt-8 flex justify-end gap-3">
@@ -188,7 +197,7 @@ const KhoaModal: React.FC<KhoaModalProps> = ({
 export default function QuanLyKhoaPage() {
   const [khoas, setKhoas] = useState<Khoa[]>([]);
   const [pagination, setPagination] = useState<PaginationData>({
-    total:  0,
+    total: 0,
     page: 1,
     limit: 10,
     totalPages: 1,
@@ -206,7 +215,7 @@ export default function QuanLyKhoaPage() {
   const [maKhoa, setMaKhoa] = useState("");
   const [tenKhoa, setTenKhoa] = useState("");
   const [moTa, setMoTa] = useState("");
-  const [selectedDate, setSelectedDate] = useState("");
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   const [errors, setErrors] = useState({
     maKhoa: false,
@@ -235,7 +244,7 @@ export default function QuanLyKhoaPage() {
       );
       const json = await res.json();
       if (json.data) {
-        setKhoas(json. data);
+        setKhoas(json.data);
         setPagination(json.pagination);
         setCurrentPage(json.pagination.page);
       }
@@ -249,7 +258,7 @@ export default function QuanLyKhoaPage() {
   }, [currentPage]);
 
   const handleSearch = () => {
-    fetchKhoas(1, searchKeyword. trim());
+    fetchKhoas(1, searchKeyword.trim());
   };
 
   const showAlert = (
@@ -265,7 +274,7 @@ export default function QuanLyKhoaPage() {
     setTenKhoa("");
     setMoTa("");
     setSelectedDate("");
-    setErrors({ maKhoa:  false, tenKhoa: false, moTa: false, ngayThanhLap: false });
+    setErrors({ maKhoa: false, tenKhoa: false, moTa: false, ngayThanhLap: false });
   };
 
   const handleCreate = async () => {
@@ -273,15 +282,15 @@ export default function QuanLyKhoaPage() {
     try {
       const accessToken = getCookie("access_token");
       const res = await fetch("http://localhost:3000/danh-muc/khoa", {
-        method:  "POST",
+        method: "POST",
         headers: {
-          "Content-Type":  "application/json",
+          "Content-Type": "application/json",
           Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
           maKhoa: maKhoa.trim(),
           tenKhoa: tenKhoa.trim(),
-          moTa: moTa. trim(),
+          moTa: moTa.trim(),
           ngayThanhLap: selectedDate,
         }),
       });
@@ -317,8 +326,8 @@ export default function QuanLyKhoaPage() {
           body: JSON.stringify({
             maKhoa: maKhoa.trim(),
             tenKhoa: tenKhoa.trim(),
-            moTa:  moTa.trim(),
-            ngayThanhLap:  selectedDate,
+            moTa: moTa.trim(),
+            ngayThanhLap: selectedDate,
           }),
         }
       );
@@ -330,7 +339,7 @@ export default function QuanLyKhoaPage() {
         fetchKhoas(currentPage);
       } else {
         const err = await res.json();
-        showAlert("error", "Lỗi", err. message || "Cập nhật thất bại");
+        showAlert("error", "Lỗi", err.message || "Cập nhật thất bại");
       }
     } catch (err) {
       setIsEditModalOpen(false);
@@ -344,12 +353,12 @@ export default function QuanLyKhoaPage() {
   };
 
   const confirmDelete = async () => {
-    if (! deletingKhoa) return;
+    if (!deletingKhoa) return;
 
     try {
       const accessToken = getCookie("access_token");
       const res = await fetch(`http://localhost:3000/danh-muc/khoa/${deletingKhoa.id}`, {
-        method:  "DELETE",
+        method: "DELETE",
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
@@ -361,7 +370,7 @@ export default function QuanLyKhoaPage() {
         setDeletingKhoa(null);
         fetchKhoas(currentPage);
       } else {
-        const err = await res. json();
+        const err = await res.json();
         showAlert("error", "Lỗi", err.message || "Xóa thất bại");
       }
     } catch (err) {
@@ -373,7 +382,7 @@ export default function QuanLyKhoaPage() {
   const openEditModal = (khoa: Khoa) => {
     setEditingKhoa(khoa);
     setMaKhoa(khoa.maKhoa);
-    setTenKhoa(khoa. tenKhoa);
+    setTenKhoa(khoa.tenKhoa);
     setMoTa(khoa.moTa);
     setSelectedDate(khoa.ngayThanhLap);
     setIsEditModalOpen(true);
@@ -393,7 +402,7 @@ export default function QuanLyKhoaPage() {
         <span className="font-semibold text-gray-900 dark:text-white">
           {deletingKhoa?.maKhoa}
         </span>
-        ?  Hành động này không thể hoàn tác. 
+        ?  Hành động này không thể hoàn tác.
       </p>
       <div className="flex justify-end gap-3">
         <Button
@@ -413,11 +422,11 @@ export default function QuanLyKhoaPage() {
   );
 
   function formatDateVN(dateInput: string | Date): string {
-    if (! dateInput) return "";
+    if (!dateInput) return "";
     const date = new Date(dateInput);
     if (isNaN(date.getTime())) return "";
-    const day = String(date. getDate()).padStart(2, "0");
-    const month = String(date. getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
     const year = date.getFullYear();
     return `${day}/${month}/${year}`;
   }
@@ -430,7 +439,7 @@ export default function QuanLyKhoaPage() {
         {alert && (
           <div className="mb-6">
             <Alert
-              variant={alert. variant}
+              variant={alert.variant}
               title={alert.title}
               message={alert.message}
               autoDismiss
@@ -503,7 +512,7 @@ export default function QuanLyKhoaPage() {
                           {khoa.moTa}
                         </div>
                       </TableCell>
-                      <TableCell className="px-5 py-4 text-gray-500 dark: text-gray-400">
+                      <TableCell className="px-5 py-4 text-gray-800 dark:text-white/90">
                         {formatDateVN(khoa.ngayThanhLap)}
                       </TableCell>
                       <TableCell className="px-5 py-4">
@@ -529,7 +538,7 @@ export default function QuanLyKhoaPage() {
         <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           {/* Items Count Info - Bên trái */}
           <ItemsCountInfo pagination={pagination} />
-          
+
           {/* Pagination - Bên phải hoặc giữa */}
           {pagination.totalPages > 1 && (
             <div className="flex justify-center sm:justify-end">
@@ -554,7 +563,7 @@ export default function QuanLyKhoaPage() {
         maKhoa={maKhoa}
         tenKhoa={tenKhoa}
         moTa={moTa}
-        selectedDate={selectedDate}
+        selectedDate={selectedDate || ""}
         onMaKhoaChange={setMaKhoa}
         onTenKhoaChange={setTenKhoa}
         onMoTaChange={setMoTa}
@@ -575,7 +584,7 @@ export default function QuanLyKhoaPage() {
         maKhoa={maKhoa}
         tenKhoa={tenKhoa}
         moTa={moTa}
-        selectedDate={selectedDate}
+        selectedDate={selectedDate || ""}
         onMaKhoaChange={setMaKhoa}
         onTenKhoaChange={setTenKhoa}
         onMoTaChange={setMoTa}
