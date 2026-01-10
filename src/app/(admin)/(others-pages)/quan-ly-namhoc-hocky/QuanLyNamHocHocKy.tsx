@@ -236,7 +236,6 @@ interface HocKyModalProps {
         ngayKetThuc: string;
         namHocId: string;
     };
-    namHocOptions: NamHoc[];
     onFormChange: (field: string, value: string) => void;
     onSubmit: () => void;
     errors: {
@@ -245,32 +244,44 @@ interface HocKyModalProps {
         ngayKetThuc: boolean;
         namHocId: boolean;
     };
+    // Các props mới từ cha truyền xuống
+    namHocSearchKeyword: string;
+    setNamHocSearchKeyword: (value: string) => void;
+    namHocOptions: NamHoc[];
+    isLoadingNamHoc: boolean;
+    handleSearchNamHoc: () => void;
 }
 
 const HocKyModal: React.FC<HocKyModalProps> = ({
     isOpen,
     onClose,
     formData,
-    namHocOptions,
     onFormChange,
     onSubmit,
     errors,
+    namHocSearchKeyword,
+    setNamHocSearchKeyword,
+    namHocOptions,
+    isLoadingNamHoc,
+    handleSearchNamHoc,
 }) => {
     if (!isOpen) return null;
 
     const hocKyOptions = [
         { value: "1", label: "Học kỳ 1" },
         { value: "2", label: "Học kỳ 2" },
+        // { value: "3", label: "Học kỳ hè" }, // nếu cần
     ];
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} className="max-w-lg">
             <div className="p-6 sm:p-8">
-                <h3 className="mb-6 text-xl font-semibold text-gray-800 dark: text-white/90">
+                <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
                     Thêm Học kỳ
                 </h3>
-                <div className="space-y-5">
-                    {/* Chọn Năm học */}
+
+                <div className="space-y-6">
+                    {/* Chọn Năm học - có tìm kiếm */}
                     <div>
                         <Label>Năm học</Label>
                         <SearchableSelect
@@ -284,12 +295,23 @@ const HocKyModal: React.FC<HocKyModalProps> = ({
                             defaultValue={formData.namHocId}
                             showSecondary={true}
                             maxDisplayOptions={10}
-                            searchPlaceholder="Tìm năm học..."
+                            searchPlaceholder="Tìm trong danh sách..."
                         />
+
                         {errors.namHocId && (
                             <p className="mt-1 text-sm text-error-500">
                                 Vui lòng chọn năm học
                             </p>
+                        )}
+
+                        {formData.namHocId && (
+                            <div className="mt-2 p-3 bg-brand-50 dark:bg-brand-500/10 rounded-lg">
+                                <p className="text-sm text-brand-600 dark:text-brand-400">
+                                    <span className="font-medium">Đã chọn: </span>
+                                    {namHocOptions.find(nh => nh.id.toString() === formData.namHocId)?.maNamHoc} -
+                                    {namHocOptions.find(nh => nh.id.toString() === formData.namHocId)?.tenNamHoc || 'Đang tải...'}
+                                </p>
+                            </div>
                         )}
                     </div>
 
@@ -310,48 +332,45 @@ const HocKyModal: React.FC<HocKyModalProps> = ({
                         )}
                     </div>
 
-                    {/* Ngày Bắt đầu */}
-                    <div>
-                        <Label>Ngày Bắt đầu</Label>
-                        <DatePicker
-                            id="hocky-ngayBatDau"
-                            defaultDate={formData.ngayBatDau || undefined}
-                            onChange={([date]: any) => {
-                                if (date) {
-                                    const formatted = formatDateNoTimezone(date);
-                                    onFormChange("ngayBatDau", formatted);
-                                } else {
-                                    onFormChange("ngayBatDau", "");
-                                }
-                            }}
-                        />
-                        {errors.ngayBatDau && (
-                            <p className="mt-1 text-sm text-error-500">
-                                Ngày bắt đầu không được để trống
-                            </p>
-                        )}
-                    </div>
+                    {/* Ngày bắt đầu & kết thúc */}
+                    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                        <div>
+                            <Label >Ngày Bắt đầu</Label>
+                            <DatePicker
+                                id="hocky-ngayBatDau"
+                                defaultDate={formData.ngayBatDau ? new Date(formData.ngayBatDau) : undefined}
+                                onChange={(date: Date | Date[]) => {
+                                    const selectedDate = Array.isArray(date) ? date[0] : date;
+                                    if (selectedDate) {
+                                        onFormChange("ngayBatDau", formatDateNoTimezone(selectedDate));
+                                    } else {
+                                        onFormChange("ngayBatDau", "");
+                                    }
+                                }}
+                            />
+                            {errors.ngayBatDau && (
+                                <p className="mt-1 text-sm text-error-500">Ngày bắt đầu không được để trống</p>
+                            )}
+                        </div>
 
-                    {/* Ngày Kết thúc */}
-                    <div>
-                        <Label>Ngày Kết thúc</Label>
-                        <DatePicker
-                            id="hocky-ngayKetThuc"
-                            defaultDate={formData.ngayKetThuc || undefined}
-                            onChange={([date]: any) => {
-                                if (date) {
-                                    const formatted = formatDateNoTimezone(date);
-                                    onFormChange("ngayKetThuc", formatted);
-                                } else {
-                                    onFormChange("ngayKetThuc", "");
-                                }
-                            }}
-                        />
-                        {errors.ngayKetThuc && (
-                            <p className="mt-1 text-sm text-error-500">
-                                Ngày kết thúc không được để trống
-                            </p>
-                        )}
+                        <div>
+                            <Label>Ngày Kết thúc</Label>
+                            <DatePicker
+                                id="hocky-ngayKetThuc"
+                                defaultDate={formData.ngayKetThuc ? new Date(formData.ngayKetThuc) : undefined}
+                                onChange={(date: Date | Date[]) => {
+                                    const selectedDate = Array.isArray(date) ? date[0] : date;
+                                    if (selectedDate) {
+                                        onFormChange("ngayKetThuc", formatDateNoTimezone(selectedDate));
+                                    } else {
+                                        onFormChange("ngayKetThuc", "");
+                                    }
+                                }}
+                            />
+                            {errors.ngayKetThuc && (
+                                <p className="mt-1 text-sm text-error-500">Ngày kết thúc không được để trống</p>
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -359,7 +378,7 @@ const HocKyModal: React.FC<HocKyModalProps> = ({
                     <Button variant="outline" onClick={onClose}>
                         Hủy
                     </Button>
-                    <Button onClick={onSubmit}>
+                    <Button onClick={onSubmit} disabled={isLoadingNamHoc}>
                         Thêm mới
                     </Button>
                 </div>
@@ -433,6 +452,49 @@ export default function QuanLyNamHocHocKyPage() {
         title: string;
         message: string;
     } | null>(null);
+
+    // Thêm vào phần khai báo state
+    const [namHocSearchKeyword, setNamHocSearchKeyword] = useState("");
+    const [namHocOptionsForModal, setNamHocOptionsForModal] = useState<NamHoc[]>([]);
+    const [isLoadingNamHoc, setIsLoadingNamHoc] = useState(false);
+
+    // Hàm fetch năm học cho modal
+    const fetchNamHocForModal = async (search: string = "") => {
+        try {
+            setIsLoadingNamHoc(true);
+            const accessToken = getCookie("access_token");
+            let url = `http://localhost:3000/dao-tao/nam-hoc?page=1&limit=9999`;
+            if (search) url += `&search=${encodeURIComponent(search)}`;
+
+            const res = await fetch(url, {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+            });
+            const json = await res.json();
+            if (json.data) {
+                setNamHocOptionsForModal(json.data);
+            }
+        } catch (err) {
+            console.error("Không thể tải danh sách năm học cho modal:", err);
+            showAlert("error", "Lỗi", "Không thể tải danh sách năm học");
+        } finally {
+            setIsLoadingNamHoc(false);
+        }
+    };
+
+    // Load mặc định khi mở modal
+    useEffect(() => {
+        if (isCreateHocKyModalOpen) {
+            fetchNamHocForModal(); // load danh sách mặc định
+            setNamHocSearchKeyword(""); // reset ô tìm kiếm
+        }
+    }, [isCreateHocKyModalOpen]);
+
+    // Xử lý nút tìm kiếm
+    const handleSearchNamHoc = () => {
+        fetchNamHocForModal(namHocSearchKeyword.trim());
+    };
 
     // ==================== API CALLS ====================
     const fetchNamHocs = async (page: number = 1, search: string = "") => {
@@ -1102,12 +1164,19 @@ export default function QuanLyNamHocHocKyPage() {
                 onClose={() => {
                     setIsCreateHocKyModalOpen(false);
                     resetHocKyForm();
+                    setNamHocSearchKeyword(""); // reset khi đóng
+                    setNamHocOptionsForModal([]); // optional: clear danh sách
                 }}
                 formData={hocKyFormData}
-                namHocOptions={namHocs}
                 onFormChange={handleHocKyFormChange}
                 onSubmit={handleCreateHocKy}
                 errors={hocKyErrors}
+                // Truyền thêm các props mới
+                namHocSearchKeyword={namHocSearchKeyword}
+                setNamHocSearchKeyword={setNamHocSearchKeyword}
+                namHocOptions={namHocOptionsForModal}
+                isLoadingNamHoc={isLoadingNamHoc}
+                handleSearchNamHoc={handleSearchNamHoc}
             />
 
             {/* Modal Xóa Năm học */}

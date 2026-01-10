@@ -124,7 +124,6 @@ const MonHocModal: React.FC<MonHocModalProps> = ({
     if (!isOpen) return null;
 
     const loaiMonOptions = [
-        { value: "", label: "Chọn loại môn" },
         { value: "DAI_CUONG", label: "Đại Cương" },
         { value: "TU_CHON", label: "Tự Chọn" },
         { value: "CHUYEN_NGANH", label: "Chuyên Ngành" },
@@ -158,16 +157,13 @@ const MonHocModal: React.FC<MonHocModalProps> = ({
                     <div>
                         <Label>Loại Môn</Label>
                         <div className="relative">
-                            <Select
+                            <SearchableSelect
                                 options={loaiMonOptions}
                                 placeholder="Chọn loại môn"
                                 onChange={(value) => onLoaiMonChange((value as LoaiMon) || "")}
                                 defaultValue={loaiMon || undefined}
                                 className="dark:bg-dark-900"
                             />
-                            <span className="absolute text-gray-500 -translate-y-1/2 pointer-events-none right-3 top-1/2 dark:text-gray-400">
-                                <ChevronDownIcon />
-                            </span>
                         </div>
                         {errors.loaiMon && (
                             <p className="mt-1 text-sm text-error-500">Vui lòng chọn loại môn</p>
@@ -342,7 +338,7 @@ export default function QuanLyMonHocPage() {
     const fetchGiangVienForPhanCong = async (search: string = "") => {
         try {
             const accessToken = getCookie("access_token");
-            let url = `http://localhost:3000/danh-muc/giang-vien? page=1&limit=9999`;
+            let url = `http://localhost:3000/danh-muc/giang-vien?page=1&limit=9999`;
             if (search) url += `&search=${encodeURIComponent(search)}`;
 
             const res = await fetch(url, {
@@ -689,9 +685,8 @@ export default function QuanLyMonHocPage() {
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                         <div className="flex-1 sm:max-w-md">
                             <div className="relative">
-                                <Select
+                                <SearchableSelect
                                     options={[
-                                        { value: "", label: "Tất cả loại môn" },
                                         { value: "DAI_CUONG", label: "Đại Cương" },
                                         { value: "TU_CHON", label: "Tự Chọn" },
                                         { value: "CHUYEN_NGANH", label: "Chuyên Ngành" },
@@ -701,9 +696,6 @@ export default function QuanLyMonHocPage() {
                                     defaultValue={filterLoaiMon || ""}
                                     className="dark:bg-dark-900"
                                 />
-                                <span className="absolute text-gray-500 -translate-y-1/2 pointer-events-none right-3 top-1/2 dark:text-gray-400">
-                                    <ChevronDownIcon />
-                                </span>
                             </div>
                         </div>
 
@@ -852,28 +844,6 @@ export default function QuanLyMonHocPage() {
                         {/* Khối tìm kiếm Môn học */}
                         <div>
                             <Label className="block mb-2">Chọn Môn học</Label>
-                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                                <div className="flex-1">
-                                    <div className="relative">
-                                        <input
-                                            type="text"
-                                            placeholder="Nhập mã hoặc tên môn học để tìm..."
-                                            value={monHocSearchKeyword}
-                                            onChange={(e) => setMonHocSearchKeyword(e.target.value)}
-                                            onKeyDown={(e) => e.key === "Enter" && handleSearchMonHocForPhanCong()}
-                                            className="h-11 w-full rounded-lg border border-gray-200 bg-transparent py-2.5 pl-4 pr-4 text-sm text-gray-800 shadow-theme-xs placeholder: text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
-                                        />
-                                    </div>
-                                </div>
-                                <Button
-                                    variant="outline"
-                                    onClick={handleSearchMonHocForPhanCong}
-                                    className="h-11 whitespace-nowrap"
-                                >
-                                    <FontAwesomeIcon icon={faMagnifyingGlass} className="w-4 h-4 mr-2" />
-                                    Tìm kiếm
-                                </Button>
-                            </div>
                             <div className="mt-3">
                                 <SearchableSelect
                                     options={monHocOptionsForPhanCong.map((mh) => ({
@@ -906,28 +876,6 @@ export default function QuanLyMonHocPage() {
                         {/* Khối tìm kiếm Giảng viên */}
                         <div>
                             <Label className="block mb-2">Chọn Giảng viên</Label>
-                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                                <div className="flex-1">
-                                    <div className="relative">
-                                        <input
-                                            type="text"
-                                            placeholder="Nhập mã hoặc tên giảng viên để tìm..."
-                                            value={giangVienSearchKeyword}
-                                            onChange={(e) => setGiangVienSearchKeyword(e.target.value)}
-                                            onKeyDown={(e) => e.key === "Enter" && handleSearchGiangVienForPhanCong()}
-                                            className="h-11 w-full rounded-lg border border-gray-200 bg-transparent py-2.5 pl-4 pr-4 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus: ring-brand-500/10 dark: border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
-                                        />
-                                    </div>
-                                </div>
-                                <Button
-                                    variant="outline"
-                                    onClick={handleSearchGiangVienForPhanCong}
-                                    className="h-11 whitespace-nowrap"
-                                >
-                                    <FontAwesomeIcon icon={faMagnifyingGlass} className="w-4 h-4 mr-2" />
-                                    Tìm kiếm
-                                </Button>
-                            </div>
                             <div className="mt-3">
                                 <SearchableSelect
                                     options={giangVienOptions.map((gv) => ({

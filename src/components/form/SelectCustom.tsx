@@ -171,7 +171,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder={searchPlaceholder}
-                className="w-full h-9 pl-9 pr-3 text-sm rounded-md border border-gray-200 bg-gray-50 text-gray-800 placeholder: text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-800 dark:text-white/90 dark:placeholder:text-gray-500"
+                className="w-full h-9 pl-9 pr-3 text-sm rounded-md border border-gray-200 bg-gray-50 text-gray-800 placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-500/10 dark:border-gray-600 dark:bg-gray-800 dark:text-white/90 dark:placeholder:text-gray-500"
               />
             </div>
           </div>
@@ -184,7 +184,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
               className={`px-4 py-2.5 text-sm cursor-pointer transition-colors ${
                 selectedValue === ""
                   ? "bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400"
-                  :  "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover: bg-gray-800"
+                  :  "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
               }`}
             >
               {placeholder}

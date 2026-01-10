@@ -20,6 +20,9 @@ import SearchableSelect from "@/components/form/SelectCustom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faMagnifyingGlass, faEye, faPenToSquare, faTrash, faEdit, faGlassCheers, faMedal, faGraduationCap } from "@fortawesome/free-solid-svg-icons";
 import TextArea from "@/components/form/input/TextArea";
+import { DropdownItem } from "@/components/ui/dropdown/DropdownItem";
+import { Dropdown } from "@/components/ui/dropdown/Dropdown";
+import { FaAngleDown } from "react-icons/fa6";
 
 type TinhTrang = "DANG_HOC" | "THOI_HOC" | "DA_TOT_NGHIEP" | "BAO_LUU";
 type GioiTinh = "NAM" | "NU";
@@ -325,30 +328,6 @@ const SinhVienModal: React.FC<SinhVienModalProps> = ({
                     </div>
                     <div className="md:col-span-2">
                         <Label>Lớp</Label>
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center mb-3">
-                            <div className="flex-1">
-                                <input
-                                    type="text"
-                                    placeholder="Nhập mã hoặc tên lớp để tìm..."
-                                    value={lopSearchKeyword}
-                                    onChange={(e) => setLopSearchKeyword(e.target.value)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter") {
-                                            onSearchLop(lopSearchKeyword.trim());
-                                        }
-                                    }}
-                                    className="h-11 w-full rounded-lg border border-gray-200 bg-transparent py-2.5 pl-4 pr-4 text-sm text-gray-800 shadow-theme-xs placeholder: text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
-                                />
-                            </div>
-                            <Button
-                                variant="outline"
-                                onClick={() => onSearchLop(lopSearchKeyword.trim())}
-                                className="h-11 whitespace-nowrap"
-                            >
-                                <FontAwesomeIcon icon={faMagnifyingGlass} className="w-4 h-4 mr-2" />
-                                Tìm kiếm
-                            </Button>
-                        </div>
                         <SearchableSelect
                             options={lopOptions.map((lop) => ({
                                 value: lop.id.toString(),
@@ -570,6 +549,21 @@ export default function QuanLySinhVienPage() {
         ngayQuyetDinh: false,
     });
 
+    // State để theo dõi dropdown ĐANG MỞ (chỉ 1 cái duy nhất)
+    const [activeDropdownId, setActiveDropdownId] = useState<number | null>(null);
+
+    // Toggle: nếu click vào dropdown đang mở → đóng nó, ngược lại mở nó và đóng cái khác
+    const toggleDropdown = (sinhVienId: number) => {
+        setActiveDropdownId((prev) =>
+            prev === sinhVienId ? null : sinhVienId
+        );
+    };
+
+    // Close dropdown (gọi khi chọn item hoặc click ngoài)
+    const closeDropdown = () => {
+        setActiveDropdownId(null);
+    };
+
     const [errors, setErrors] = useState({
         maSinhVien: false,
         hoTen: false,
@@ -638,7 +632,7 @@ export default function QuanLySinhVienPage() {
     const fetchLopAndFilters = async (search: string = "") => {
         try {
             const accessToken = getCookie("access_token");
-            let url = `http://localhost:3000/danh-muc/lop`;
+            let url = `http://localhost:3000/danh-muc/lop?page=1&limit=9999`;
             if (search) url += `?search=${encodeURIComponent(search)}`;
 
             const res = await fetch(url, {
@@ -686,7 +680,7 @@ export default function QuanLySinhVienPage() {
     const fetchLopForModal = async (search: string = "") => {
         try {
             const accessToken = getCookie("access_token");
-            let url = `http://localhost:3000/danh-muc/lop`;
+            let url = `http://localhost:3000/danh-muc/lop?page=1&limit=9999`;
             if (search) url += `?search=${encodeURIComponent(search)}`;
 
             const res = await fetch(url, {
@@ -1341,23 +1335,76 @@ export default function QuanLySinhVienPage() {
                                                 <TableCell className="px-5 py-4 text-gray-800 dark:text-white/90">
                                                     {sv.lop.nienKhoa.maNienKhoa}
                                                 </TableCell>
-                                                <TableCell className="px-5 py-4">
-                                                    <div className="flex gap-3 justify-center">
-                                                        <Button variant="outline" size="sm" onClick={() => openViewModal(sv)}>
-                                                            <FontAwesomeIcon icon={faEye} />
+                                                <TableCell className="px-5 py-4 text-center">
+                                                    <div className="relative inline-block">
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => toggleDropdown(sv.id)}
+                                                            className="dropdown-toggle flex items-center gap-1.5 min-w-[100px] justify-between px-3 py-2"
+                                                        >
+                                                            Thao tác
+                                                            <FaAngleDown
+                                                                className={`text-gray-500 transition-transform duration-300 ease-in-out ${activeDropdownId === sv.id ? "rotate-180" : "rotate-0"
+                                                                    }`}
+                                                            />
                                                         </Button>
-                                                        <Button variant="outline" size="sm" onClick={() => openEditModal(sv)}>
-                                                            <FontAwesomeIcon icon={faEdit} />
-                                                        </Button>
-                                                        <Button variant="outline" size="sm" onClick={() => openDeleteModal(sv)}>
-                                                            <FontAwesomeIcon icon={faTrash} />
-                                                        </Button>
-                                                        <Button variant="outline" size="sm" onClick={() => openAddQuyetDinhModal(sv)}>
-                                                            <FontAwesomeIcon icon={faMedal} />
-                                                        </Button>
-                                                        <Button variant="outline" size="sm" onClick={() => openThanhTichModal(sv)}>
-                                                            <FontAwesomeIcon icon={faMagnifyingGlass} />
-                                                        </Button>
+
+                                                        <Dropdown
+                                                            isOpen={activeDropdownId === sv.id}
+                                                            onClose={closeDropdown}
+                                                            className="w-56 mt-2 right-0"
+                                                        >
+                                                            <div className="py-1">
+                                                                <DropdownItem
+                                                                    tag="button"
+                                                                    onItemClick={closeDropdown}
+                                                                    onClick={() => openViewModal(sv)}
+                                                                >
+                                                                    <FontAwesomeIcon icon={faEye} className="mr-2 w-4" />
+                                                                    Xem chi tiết
+                                                                </DropdownItem>
+
+                                                                <DropdownItem
+                                                                    tag="button"
+                                                                    onItemClick={closeDropdown}
+                                                                    onClick={() => openEditModal(sv)}
+                                                                >
+                                                                    <FontAwesomeIcon icon={faEdit} className="mr-2 w-4" />
+                                                                    Chỉnh sửa
+                                                                </DropdownItem>
+
+                                                                <DropdownItem
+                                                                    tag="button"
+                                                                    onItemClick={closeDropdown}
+                                                                    onClick={() => openAddQuyetDinhModal(sv)}
+                                                                >
+                                                                    <FontAwesomeIcon icon={faMedal} className="mr-2 w-4" />
+                                                                    Thêm quyết định
+                                                                </DropdownItem>
+
+                                                                <DropdownItem
+                                                                    tag="button"
+                                                                    onItemClick={closeDropdown}
+                                                                    onClick={() => openThanhTichModal(sv)}
+                                                                >
+                                                                    <FontAwesomeIcon icon={faMagnifyingGlass} className="mr-2 w-4" />
+                                                                    Xem thành tích
+                                                                </DropdownItem>
+
+                                                                <div className="my-1 border-t border-gray-100 dark:border-gray-700" />
+
+                                                                <DropdownItem
+                                                                    tag="button"
+                                                                    className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/30"
+                                                                    onItemClick={closeDropdown}
+                                                                    onClick={() => openDeleteModal(sv)}
+                                                                >
+                                                                    <FontAwesomeIcon icon={faTrash} className="mr-2 w-4" />
+                                                                    Xóa
+                                                                </DropdownItem>
+                                                            </div>
+                                                        </Dropdown>
                                                     </div>
                                                 </TableCell>
                                             </TableRow>

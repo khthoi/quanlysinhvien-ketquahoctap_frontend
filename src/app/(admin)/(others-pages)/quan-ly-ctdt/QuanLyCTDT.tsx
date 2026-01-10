@@ -582,7 +582,7 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
     const fetchNganhs = async (khoaId: string = "") => {
         try {
             const accessToken = getCookie("access_token");
-            let url = `http://localhost:3000/danh-muc/nganh?page=1&limit=100`;
+            let url = `http://localhost:3000/danh-muc/nganh?page=1&limit=9999`;
             if (khoaId) url += `&khoaId=${khoaId}`;
 
             const res = await fetch(url, {
@@ -645,7 +645,7 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
     const fetchNienKhoas = async () => {
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch(`http://localhost:3000/danh-muc/nien-khoa?page=1&limit=100`, {
+            const res = await fetch(`http://localhost:3000/danh-muc/nien-khoa?page=1&limit=9999`, {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
                 },
@@ -1140,13 +1140,13 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
                                         </TableCell>
                                         <TableCell
                                             isHeader
-                                            className="px-5 py-3 font-medium text-gray-500 text-theme-xs dark:text-gray-400"
+                                            className="px-5 py-3 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-left"
                                         >
                                             Mã Chương trình
                                         </TableCell>
                                         <TableCell
                                             isHeader
-                                            className="px-5 py-3 font-medium text-gray-500 text-theme-xs dark:text-gray-400"
+                                            className="px-5 py-3 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-left"
                                         >
                                             Tên Chương trình
                                         </TableCell>

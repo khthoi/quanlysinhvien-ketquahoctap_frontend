@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import {
@@ -23,8 +23,14 @@ import {
     faPenToSquare,
     faTrash,
     faArrowLeft,
+    faMagnifyingGlassPlus,
+    faEllipsisV,
 } from "@fortawesome/free-solid-svg-icons";
 import SearchableSelect from "@/components/form/SelectCustom";
+import { DropdownItem } from "@/components/ui/dropdown/DropdownItem";
+import Checkbox from "@/components/form/input/Checkbox";
+import { Dropdown } from "@/components/ui/dropdown/Dropdown";
+import { FaAngleDown } from "react-icons/fa6";
 
 // ==================== INTERFACES ====================
 interface Nganh {
@@ -73,12 +79,49 @@ interface ChuongTrinh {
     nganh: Nganh;
 }
 
-// Interface cho toàn bộ API response
+// Thêm sau interface ChuongTrinhResponse
+interface LopHocPhan {
+    id: number;
+    maLopHocPhan: string;
+    monHoc: string; // Mã môn học
+    hocKy: string;
+    nienKhoa: string;
+    giangVien: string;
+    siSo: number;
+    khoaDiem: boolean;
+}
+
+interface GiangVien {
+    id: number;
+    maGiangVien: string;
+    hoTen: string;
+    email: string;
+    sdt: string;
+}
+
+interface HocKy {
+    id: number;
+    hocKy: number;
+    ngayBatDau: string;
+    ngayKetThuc: string;
+}
+
+interface NamHoc {
+    id: number;
+    maNamHoc: string;
+    tenNamHoc: string;
+    namBatDau: number;
+    namKetThuc: number;
+    hocKys: HocKy[];
+}
+
+// Cập nhật interface ChuongTrinhResponse
 interface ChuongTrinhResponse {
     message: string;
     chuongTrinh: ChuongTrinh;
     apDung: ApDung[];
     monHocs: MonHocCTDT[];
+    lopHocPhans: LopHocPhan[]; // Thêm mới
 }
 
 interface PaginationData {
@@ -327,7 +370,7 @@ const SuaMonHocModal: React.FC<SuaMonHocModalProps> = ({
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div className="mb-6">
                             <Label>Loại môn học</Label>
                             <div className="mt-2">
@@ -376,6 +419,362 @@ const SuaMonHocModal: React.FC<SuaMonHocModalProps> = ({
                     </Button>
                     <Button onClick={onSubmit}>
                         Cập nhật
+                    </Button>
+                </div>
+            </div>
+        </Modal>
+    );
+};
+
+// ==================== MODAL XEM LỚP HỌC PHẦN ====================
+interface XemLopHocPhanModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    monHocInfo: MonHocCTDT | null;
+    lopHocPhans: LopHocPhan[];
+}
+
+const XemLopHocPhanModal: React.FC<XemLopHocPhanModalProps> = ({
+    isOpen,
+    onClose,
+    monHocInfo,
+    lopHocPhans,
+}) => {
+    if (!isOpen || !monHocInfo) return null;
+
+    // Lọc các lớp học phần theo mã môn học
+    const filteredLopHocPhans = lopHocPhans.filter(
+        (lhp) => lhp.monHoc === monHocInfo.monHoc.maMonHoc
+    );
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} className="max-w-4xl">
+            <div className="p-6 sm:p-8">
+                <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
+                    Danh sách Lớp học phần
+                </h3>
+
+                {/* Thông tin môn học */}
+                <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Mã môn học</p>
+                            <p className="font-semibold text-gray-800 dark:text-white">
+                                {monHocInfo.monHoc.maMonHoc}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Tên môn học</p>
+                            <p className="font-semibold text-gray-800 dark: text-white">
+                                {monHocInfo.monHoc.tenMonHoc}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Loại môn</p>
+                            <Badge variant="solid" color={getLoaiMonColor(monHocInfo.monHoc.loaiMon)}>
+                                {getLoaiMonLabel(monHocInfo.monHoc.loaiMon)}
+                            </Badge>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Table lớp học phần */}
+                <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
+                    <div className="max-w-full overflow-x-auto">
+                        <Table>
+                            <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
+                                <TableRow className="grid grid-cols-[23%_20%_15%_20%_10%_12%]">
+                                    <TableCell isHeader className="px-4 py-3 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-left">
+                                        Mã LHP
+                                    </TableCell>
+                                    <TableCell isHeader className="px-4 py-3 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-left">
+                                        Học kỳ
+                                    </TableCell>
+                                    <TableCell isHeader className="px-4 py-3 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-center">
+                                        Niên khóa
+                                    </TableCell>
+                                    <TableCell isHeader className="px-4 py-3 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-left">
+                                        Giảng viên
+                                    </TableCell>
+                                    <TableCell isHeader className="px-4 py-3 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-center">
+                                        Sĩ số
+                                    </TableCell>
+                                    <TableCell isHeader className="px-4 py-3 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-center">
+                                        Trạng thái
+                                    </TableCell>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05] text-theme-sm">
+                                {filteredLopHocPhans.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell cols={7} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+                                            Chưa có lớp học phần nào cho môn học này
+                                        </TableCell>
+                                    </TableRow>
+                                ) : (
+                                    filteredLopHocPhans.map((lhp) => (
+                                        <TableRow
+                                            key={lhp.id}
+                                            className="grid grid-cols-[23%_20%_15%_20%_10%_12%] items-center"
+                                        >
+                                            <TableCell className="px-4 py-3 font-medium text-gray-800 dark:text-white/90">
+                                                <span className="truncate block max-w-[140px]" title={lhp.maLopHocPhan}>
+                                                    {lhp.maLopHocPhan}
+                                                </span>
+                                            </TableCell>
+                                            <TableCell className="px-4 py-3 text-gray-600 dark:text-gray-300">
+                                                <span className="text-sm truncate block max-w-[140px]" title={lhp.hocKy}>
+                                                    {lhp.hocKy}
+                                                </span>
+                                            </TableCell>
+                                            <TableCell className="px-4 py-3 text-center">
+                                                <Badge variant="solid" color="primary">
+                                                    {lhp.nienKhoa}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="px-4 py-3 text-gray-600 dark:text-gray-300">
+                                                {lhp.giangVien}
+                                            </TableCell>
+                                            <TableCell className="px-4 py-3 text-center text-gray-800 dark:text-white/90">
+                                                {lhp.siSo}
+                                            </TableCell>
+                                            <TableCell className="px-4 py-3 text-center">
+                                                <Badge variant="solid" color={lhp.khoaDiem ? "error" : "success"}>
+                                                    {lhp.khoaDiem ? "Đã khóa điểm" : "Mở"}
+                                                </Badge>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </div>
+
+                <div className="mt-6 flex justify-end">
+                    <Button variant="outline" onClick={onClose}>
+                        Đóng
+                    </Button>
+                </div>
+            </div>
+        </Modal>
+    );
+};
+
+// ==================== MODAL THÊM LỚP HỌC PHẦN ====================
+interface ThemLopHocPhanModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    monHocInfo: MonHocCTDT | null;
+    nganhInfo: Nganh | null;
+    apDungNienKhoas: ApDung[];
+    giangVienOptions: GiangVien[];
+    namHocOptions: NamHoc[];
+    selectedNamHocId: string;
+    onNamHocChange: (value: string) => void;
+    onGiangVienSearch: (search: string) => void;
+    onNamHocSearch: (search: string) => void;
+    formData: {
+        maLopHocPhan: string;
+        giangVienId: string;
+        hocKyId: string;
+        nienKhoaId: string;
+        ghiChu: string;
+        khoaDiem: boolean;
+    };
+    onFormChange: (field: string, value: string | boolean) => void;
+    onSubmit: () => void;
+    errors: {
+        maLopHocPhan: boolean;
+        giangVienId: boolean;
+        hocKyId: boolean;
+        nienKhoaId: boolean;
+    };
+}
+
+const ThemLopHocPhanModal: React.FC<ThemLopHocPhanModalProps> = ({
+    isOpen,
+    onClose,
+    monHocInfo,
+    nganhInfo,
+    apDungNienKhoas,
+    giangVienOptions,
+    namHocOptions,
+    selectedNamHocId,
+    onNamHocChange,
+    onGiangVienSearch,
+    onNamHocSearch,
+    formData,
+    onFormChange,
+    onSubmit,
+    errors,
+}) => {
+    const [giangVienSearchKeyword, setGiangVienSearchKeyword] = useState("");
+    const [namHocSearchKeyword, setNamHocSearchKeyword] = useState("");
+
+    if (!isOpen || !monHocInfo) return null;
+
+    // Lấy danh sách học kỳ từ năm học được chọn
+    const selectedNamHoc = namHocOptions.find((nh) => nh.id.toString() === selectedNamHocId);
+    const hocKyOptions = selectedNamHoc?.hocKys || [];
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} className="max-w-2xl">
+            <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
+                <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
+                    Thêm Lớp học phần
+                </h3>
+
+                <div className="space-y-5">
+                    {/* Thông tin môn học (readonly) */}
+                    <div>
+                        <Label>Môn học</Label>
+                        <div className="p-3 bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                            <p className="font-medium text-gray-800 dark: text-white">
+                                {monHocInfo.monHoc.maMonHoc} - {monHocInfo.monHoc.tenMonHoc}
+                            </p>
+                            <div className="mt-2">
+                                <Badge variant="solid" color={getLoaiMonColor(monHocInfo.monHoc.loaiMon)}>
+                                    {getLoaiMonLabel(monHocInfo.monHoc.loaiMon)} • {monHocInfo.monHoc.soTinChi} TC
+                                </Badge>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Ngành (readonly) */}
+                    <div>
+                        <Label>Ngành</Label>
+                        <div className="p-3 bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                            <p className="font-medium text-gray-800 dark:text-white">
+                                {nganhInfo?.maNganh} - {nganhInfo?.tenNganh}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Mã lớp học phần */}
+                    <div>
+                        <Label>Mã lớp học phần</Label>
+                        <Input
+                            placeholder="VD: LHP001"
+                            defaultValue={formData.maLopHocPhan}
+                            onChange={(e) => onFormChange("maLopHocPhan", e.target.value)}
+                            error={errors.maLopHocPhan}
+                            hint={errors.maLopHocPhan ? "Mã lớp học phần không được để trống" : ""}
+                        />
+                    </div>
+
+                    {/* Niên khóa */}
+                    <div>
+                        <Label>Niên khóa</Label>
+                        <SearchableSelect
+                            options={apDungNienKhoas.map((ad) => ({
+                                value: ad.nienKhoa.id.toString(),
+                                label: ad.nienKhoa.maNienKhoa,
+                                secondary: ad.nienKhoa.tenNienKhoa,
+                            }))}
+                            placeholder="Chọn niên khóa"
+                            onChange={(value) => onFormChange("nienKhoaId", value)}
+                            defaultValue={formData.nienKhoaId}
+                            showSecondary={true}
+                        />
+                        {errors.nienKhoaId && (
+                            <p className="mt-1 text-sm text-error-500">Vui lòng chọn niên khóa</p>
+                        )}
+                    </div>
+
+                    {/* Năm học */}
+                    <div>
+                        <Label>Năm học</Label>
+                        <SearchableSelect
+                            options={namHocOptions.map((nh) => ({
+                                value: nh.id.toString(),
+                                label: nh.maNamHoc,
+                                secondary: nh.tenNamHoc,
+                            }))}
+                            placeholder="Chọn năm học"
+                            onChange={(value) => {
+                                onNamHocChange(value);
+                                onFormChange("hocKyId", ""); // Reset học kỳ khi đổi năm học
+                            }}
+                            defaultValue={selectedNamHocId}
+                            showSecondary={true}
+                        />
+                    </div>
+
+                    {/* Học kỳ */}
+                    <div>
+                        <Label>Học kỳ</Label>
+                        <SearchableSelect
+                            options={hocKyOptions.map((hk) => ({
+                                value: hk.id.toString(),
+                                label: `Học kỳ ${hk.hocKy}`,
+                                secondary: `${formatDateVN(hk.ngayBatDau)} - ${formatDateVN(hk.ngayKetThuc)}`,
+                            }))}
+                            placeholder={selectedNamHocId ? "Chọn học kỳ" : "Vui lòng chọn năm học trước"}
+                            onChange={(value) => onFormChange("hocKyId", value)}
+                            defaultValue={formData.hocKyId}
+                            showSecondary={true}
+                            disabled={!selectedNamHocId || hocKyOptions.length === 0}
+                        />
+                        {errors.hocKyId && (
+                            <p className="mt-1 text-sm text-error-500">Vui lòng chọn học kỳ</p>
+                        )}
+                        {selectedNamHocId && hocKyOptions.length === 0 && (
+                            <p className="mt-1 text-sm text-warning-500">Năm học này chưa có học kỳ nào</p>
+                        )}
+                    </div>
+
+                    {/* Giảng viên */}
+                    <div>
+                        <Label>Giảng viên</Label>
+                        <SearchableSelect
+                            options={giangVienOptions.map((gv) => ({
+                                value: gv.id.toString(),
+                                label: gv.maGiangVien,
+                                secondary: gv.hoTen,
+                            }))}
+                            placeholder="Chọn giảng viên"
+                            onChange={(value) => onFormChange("giangVienId", value)}
+                            defaultValue={formData.giangVienId}
+                            showSecondary={true}
+                            maxDisplayOptions={10}
+                        />
+                        {errors.giangVienId && (
+                            <p className="mt-1 text-sm text-error-500">Vui lòng chọn giảng viên</p>
+                        )}
+                    </div>
+
+                    {/* Ghi chú */}
+                    <div>
+                        <Label>Ghi chú</Label>
+                        <TextArea
+                            placeholder="Nhập ghi chú (tùy chọn)"
+                            rows={3}
+                            defaultValue={formData.ghiChu}
+                            onChange={(value) => onFormChange("ghiChu", value)}
+                        />
+                    </div>
+
+                    {/* Khóa điểm */}
+                    <div className="flex items-center gap-3">
+                        <Checkbox
+                            id="khoaDiem"
+                            checked={formData.khoaDiem}
+                            onChange={(checked) => onFormChange("khoaDiem", checked)}
+                            className="w-4 h-4 text-brand-600 border-gray-300 rounded focus:ring-brand-500"
+                        />
+                        <Label htmlFor="khoaDiem" className="mb-0 cursor-pointer">
+                            Khóa điểm
+                        </Label>
+                    </div>
+                </div>
+
+                <div className="mt-8 flex justify-end gap-3">
+                    <Button variant="outline" onClick={onClose}>
+                        Hủy
+                    </Button>
+                    <Button onClick={onSubmit}>
+                        Thêm mới
                     </Button>
                 </div>
             </div>
@@ -444,6 +843,47 @@ export default function QuanLyMonHocChuongTrinhPage() {
         message: string;
     } | null>(null);
 
+    // State cho modal xem lớp học phần
+    const [isXemLopHocPhanModalOpen, setIsXemLopHocPhanModalOpen] = useState(false);
+    const [selectedMonHocForLopHocPhan, setSelectedMonHocForLopHocPhan] = useState<MonHocCTDT | null>(null);
+
+    // State cho modal thêm lớp học phần
+    const [isThemLopHocPhanModalOpen, setIsThemLopHocPhanModalOpen] = useState(false);
+    const [giangVienOptions, setGiangVienOptions] = useState<GiangVien[]>([]);
+    const [namHocOptions, setNamHocOptions] = useState<NamHoc[]>([]);
+    const [selectedNamHocIdForLHP, setSelectedNamHocIdForLHP] = useState("");
+
+    const [themLopHocPhanFormData, setThemLopHocPhanFormData] = useState({
+        maLopHocPhan: "",
+        giangVienId: "",
+        hocKyId: "",
+        nienKhoaId: "",
+        ghiChu: "",
+        khoaDiem: false,
+    });
+
+    const [themLopHocPhanErrors, setThemLopHocPhanErrors] = useState({
+        maLopHocPhan: false,
+        giangVienId: false,
+        hocKyId: false,
+        nienKhoaId: false,
+    });
+
+    // State để theo dõi dropdown ĐANG MỞ (chỉ 1 cái duy nhất)
+    const [activeDropdownId, setActiveDropdownId] = useState<number | null>(null);
+
+    // Toggle: nếu click vào dropdown đang mở → đóng nó, ngược lại mở nó và đóng cái khác
+    const toggleDropdown = (chiTietId: number) => {
+        setActiveDropdownId((prev) =>
+            prev === chiTietId ? null : chiTietId
+        );
+    };
+
+    // Close cụ thể (dùng khi chọn item hoặc click ngoài)
+    const closeDropdown = () => {
+        setActiveDropdownId(null);
+    };
+
     // ==================== API CALLS ====================
     const fetchChuongTrinh = async () => {
         if (!chuongTrinhId) return;
@@ -479,7 +919,7 @@ export default function QuanLyMonHocChuongTrinhPage() {
     ) => {
         try {
             const accessToken = getCookie("access_token");
-            let url = `http://localhost:3000/danh-muc/mon-hoc/paginated?page=${page}&limit=20`;
+            let url = `http://localhost:3000/danh-muc/mon-hoc`;
             if (search) url += `&search=${encodeURIComponent(search)}`;
             if (loaiMon) url += `&loaiMon=${loaiMon}`;
 
@@ -495,6 +935,48 @@ export default function QuanLyMonHocChuongTrinhPage() {
             }
         } catch (err) {
             console.error("Không thể tải danh sách môn học:", err);
+        }
+    };
+
+    // Fetch giảng viên có thể dạy môn học
+    const fetchGiangVienOptions = async (monHocId: number, search: string = "") => {
+        try {
+            const accessToken = getCookie("access_token");
+            let url = `http://localhost:3000/danh-muc/giang-vien?page=1&limit=9999&monHocId=${monHocId}`;
+            if (search) url += `&search=${encodeURIComponent(search)}`;
+
+            const res = await fetch(url, {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+            });
+            const json = await res.json();
+            if (json.data) {
+                setGiangVienOptions(json.data);
+            }
+        } catch (err) {
+            console.error("Không thể tải danh sách giảng viên:", err);
+        }
+    };
+
+    // Fetch năm học
+    const fetchNamHocOptions = async (search: string = "") => {
+        try {
+            const accessToken = getCookie("access_token");
+            let url = `http://localhost:3000/dao-tao/nam-hoc?page=1&limit=9999`;
+            if (search) url += `&search=${encodeURIComponent(search)}`;
+
+            const res = await fetch(url, {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+            });
+            const json = await res.json();
+            if (json.data) {
+                setNamHocOptions(json.data);
+            }
+        } catch (err) {
+            console.error("Không thể tải danh sách năm học:", err);
         }
     };
 
@@ -568,6 +1050,111 @@ export default function QuanLyMonHocChuongTrinhPage() {
                 monHocSearchKeyword,
                 monHocFilterLoaiMon
             );
+        }
+    };
+
+    // Reset form thêm lớp học phần
+    const resetThemLopHocPhanForm = () => {
+        setThemLopHocPhanFormData({
+            maLopHocPhan: "",
+            giangVienId: "",
+            hocKyId: "",
+            nienKhoaId: "",
+            ghiChu: "",
+            khoaDiem: false,
+        });
+        setThemLopHocPhanErrors({
+            maLopHocPhan: false,
+            giangVienId: false,
+            hocKyId: false,
+            nienKhoaId: false,
+        });
+        setSelectedNamHocIdForLHP("");
+    };
+
+    // Handle form change cho thêm lớp học phần
+    const handleThemLopHocPhanFormChange = (field: string, value: string | boolean) => {
+        setThemLopHocPhanFormData((prev) => ({ ...prev, [field]: value }));
+    };
+
+    // Validate form thêm lớp học phần
+    const validateThemLopHocPhanForm = (): boolean => {
+        const newErrors = {
+            maLopHocPhan: !themLopHocPhanFormData.maLopHocPhan.trim(),
+            giangVienId: !themLopHocPhanFormData.giangVienId,
+            hocKyId: !themLopHocPhanFormData.hocKyId,
+            nienKhoaId: !themLopHocPhanFormData.nienKhoaId,
+        };
+        setThemLopHocPhanErrors(newErrors);
+        return !Object.values(newErrors).some((e) => e);
+    };
+
+    // Mở modal xem lớp học phần
+    const openLophocPhancuaMonhocModal = (monHoc: MonHocCTDT) => {
+        setSelectedMonHocForLopHocPhan(monHoc);
+        setIsXemLopHocPhanModalOpen(true);
+    };
+
+    // Mở modal thêm lớp học phần
+    const themLophocPhancuaMonhocModal = (monHoc: MonHocCTDT) => {
+        setSelectedMonHocForLopHocPhan(monHoc);
+        resetThemLopHocPhanForm();
+        fetchGiangVienOptions(monHoc.monHoc.id);
+        fetchNamHocOptions();
+        setIsThemLopHocPhanModalOpen(true);
+    };
+
+    // Xử lý tìm kiếm giảng viên
+    const handleGiangVienSearch = (search: string) => {
+        if (selectedMonHocForLopHocPhan) {
+            fetchGiangVienOptions(selectedMonHocForLopHocPhan.monHoc.id, search);
+        }
+    };
+
+    // Xử lý tìm kiếm năm học
+    const handleNamHocSearch = (search: string) => {
+        fetchNamHocOptions(search);
+    };
+
+    // Xử lý thêm lớp học phần
+    const handleThemLopHocPhan = async () => {
+        if (!validateThemLopHocPhanForm() || !selectedMonHocForLopHocPhan || !chuongTrinh) return;
+
+        try {
+            const accessToken = getCookie("access_token");
+            const res = await fetch(
+                `http://localhost:3000/giang-day/lop-hoc-phan`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${accessToken}`,
+                    },
+                    body: JSON.stringify({
+                        maLopHocPhan: themLopHocPhanFormData.maLopHocPhan.trim(),
+                        giangVienId: Number(themLopHocPhanFormData.giangVienId),
+                        monHocId: selectedMonHocForLopHocPhan.monHoc.id,
+                        hocKyId: Number(themLopHocPhanFormData.hocKyId),
+                        nienKhoaId: Number(themLopHocPhanFormData.nienKhoaId),
+                        nganhId: chuongTrinh.chuongTrinh.nganh.id,
+                        ghiChu: themLopHocPhanFormData.ghiChu.trim() || null,
+                        khoaDiem: themLopHocPhanFormData.khoaDiem,
+                    }),
+                }
+            );
+
+            setIsThemLopHocPhanModalOpen(false);
+            if (res.ok) {
+                showAlert("success", "Thành công", "Thêm lớp học phần thành công");
+                resetThemLopHocPhanForm();
+                fetchChuongTrinh();
+            } else {
+                const err = await res.json();
+                showAlert("error", "Lỗi", err.message || "Thêm lớp học phần thất bại");
+            }
+        } catch (err) {
+            setIsThemLopHocPhanModalOpen(false);
+            showAlert("error", "Lỗi", "Có lỗi xảy ra khi thêm lớp học phần");
         }
     };
 
@@ -858,13 +1445,13 @@ export default function QuanLyMonHocChuongTrinhPage() {
                                         </TableCell>
                                         <TableCell
                                             isHeader
-                                            className="px-5 py-3 font-medium text-gray-500 text-theme-xs dark:text-gray-400"
+                                            className="px-5 py-3 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-left"
                                         >
                                             Mã Môn
                                         </TableCell>
                                         <TableCell
                                             isHeader
-                                            className="px-5 py-3 font-medium text-gray-500 text-theme-xs dark:text-gray-400"
+                                            className="px-5 py-3 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-left"
                                         >
                                             Tên Môn học
                                         </TableCell>
@@ -876,13 +1463,13 @@ export default function QuanLyMonHocChuongTrinhPage() {
                                         </TableCell>
                                         <TableCell
                                             isHeader
-                                            className="px-5 py-3 font-medium text-gray-500 text-theme-xs dark: text-gray-400 text-center"
+                                            className="px-5 py-3 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-center"
                                         >
                                             Loại môn
                                         </TableCell>
                                         <TableCell
                                             isHeader
-                                            className="px-5 py-3 font-medium text-gray-500 text-theme-xs dark: text-gray-400"
+                                            className="px-5 py-3 font-medium text-gray-500 text-theme-xs dark:text-gray-400"
                                         >
                                             Ghi chú
                                         </TableCell>
@@ -934,26 +1521,66 @@ export default function QuanLyMonHocChuongTrinhPage() {
                                                     </span>
                                                 </TableCell>
                                                 <TableCell className="px-5 py-4 flex items-center justify-center">
-                                                    <div className="flex gap-2">
+                                                    <div className="relative inline-block">
                                                         <Button
-                                                            size="sm"
                                                             variant="outline"
-                                                            onClick={() => openSuaModal(ct)}
-                                                            className="p-2"
+                                                            size="sm"
+                                                            onClick={() => toggleDropdown(ct.id)}
+                                                            className="dropdown-toggle flex items-center gap-1.5 min-w-[100px] justify-between px-3 py-2"
                                                         >
-                                                            <FontAwesomeIcon
-                                                                icon={faPenToSquare}
-                                                                className="w-4 h-4"
+                                                            Thao tác
+                                                            <FaAngleDown
+                                                                className={`text-gray-500 transition-transform duration-300 ease-in-out ${activeDropdownId === ct.id ? "rotate-180" : "rotate-0"
+                                                                    }`}
                                                             />
                                                         </Button>
-                                                        <Button
-                                                            size="sm"
-                                                            variant="outline"
-                                                            onClick={() => openDeleteModal(ct)}
-                                                            className="p-2 text-error-500 border-error-300 hover:bg-error-50 dark:border-error-500/30 dark:hover: bg-error-500/10"
+
+                                                        <Dropdown
+                                                            isOpen={activeDropdownId === ct.id}
+                                                            onClose={closeDropdown}
+                                                            className="w-56 mt-2 right-0"
                                                         >
-                                                            <FontAwesomeIcon icon={faTrash} className="w-4 h-4" />
-                                                        </Button>
+                                                            <div className="py-1">
+                                                                <DropdownItem
+                                                                    tag="button"
+                                                                    onItemClick={closeDropdown}
+                                                                    onClick={() => openSuaModal(ct)}
+                                                                >
+                                                                    <FontAwesomeIcon icon={faPenToSquare} className="mr-2 w-4" />
+                                                                    Chỉnh sửa
+                                                                </DropdownItem>
+
+                                                                <DropdownItem
+                                                                    tag="button"
+                                                                    onItemClick={closeDropdown}
+                                                                    onClick={() => openLophocPhancuaMonhocModal(ct)}
+                                                                >
+                                                                    <FontAwesomeIcon icon={faMagnifyingGlass} className="mr-2 w-4" />
+                                                                    Xem lớp học phần
+                                                                </DropdownItem>
+
+                                                                <DropdownItem
+                                                                    tag="button"
+                                                                    onItemClick={closeDropdown}
+                                                                    onClick={() => themLophocPhancuaMonhocModal(ct)}
+                                                                >
+                                                                    <FontAwesomeIcon icon={faMagnifyingGlassPlus} className="mr-2 w-4" />
+                                                                    Thêm lớp học phần
+                                                                </DropdownItem>
+
+                                                                <div className="my-1 border-t border-gray-100 dark:border-gray-700" />
+
+                                                                <DropdownItem
+                                                                    tag="button"
+                                                                    className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/30"
+                                                                    onItemClick={closeDropdown}
+                                                                    onClick={() => openDeleteModal(ct)}
+                                                                >
+                                                                    <FontAwesomeIcon icon={faTrash} className="mr-2 w-4" />
+                                                                    Xóa
+                                                                </DropdownItem>
+                                                            </div>
+                                                        </Dropdown>
                                                     </div>
                                                 </TableCell>
                                             </TableRow>
@@ -1071,6 +1698,40 @@ export default function QuanLyMonHocChuongTrinhPage() {
                     </div>
                 </div>
             </Modal>
+
+            {/* Modal Xem Lớp học phần */}
+            <XemLopHocPhanModal
+                isOpen={isXemLopHocPhanModalOpen}
+                onClose={() => {
+                    setIsXemLopHocPhanModalOpen(false);
+                    setSelectedMonHocForLopHocPhan(null);
+                }}
+                monHocInfo={selectedMonHocForLopHocPhan}
+                lopHocPhans={chuongTrinh?.lopHocPhans || []}
+            />
+
+            {/* Modal Thêm Lớp học phần */}
+            <ThemLopHocPhanModal
+                isOpen={isThemLopHocPhanModalOpen}
+                onClose={() => {
+                    setIsThemLopHocPhanModalOpen(false);
+                    setSelectedMonHocForLopHocPhan(null);
+                    resetThemLopHocPhanForm();
+                }}
+                monHocInfo={selectedMonHocForLopHocPhan}
+                nganhInfo={chuongTrinh?.chuongTrinh.nganh || null}
+                apDungNienKhoas={chuongTrinh?.apDung || []}
+                giangVienOptions={giangVienOptions}
+                namHocOptions={namHocOptions}
+                selectedNamHocId={selectedNamHocIdForLHP}
+                onNamHocChange={setSelectedNamHocIdForLHP}
+                onGiangVienSearch={handleGiangVienSearch}
+                onNamHocSearch={handleNamHocSearch}
+                formData={themLopHocPhanFormData}
+                onFormChange={handleThemLopHocPhanFormChange}
+                onSubmit={handleThemLopHocPhan}
+                errors={themLopHocPhanErrors}
+            />
         </div>
     );
 }

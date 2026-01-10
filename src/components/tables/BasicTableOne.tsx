@@ -1,15 +1,22 @@
-import React from "react";
+"use client";
+import React, { useState } from "react";
 import {
   Table,
   TableBody,
   TableCell,
   TableHeader,
   TableRow,
-} from "../ui/table";
+} from "@/components/ui/table"; // điều chỉnh đường dẫn nếu cần
 
-import Badge from "../ui/badge/Badge";
+import Badge from "@/components/ui/badge/Badge";
 import Image from "next/image";
+import Button from "../ui/button/Button";
+import { Dropdown } from "../ui/dropdown/Dropdown";
+import { DropdownItem } from "../ui/dropdown/DropdownItem";
 
+import { FaAngleDown } from "react-icons/fa6";
+
+// ── Interface và fake data ──
 interface Order {
   id: number;
   user: {
@@ -25,7 +32,6 @@ interface Order {
   budget: string;
 }
 
-// Define the table data using the interface
 const tableData: Order[] = [
   {
     id: 1,
@@ -112,12 +118,83 @@ const tableData: Order[] = [
 ];
 
 export default function BasicTableOne() {
+  const [isActionsOpen, setIsActionsOpen] = useState(false);
+
+  const toggleActions = () => setIsActionsOpen((prev) => !prev);
+  const closeActions = () => setIsActionsOpen(false);
+
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
+      {/* Header với nút Option */}
+      <div className="flex items-center justify-between px-6 py-5 border-b border-gray-200 dark:border-white/[0.05]">
+        <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
+          Recent Projects
+        </h3>
+
+        <div className="relative">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={toggleActions}
+            className="dropdown-toggle flex items-center gap-1.5 min-w-[88px] justify-between"
+          >
+            Option
+            <FaAngleDown
+              className={`text-gray-500 transition-transform duration-300 ease-in-out ${
+                isActionsOpen ? "rotate-180" : "rotate-0"
+              }`}
+            />
+          </Button>
+
+          <Dropdown
+            isOpen={isActionsOpen}
+            onClose={closeActions}
+            className="w-48 mt-2 right-0"
+          >
+            <div>
+              <DropdownItem
+                tag="button"
+                onItemClick={closeActions}
+                onClick={() => alert("Bulk edit selected items")}
+              >
+                Bulk Edit
+              </DropdownItem>
+
+              <DropdownItem
+                tag="button"
+                onItemClick={closeActions}
+                onClick={() => alert("Export as CSV")}
+              >
+                Export as CSV
+              </DropdownItem>
+
+              <DropdownItem
+                tag="button"
+                onItemClick={closeActions}
+                onClick={() => alert("Export as Excel")}
+              >
+                Export Excel
+              </DropdownItem>
+
+              <div className="my-1 border-t border-gray-100 dark:border-gray-700" />
+
+              <DropdownItem
+                tag="button"
+                className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/30"
+                onItemClick={closeActions}
+                onClick={() => alert("Delete selected items?")}
+              >
+                Delete Selected
+              </DropdownItem>
+            </div>
+          </Dropdown>
+        </div>
+      </div>
+
+      {/* Table - giữ nguyên như code gốc */}
       <div className="max-w-full overflow-x-auto">
         <div className="min-w-[1102px]">
           <Table>
-            {/* Table Header */}
             <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
               <TableRow>
                 <TableCell
@@ -153,7 +230,6 @@ export default function BasicTableOne() {
               </TableRow>
             </TableHeader>
 
-            {/* Table Body */}
             <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
               {tableData.map((order) => (
                 <TableRow key={order.id}>

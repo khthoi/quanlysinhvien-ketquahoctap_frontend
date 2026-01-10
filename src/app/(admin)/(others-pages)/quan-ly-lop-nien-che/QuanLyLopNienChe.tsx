@@ -20,6 +20,7 @@ import Select from "@/components/form/Select";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
 import { ChevronDownIcon } from "@/icons";
+import SearchableSelect from "@/components/form/SelectCustom";
 
 interface Lop {
     id: number;
@@ -159,7 +160,7 @@ const LopModal: React.FC<LopModalProps> = ({
                     <div>
                         <Label>Chọn Khoa</Label>
                         <div className="relative">
-                            <Select
+                            <SearchableSelect
                                 options={khoaOptions.map((khoa) => ({
                                     value: khoa.id.toString(),
                                     label: khoa.maKhoa,
@@ -171,9 +172,6 @@ const LopModal: React.FC<LopModalProps> = ({
                                 className="dark:bg-dark-900"
                                 showSecondary={true}
                             />
-                            <span className="absolute text-gray-500 -translate-y-1/2 pointer-events-none right-3 top-1/2 dark:text-gray-400">
-                                <ChevronDownIcon />
-                            </span>
                         </div>
                         {errors.khoaId && (
                             <p className="mt-1 text-sm text-error-500">Vui lòng chọn khoa</p>
@@ -184,7 +182,7 @@ const LopModal: React.FC<LopModalProps> = ({
                     <div>
                         <Label>Chọn Ngành</Label>
                         <div className="relative">
-                            <Select
+                            <SearchableSelect
                                 options={nganhOptions
                                     .filter(nganh => !khoaId || nganh.khoa?.id === khoaId)
                                     .map(nganh => ({
@@ -199,9 +197,6 @@ const LopModal: React.FC<LopModalProps> = ({
                                 showSecondary={true}
                                 disabled={!khoaId}
                             />
-                            <span className="absolute text-gray-500 -translate-y-1/2 pointer-events-none right-3 top-1/2 dark:text-gray-400">
-                                <ChevronDownIcon />
-                            </span>
                         </div>
                         {errors.nganhId && (
                             <p className="mt-1 text-sm text-error-500">Vui lòng chọn ngành</p>
@@ -212,7 +207,7 @@ const LopModal: React.FC<LopModalProps> = ({
                     <div>
                         <Label>Chọn Niên khóa</Label>
                         <div className="relative">
-                            <Select
+                            <SearchableSelect
                                 options={nienKhoaOptions.map((nk) => ({
                                     value: nk.id.toString(),
                                     label: nk.maNienKhoa,
@@ -224,9 +219,6 @@ const LopModal: React.FC<LopModalProps> = ({
                                 className="dark:bg-dark-900"
                                 showSecondary={true}
                             />
-                            <span className="absolute text-gray-500 -translate-y-1/2 pointer-events-none right-3 top-1/2 dark:text-gray-400">
-                                <ChevronDownIcon />
-                            </span>
                         </div>
                         {errors.nienKhoaId && (
                             <p className="mt-1 text-sm text-error-500">Vui lòng chọn niên khóa</p>
@@ -620,9 +612,8 @@ export default function QuanLyLopNienChePage() {
                             <div>
                                 <Label className="block mb-2">Khoa</Label>
                                 <div className="relative">
-                                    <Select
+                                    <SearchableSelect
                                         options={[
-                                            { value: "", label: "Tất cả khoa" },
                                             ...khoaOptions.map(khoa => ({
                                                 value: khoa.id.toString(),
                                                 label: khoa.maKhoa,
@@ -638,9 +629,6 @@ export default function QuanLyLopNienChePage() {
                                         className="dark:bg-dark-900"
                                         showSecondary={true}
                                     />
-                                    <span className="absolute text-gray-500 -translate-y-1/2 pointer-events-none right-3 top-1/2 dark:text-gray-400">
-                                        <ChevronDownIcon />
-                                    </span>
                                 </div>
                             </div>
 
@@ -648,9 +636,8 @@ export default function QuanLyLopNienChePage() {
                             <div>
                                 <Label className="block mb-2">Ngành</Label>
                                 <div className="relative">
-                                    <Select
+                                    <SearchableSelect
                                         options={[
-                                            { value: "", label: filterKhoaId ? "Tất cả ngành" : "Chọn khoa trước" },
                                             ...nganhOptions
                                                 .filter(nganh => !filterKhoaId || nganh.khoa?.id === filterKhoaId)
                                                 .map(nganh => ({
@@ -666,9 +653,6 @@ export default function QuanLyLopNienChePage() {
                                         showSecondary={true}
                                         disabled={!filterKhoaId}
                                     />
-                                    <span className="absolute text-gray-500 -translate-y-1/2 pointer-events-none right-3 top-1/2 dark:text-gray-400">
-                                        <ChevronDownIcon />
-                                    </span>
                                 </div>
                             </div>
 
@@ -676,9 +660,8 @@ export default function QuanLyLopNienChePage() {
                             <div>
                                 <Label className="block mb-2">Niên khóa</Label>
                                 <div className="relative">
-                                    <Select
+                                    <SearchableSelect
                                         options={[
-                                            { value: "", label: "Tất cả niên khóa" },
                                             ...nienKhoaOptions.map(nk => ({
                                                 value: nk.id.toString(),
                                                 label: nk.maNienKhoa,
@@ -691,9 +674,6 @@ export default function QuanLyLopNienChePage() {
                                         className="dark: bg-dark-900"
                                         showSecondary={true}
                                     />
-                                    <span className="absolute text-gray-500 -translate-y-1/2 pointer-events-none right-3 top-1/2 dark:text-gray-400">
-                                        <ChevronDownIcon />
-                                    </span>
                                 </div>
                             </div>
 

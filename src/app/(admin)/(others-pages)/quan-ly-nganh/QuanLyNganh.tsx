@@ -22,6 +22,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
 import { ChevronDownIcon } from "@/icons";
 import Select from "@/components/form/Select";
+import SearchableSelect from "@/components/form/SelectCustom";
 
 interface Nganh {
     id: number;
@@ -135,7 +136,7 @@ const NganhModal: React.FC<NganhModalProps> = ({
                     <div>
                         <Label>Khoa</Label>
                         <div className="relative">
-                            <Select
+                            <SearchableSelect
                                 options={khoaOptions.map((khoa) => ({
                                     value: khoa.id.toString(),
                                     label: khoa.maKhoa,
@@ -147,9 +148,6 @@ const NganhModal: React.FC<NganhModalProps> = ({
                                 className="dark:bg-dark-900"
                                 showSecondary={true}
                             />
-                            <span className="absolute text-gray-500 -translate-y-1/2 pointer-events-none right-3 top-1/2 dark:text-gray-400">
-                                <ChevronDownIcon />
-                            </span>
                         </div>
                         {errors.khoaId && (
                             <p className="mt-1 text-sm text-error-500">Vui lòng chọn khoa</p>
@@ -491,7 +489,7 @@ export default function QuanLyNganhPage() {
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                         <div className="flex-1 sm:max-w-md">
                             <div className="relative">
-                                <Select
+                                <SearchableSelect
                                     options={[
                                         { value: "", label: "Tất cả khoa" },
                                         ...khoaOptions.map((khoa) => ({
@@ -505,9 +503,6 @@ export default function QuanLyNganhPage() {
                                     className="dark:bg-dark-900"
                                     showSecondary={true}
                                 />
-                                <span className="absolute text-gray-500 -translate-y-1/2 pointer-events-none right-3 top-1/2 dark:text-gray-400">
-                                    <ChevronDownIcon />
-                                </span>
                             </div>
                         </div>
 

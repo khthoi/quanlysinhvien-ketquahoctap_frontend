@@ -62,16 +62,23 @@ const navItems: NavItem[] = [
     name: "Quản lý CTDT",
     icon: <CalenderIcon />,
     subItems:
-      [{ name: "Chương trình đào tạo", path: "/quan-ly-ctdt", pro: false },
-      { name: "Học phần", path: "/quan-ly-hoc-phan", pro: false },],
+      [{ name: "Chương trình đào tạo", path: "/quan-ly-ctdt", pro: false }],
   },
 
   {
     name: "Quản lý Sinh viên",
     icon: <GroupIcon />,
     subItems:
-      [{ name: "Quản lý Sinh viên", path: "/quan-ly-sinh-vien", pro: false },
-      { name: "Quản lý Điểm Sinh viên", path: "/quan-ly-diem-sinh-vien", pro: false },],
+      [{ name: "Quản lý Sinh viên", path: "/quan-ly-sinh-vien", pro: false }], 
+  },
+
+  {
+    name:" Quản lý Lớp học phần",
+    icon: <UserCircleIcon />,
+    subItems:
+      [{ name: "Lớp học phần (ALL)", path: "/quan-ly-lop-hoc-phan", pro: false },
+        {name: "Lớp học phần (YOURS)", path: "/quan-ly-lop-hoc-phan-theo-giang-vien", pro: false }
+      ],
   },
 
   {
