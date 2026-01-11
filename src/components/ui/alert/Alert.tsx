@@ -94,7 +94,7 @@ const Alert: React.FC<AlertProps> = ({
             {title}
           </h4>
 
-          <p className="text-sm text-gray-500 dark:text-gray-400">{message}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 whitespace-pre-line">{message}</p>
 
           {showLink && (
             <Link

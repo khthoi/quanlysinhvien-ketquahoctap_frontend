@@ -410,7 +410,7 @@ const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
         setFileError("");
 
         if (rejectedFiles.length > 0) {
-            setFileError("Chỉ chấp nhận file Excel (.xlsx)");
+            setFileError("Chỉ chấp nhận file Excel (. xlsx)");
             return;
         }
 
@@ -468,10 +468,7 @@ const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
                     body: formData,
                 }
             );
-
             const data = await res.json();
-            console.log("Response nhập điểm Excel:", data); // Log response
-
             handleClose();
 
             if (res.ok) {
@@ -488,7 +485,7 @@ const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
                         `Thành công: ${data.success}, Thất bại: ${data.failed}\n${errorMessages}`
                     );
                 } else {
-                    showAlert("success", "Thành công", `Nhập điểm từ Excel thành công. Đã nhập:  ${data.success} sinh viên`);
+                    showAlert("success", "Thành công", `Nhập điểm từ Excel thành công.  Đã nhập:  ${data.success} sinh viên`);
                 }
                 onSuccess();
             } else {
@@ -598,7 +595,7 @@ const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
                                             {isDragActive ? "Thả file vào đây" : "Kéo & thả file vào đây"}
                                         </h4>
                                         <p className="text-center text-sm text-gray-500 dark:text-gray-400 mb-3">
-                                            Chỉ chấp nhận file Excel (.xlsx)
+                                            Chỉ chấp nhận file Excel (. xlsx)
                                         </p>
                                         <span className="font-medium underline text-sm text-brand-500">
                                             Chọn file
@@ -952,11 +949,10 @@ export default function ChiTietLopHocPhanPage() {
                         </div>
                     </div>
 
-                    {/* Button nhập điểm & sinh viên vào LHP bằng Excel */}
+                    {/* Button nhập điểm Excel */}
                     <div className="flex-shrink-0">
                         <Button
                             variant="primary"
-                            className="ml-3"
                             onClick={() => setIsImportExcelModalOpen(true)}
                             startIcon={<FontAwesomeIcon icon={faFileExcel} />}
                             disabled={lopHocPhanInfo?.khoaDiem}

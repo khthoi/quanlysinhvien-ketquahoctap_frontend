@@ -864,7 +864,7 @@ export default function QuanLyNamHocHocKyPage() {
 
                     <div className="flex gap-3">
                         <Button
-                            variant="outline"
+                            variant="primary"
                             onClick={() => {
                                 resetHocKyForm();
                                 setIsCreateHocKyModalOpen(true);

@@ -26,13 +26,25 @@ import {
     faEye,
     faChevronDown,
     faChevronUp,
-    faUnlink
+    faUnlink,
+    faPlus,
+    faUserPlus
 } from "@fortawesome/free-solid-svg-icons";
 import { ChevronDownIcon } from "@/icons";
 import Select from "@/components/form/Select";
 import SearchableSelect from "@/components/form/SelectCustom";
+import { Dropdown } from "@/components/ui/dropdown/Dropdown";
+import { DropdownItem } from "@/components/ui/dropdown/DropdownItem";
+import { FaAngleDown } from "react-icons/fa6";
 
 // ==================== INTERFACES ====================
+enum VaiTro {
+    ADMIN = "ADMIN",
+    GIANG_VIEN = "GIANG_VIEN",
+    SINH_VIEN = "SINH_VIEN",
+    CAN_BO_PHONG_DAO_TAO = "CAN_BO_PHONG_DAO_TAO",
+}
+
 interface MonHoc {
     id: number;
     tenMonHoc: string;
@@ -58,6 +70,7 @@ interface GiangVien {
     gioiTinh: "NAM" | "NU" | "KHONG_XAC_DINH";
     diaChi: string;
     monHocGiangViens: MonHocGiangVien[];
+    nguoiDung: NguoiDung;
 }
 
 interface PaginationData {
@@ -65,6 +78,13 @@ interface PaginationData {
     page: number;
     limit: number;
     totalPages: number;
+}
+
+interface NguoiDung {
+    id: number;
+    username: string;
+    vaiTro: VaiTro;
+    ngayTao: string;
 }
 
 // ==================== HELPER FUNCTIONS ====================
@@ -491,6 +511,10 @@ export default function QuanLyGiangVienPage() {
     const [deletingGiangVien, setDeletingGiangVien] = useState<GiangVien | null>(null);
     const [editingGiangVien, setEditingGiangVien] = useState<GiangVien | null>(null);
     const [viewingGiangVien, setViewingGiangVien] = useState<GiangVien | null>(null);
+    // State cho modal tạo tài khoản
+    const [isCreateAccountModalOpen, setIsCreateAccountModalOpen] = useState(false);
+    const [creatingAccountGiangVien, setCreatingAccountGiangVien] = useState<GiangVien | null>(null);
+    const [isCreatingAccount, setIsCreatingAccount] = useState(false);
 
     // State cho form
     const [formData, setFormData] = useState({
@@ -502,6 +526,22 @@ export default function QuanLyGiangVienPage() {
         gioiTinh: "",
         diaChi: "",
     });
+
+    // State để theo dõi dropdown ĐANG MỞ (chỉ 1 cái duy nhất)
+    const [activeDropdownId, setActiveDropdownId] = useState<number | null>(null);
+
+    // Toggle: nếu click vào dropdown đang mở → đóng nó, ngược lại mở nó và đóng cái khác
+    const toggleDropdown = (sinhVienId: number) => {
+        setActiveDropdownId((prev) =>
+            prev === sinhVienId ? null : sinhVienId
+        );
+    };
+
+    // Close dropdown (gọi khi chọn item hoặc click ngoài)
+    const closeDropdown = () => {
+        setActiveDropdownId(null);
+    };
+
 
     // State cho filter & search
     const [searchKeyword, setSearchKeyword] = useState("");
@@ -791,6 +831,53 @@ export default function QuanLyGiangVienPage() {
         setIsUnassignModalOpen(true);
     };
 
+    // Mở modal tạo tài khoản
+    const openCreateAccountModal = (giangVien: GiangVien) => {
+        setCreatingAccountGiangVien(giangVien);
+        setIsCreateAccountModalOpen(true);
+    };
+
+    // Xử lý tạo tài khoản
+    const handleCreateAccount = async () => {
+        if (!creatingAccountGiangVien) return;
+
+        setIsCreatingAccount(true);
+
+        try {
+            const accessToken = getCookie("access_token");
+            const res = await fetch(
+                `http://localhost:3000/auth/users/giang-vien/${creatingAccountGiangVien.id}`,
+                {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                    },
+                }
+            );
+
+            setIsCreateAccountModalOpen(false);
+            setCreatingAccountGiangVien(null);
+
+            if (res.ok) {
+                showAlert(
+                    "success",
+                    "Thành công",
+                    `Đã tạo tài khoản cho giảng viên "${creatingAccountGiangVien.hoTen}" với mật khẩu mặc định:  123456`
+                );
+                // Refresh lại danh sách để cập nhật trạng thái nguoiDung
+                fetchGiangViens(currentPage, searchKeyword.trim(), selectedFilterMonHocId);
+            } else {
+                const err = await res.json();
+                showAlert("error", "Lỗi", err.message || "Tạo tài khoản thất bại");
+            }
+        } catch (err) {
+            setIsCreateAccountModalOpen(false);
+            showAlert("error", "Lỗi", "Có lỗi xảy ra khi tạo tài khoản");
+        } finally {
+            setIsCreatingAccount(false);
+        }
+    };
+
     // Open modals
     const openEditModal = (giangVien: GiangVien) => {
         setEditingGiangVien(giangVien);
@@ -1022,35 +1109,71 @@ export default function QuanLyGiangVienPage() {
                                                 <TableCell className="px-5 py-4 flex items-center justify-center text-gray-500 dark:text-gray-400">
                                                     {gv.sdt}
                                                 </TableCell>
-                                                <TableCell className="px-5 py-4 flex items-center justify-center">
-                                                    <div className="flex gap-2">
+                                                <TableCell className="px-5 py-4 text-center">
+                                                    <div className="relative inline-block">
                                                         <Button
-                                                            size="sm"
                                                             variant="outline"
-                                                            onClick={() => openDetailModal(gv)}
-                                                            className="p-2"
-                                                        >
-                                                            <FontAwesomeIcon icon={faEye} className="w-4 h-4" />
-                                                        </Button>
-                                                        <Button
                                                             size="sm"
-                                                            variant="outline"
-                                                            onClick={() => openEditModal(gv)}
-                                                            className="p-2"
+                                                            onClick={() => toggleDropdown(gv.id)}
+                                                            className="dropdown-toggle flex items-center gap-1.5 min-w-[100px] justify-between px-3 py-2"
                                                         >
-                                                            <FontAwesomeIcon
-                                                                icon={faPenToSquare}
-                                                                className="w-4 h-4"
+                                                            Thao tác
+                                                            <FaAngleDown
+                                                                className={`text-gray-500 transition-transform duration-300 ease-in-out ${activeDropdownId === gv.id ? "rotate-180" : "rotate-0"
+                                                                    }`}
                                                             />
                                                         </Button>
-                                                        <Button
-                                                            size="sm"
-                                                            variant="outline"
-                                                            onClick={() => openDeleteModal(gv)}
-                                                            className="p-2 text-error-500 border-error-300 hover:bg-error-50 dark:border-error-500/30 dark:hover:bg-error-500/10"
+
+                                                        <Dropdown
+                                                            isOpen={activeDropdownId === gv.id}
+                                                            onClose={closeDropdown}
+                                                            className="w-56 mt-2 right-0"
                                                         >
-                                                            <FontAwesomeIcon icon={faTrash} className="w-4 h-4" />
-                                                        </Button>
+                                                            <div className="py-1">
+                                                                <DropdownItem
+                                                                    tag="button"
+                                                                    onItemClick={closeDropdown}
+                                                                    onClick={() => openDetailModal(gv)}
+                                                                >
+                                                                    <FontAwesomeIcon icon={faEye} className="mr-2 w-4" />
+                                                                    Xem chi tiết
+                                                                </DropdownItem>
+
+                                                                <DropdownItem
+                                                                    tag="button"
+                                                                    onItemClick={closeDropdown}
+                                                                    onClick={() => openEditModal(gv)}
+                                                                >
+                                                                    <FontAwesomeIcon icon={faPenToSquare} className="mr-2 w-4" />
+                                                                    Chỉnh sửa
+                                                                </DropdownItem>
+                                                                <DropdownItem
+                                                                    tag="button"
+                                                                    onItemClick={closeDropdown}
+                                                                    disabled={gv.nguoiDung !== null}
+                                                                    onClick={() => {
+                                                                        if (gv.nguoiDung === null) {
+                                                                            openCreateAccountModal(gv);
+                                                                        }
+                                                                    }}
+                                                                    className={gv.nguoiDung !== null ? "opacity-50 cursor-not-allowed" : ""}
+                                                                >
+                                                                    <FontAwesomeIcon icon={faUserPlus} className="mr-2 w-4" />
+                                                                    {gv.nguoiDung !== null ? "Đã có tài khoản" : "Tạo tài khoản"}
+                                                                </DropdownItem>
+                                                                <div className="my-1 border-t border-gray-100 dark:border-gray-700" />
+
+                                                                <DropdownItem
+                                                                    tag="button"
+                                                                    className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/30"
+                                                                    onItemClick={closeDropdown}
+                                                                    onClick={() => openDeleteModal(gv)}
+                                                                >
+                                                                    <FontAwesomeIcon icon={faTrash} className="mr-2 w-4" />
+                                                                    Xóa
+                                                                </DropdownItem>
+                                                            </div>
+                                                        </Dropdown>
                                                     </div>
                                                 </TableCell>
                                             </TableRow>
@@ -1284,6 +1407,97 @@ export default function QuanLyGiangVienPage() {
                         </Button>
                         <Button variant="primary" onClick={handleUnassignMonHoc}>
                             Hủy phân công
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
+            {/* Modal Tạo tài khoản */}
+            <Modal
+                isOpen={isCreateAccountModalOpen}
+                onClose={() => {
+                    if (!isCreatingAccount) {
+                        setIsCreateAccountModalOpen(false);
+                        setCreatingAccountGiangVien(null);
+                    }
+                }}
+                className="max-w-md"
+            >
+                <div className="p-6 sm: p-8">
+                    <h3 className="mb-4 text-xl font-semibold text-gray-800 dark:text-white/90 flex items-center gap-2">
+                        <FontAwesomeIcon icon={faUserPlus} className="text-brand-500" />
+                        Tạo tài khoản hệ thống
+                    </h3>
+
+                    {/* Thông tin giảng viên */}
+                    {creatingAccountGiangVien && (
+                        <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+                            <div className="space-y-2 text-sm">
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500 dark:text-gray-400">Mã GV:</span>
+                                    <span className="font-medium text-gray-800 dark:text-white">
+                                        {creatingAccountGiangVien.maGiangVien}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500 dark:text-gray-400">Họ tên:</span>
+                                    <span className="font-medium text-gray-800 dark:text-white">
+                                        {creatingAccountGiangVien.hoTen}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500 dark:text-gray-400">Email:</span>
+                                    <span className="font-medium text-gray-800 dark:text-white">
+                                        {creatingAccountGiangVien.email}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Thông tin tài khoản sẽ tạo */}
+                    <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                        <p className="text-sm text-blue-800 dark:text-blue-300 mb-2">
+                            <strong>Thông tin tài khoản sẽ được tạo: </strong>
+                        </p>
+                        <ul className="text-sm text-blue-700 dark:text-blue-400 space-y-1 ml-4 list-disc">
+                            <li>Tên đăng nhập:  <strong>{creatingAccountGiangVien?.maGiangVien}</strong></li>
+                            <li>Vai trò:  <strong>Giảng viên</strong></li>
+                            <li>Mật khẩu mặc định: <strong>123456</strong></li>
+                        </ul>
+                    </div>
+
+                    {/* Cảnh báo */}
+                    <div className="mb-6 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                        <p className="text-sm text-yellow-800 dark:text-yellow-300">
+                            ⚠️ Vui lòng thông báo cho giảng viên đổi mật khẩu sau khi đăng nhập lần đầu.
+                        </p>
+                    </div>
+
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                        Bạn có chắc chắn muốn tạo tài khoản hệ thống cho giảng viên{" "}
+                        <span className="font-semibold text-gray-900 dark:text-white">
+                            {creatingAccountGiangVien?.hoTen}
+                        </span>?
+                    </p>
+
+                    <div className="flex justify-end gap-3">
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setIsCreateAccountModalOpen(false);
+                                setCreatingAccountGiangVien(null);
+                            }}
+                            disabled={isCreatingAccount}
+                        >
+                            Hủy
+                        </Button>
+                        <Button
+                            variant="primary"
+                            onClick={handleCreateAccount}
+                            disabled={isCreatingAccount}
+                            startIcon={!isCreatingAccount ? <FontAwesomeIcon icon={faUserPlus} /> : undefined}
+                        >
+                            {isCreatingAccount ? "Đang tạo..." : "Xác nhận tạo"}
                         </Button>
                     </div>
                 </div>

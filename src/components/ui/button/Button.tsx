@@ -1,5 +1,5 @@
-import { info } from "console";
 import React, { ReactNode } from "react";
+import Link from "next/link";
 
 interface ButtonProps {
   children: ReactNode; // Button text or content
@@ -7,9 +7,12 @@ interface ButtonProps {
   variant?: "primary" | "outline" | "warning" | "danger" | "info"; // Button variant
   startIcon?: ReactNode; // Icon before the text
   endIcon?: ReactNode; // Icon after the text
-  onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void; // Click handler
+  onClick?: (e: React.MouseEvent<HTMLButtonElement | HTMLAnchorElement>) => void; // Click handler
   disabled?: boolean; // Disabled state
-  className?: string; // Disabled state
+  className?: string; // Additional classes
+  href?: string; // Optional: If provided, renders as Link instead of button
+  target?: "_blank" | "_self" | "_parent" | "_top"; // Link target attribute
+  rel?: string; // Link rel attribute
 }
 
 const Button: React.FC<ButtonProps> = ({
@@ -21,6 +24,9 @@ const Button: React.FC<ButtonProps> = ({
   onClick,
   className = "",
   disabled = false,
+  href,
+  target,
+  rel,
 }) => {
   // Size Classes
   const sizeClasses = {
@@ -42,19 +48,46 @@ const Button: React.FC<ButtonProps> = ({
       "bg-blue-500 text-white shadow-theme-xs hover:bg-blue-600 disabled:bg-blue-300",
   };
 
-  return (
-    <button
-      className={`inline-flex items-center justify-center font-medium gap-2 rounded-lg transition ${className} ${
-        sizeClasses[size]
-      } ${variantClasses[variant]} ${
-        disabled ? "cursor-not-allowed opacity-50" : ""
-      }`}
-      onClick={onClick}
-      disabled={disabled}
-    >
+  // Combined classes
+  const combinedClasses = `inline-flex items-center justify-center font-medium gap-2 rounded-lg transition ${className} ${
+    sizeClasses[size]
+  } ${variantClasses[variant]} ${
+    disabled ? "cursor-not-allowed opacity-50 pointer-events-none" : ""
+  }`;
+
+  // Content to render
+  const content = (
+    <>
       {startIcon && <span className="flex items-center">{startIcon}</span>}
       {children}
       {endIcon && <span className="flex items-center">{endIcon}</span>}
+    </>
+  );
+
+  // Render as Link if href is provided
+  if (href) {
+    return (
+      <Link
+        href={disabled ? "#" : href}
+        className={combinedClasses}
+        onClick={onClick as (e: React.MouseEvent<HTMLAnchorElement>) => void}
+        target={target}
+        rel={rel || (target === "_blank" ? "noopener noreferrer" : undefined)}
+        aria-disabled={disabled}
+      >
+        {content}
+      </Link>
+    );
+  }
+
+  // Render as button
+  return (
+    <button
+      className={combinedClasses}
+      onClick={onClick as (e: React.MouseEvent<HTMLButtonElement>) => void}
+      disabled={disabled}
+    >
+      {content}
     </button>
   );
 };

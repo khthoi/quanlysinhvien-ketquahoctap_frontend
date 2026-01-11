@@ -18,11 +18,14 @@ import Label from "@/components/form/Label";
 import Badge from "@/components/ui/badge/Badge";
 import SearchableSelect from "@/components/form/SelectCustom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faMagnifyingGlass, faEye, faTrash, faEdit, faUsers, faFileExcel } from "@fortawesome/free-solid-svg-icons";
+import { faMagnifyingGlass, faEye, faTrash, faEdit, faUsers, faFileExcel, faInfoCircle, faCloudArrowUp, faDownload } from "@fortawesome/free-solid-svg-icons";
 import TextArea from "@/components/form/input/TextArea";
 import { DropdownItem } from "@/components/ui/dropdown/DropdownItem";
 import { Dropdown } from "@/components/ui/dropdown/Dropdown";
 import { FaAngleDown } from "react-icons/fa6";
+import Checkbox from "@/components/form/input/Checkbox";
+import Switch from "@/components/form/switch/Switch";
+import { useDropzone } from "react-dropzone";
 
 type TrangThai = "DANG_HOC" | "DA_KET_THUC" | "CHUA_BAT_DAU";
 
@@ -588,13 +591,13 @@ const EditLopHocPhanModal: React.FC<EditLopHocPhanModalProps> = ({
                     {/* Khóa điểm */}
                     <div>
                         <Label>Khóa điểm</Label>
-                        <SearchableSelect
-                            options={khoaDiemOptions}
-                            placeholder="Chọn trạng thái khóa điểm"
-                            onChange={(value) => onKhoaDiemChange(value === "true")}
-                            defaultValue={khoaDiem.toString()}
-                            showSecondary={false}
-                        />
+                        <div className="mt-4">
+                            <Switch
+                                label={khoaDiem ? "Đã khóa" : "Chưa khóa"}
+                                defaultChecked={khoaDiem}
+                                onChange={(checked) => onKhoaDiemChange(checked)}
+                            />
+                        </div>
                     </div>
 
                     {/* Ghi chú */}
@@ -614,6 +617,289 @@ const EditLopHocPhanModal: React.FC<EditLopHocPhanModalProps> = ({
                     </Button>
                     <Button onClick={onSubmit}>
                         Cập nhật
+                    </Button>
+                </div>
+            </div>
+        </Modal>
+    );
+};
+
+// ==================== MODAL NHẬP SINH VIÊN EXCEL ====================
+interface ImportSinhVienExcelModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onSuccess: () => void;
+    showAlert: (variant: "success" | "error" | "warning" | "info", title: string, message: string) => void;
+}
+
+const ImportSinhVienExcelModal: React.FC<ImportSinhVienExcelModalProps> = ({
+    isOpen,
+    onClose,
+    onSuccess,
+    showAlert,
+}) => {
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [fileError, setFileError] = useState<string>("");
+    const [isUploading, setIsUploading] = useState(false);
+
+    const onDrop = (acceptedFiles: File[], rejectedFiles: any[]) => {
+        setFileError("");
+
+        if (rejectedFiles.length > 0) {
+            setFileError("Chỉ chấp nhận file Excel (. xlsx)");
+            return;
+        }
+
+        if (acceptedFiles.length > 0) {
+            const file = acceptedFiles[0];
+            // Kiểm tra thêm extension
+            if (!file.name.endsWith('.xlsx')) {
+                setFileError("Chỉ chấp nhận file Excel (.xlsx)");
+                return;
+            }
+            setSelectedFile(file);
+        }
+    };
+
+    const { getRootProps, getInputProps, isDragActive } = useDropzone({
+        onDrop,
+        accept: {
+            "application/vnd. openxmlformats-officedocument. spreadsheetml. sheet": [".xlsx"],
+        },
+        maxFiles: 1,
+        multiple: false,
+    });
+
+    const handleDownloadTemplate = () => {
+        // Đường dẫn file mẫu - bạn có thể sửa lại sau
+        const templateUrl = "/templates/mau-nhap-sinh-vien-lhp.xlsx";
+        const link = document.createElement("a");
+        link.href = templateUrl;
+        link.download = "mau-nhap-sinh-vien-lhp.xlsx";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const handleUpload = async () => {
+        if (!selectedFile) {
+            setFileError("Vui lòng chọn file Excel");
+            return;
+        }
+
+        setIsUploading(true);
+
+        try {
+            const accessToken = getCookie("access_token");
+            const formData = new FormData();
+            formData.append("file", selectedFile);
+
+            const res = await fetch(
+                `http://localhost:3000/giang-day/lop-hoc-phan/them-sv-bang-excel`,
+                {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                    },
+                    body: formData,
+                }
+            );
+
+            const data = await res.json();
+            console.log("Response nhập sinh viên Excel:", data); // Log response
+
+            handleClose();
+
+            if (res.ok) {
+                const { summary, errors, detailByClass } = data;
+
+                let fullMessage = `Tổng: ${summary.total} | Thành công: ${summary.success} | Thất bại: ${summary.failed}\n\n`;
+
+                // -----------------------------------------------------------------
+                // 1️⃣ XỬ LÝ THEO TỪNG LỚP HỌC PHẦN (detailByClass)
+                // -----------------------------------------------------------------
+                if (detailByClass && Object.keys(detailByClass).length > 0) {
+                    fullMessage += "📚 Kết quả theo từng lớp học phần:\n";
+
+                    for (const classCode of Object.keys(detailByClass)) {
+                        const cls = detailByClass[classCode];
+
+                        fullMessage += `\n— Lớp: ${classCode} —\n`;
+                        fullMessage += `✓ Thành công: ${cls.success}\n`;
+                        fullMessage += `✗ Thất bại: ${cls.failed}\n`;
+
+                        if (cls.errors && cls.errors.length > 0) {
+                            fullMessage += `⚠️ Danh sách lỗi:\n`;
+
+                            cls.errors.forEach((err: { row: any; maSinhVien: any; error: any; }) => {
+                                fullMessage += `• Dòng ${err.row} – MSSV ${err.maSinhVien}: ${err.error}\n`;
+                            });
+                        }
+                    }
+
+                    fullMessage += "\n";
+                }
+
+                // -----------------------------------------------------------------
+                // 2️⃣ XỬ LÝ LỖI TỔNG (errors)
+                // -----------------------------------------------------------------
+                if (errors && errors.length > 0) {
+                    fullMessage += "❌ Lỗi tổng hợp:\n";
+
+                    errors.forEach((err: { maLopHocPhan: any; row: any; maSinhVien: any; error: any; }) => {
+                        fullMessage += `• LHP ${err.maLopHocPhan} – Dòng ${err.row} – MSSV ${err.maSinhVien}: ${err.error}\n`;
+                    });
+
+                    // ALERT WARNING
+                    showAlert(
+                        "warning",
+                        "Thêm sinh viên hoàn tất với một số lỗi",
+                        fullMessage
+                    );
+                } else {
+                    // ALERT SUCCESS
+                    showAlert(
+                        "success",
+                        "Thành công",
+                        `Đã thêm ${summary.success} sinh viên vào lớp học phần.`
+                    );
+                }
+
+                // Gọi callback reload
+                onSuccess();
+            }
+            else {
+                showAlert("error", "Lỗi", data.message || "Thêm sinh viên thất bại");
+            }
+        } catch (err) {
+            console.error("Lỗi nhập sinh viên Excel:", err);
+            handleClose();
+            showAlert("error", "Lỗi", "Có lỗi xảy ra khi thêm sinh viên");
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    const handleClose = () => {
+        setSelectedFile(null);
+        setFileError("");
+        onClose();
+    };
+
+    const removeFile = () => {
+        setSelectedFile(null);
+        setFileError("");
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <Modal isOpen={isOpen} onClose={handleClose} className="max-w-lg">
+            <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
+                <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
+                    Thêm sinh viên vào LHP bằng Excel
+                </h3>
+
+                {/* Button tải file mẫu */}
+                <div className="mb-6">
+                    <Button
+                        variant="outline"
+                        onClick={handleDownloadTemplate}
+                        startIcon={<FontAwesomeIcon icon={faDownload} />}
+                        className="w-full"
+                    >
+                        Tải file Excel mẫu nhập sinh viên
+                    </Button>
+                </div>
+
+                {/* Dropzone */}
+                <div className="mb-6">
+                    <Label className="mb-2 block">Chọn file Excel danh sách sinh viên</Label>
+                    <div
+                        className={`transition border-2 border-dashed cursor-pointer rounded-xl 
+                            ${fileError ? 'border-red-500' : 'border-gray-300 dark:border-gray-700'}
+                            ${isDragActive ? 'border-brand-500 bg-gray-100 dark:bg-gray-800' : 'hover:border-brand-500 dark:hover:border-brand-500'}
+                        `}
+                    >
+                        <div
+                            {...getRootProps()}
+                            className={`rounded-xl p-7 lg:p-10
+                                ${isDragActive
+                                    ? "bg-gray-100 dark:bg-gray-800"
+                                    : "bg-gray-50 dark: bg-gray-900"
+                                }
+                            `}
+                        >
+                            <input {...getInputProps()} />
+
+                            <div className="flex flex-col items-center">
+                                {/* Icon */}
+                                <div className="mb-4 flex justify-center">
+                                    <div className={`flex h-16 w-16 items-center justify-center rounded-full 
+                                        ${selectedFile
+                                            ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+                                            : 'bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-400'
+                                        }`}
+                                    >
+                                        <FontAwesomeIcon
+                                            icon={selectedFile ? faFileExcel : faCloudArrowUp}
+                                            className="text-2xl"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Text Content */}
+                                {selectedFile ? (
+                                    <>
+                                        <p className="mb-2 font-medium text-gray-800 dark:text-white/90">
+                                            {selectedFile.name}
+                                        </p>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                                            {(selectedFile.size / 1024).toFixed(2)} KB
+                                        </p>
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                removeFile();
+                                            }}
+                                            className="mt-3 text-sm text-red-500 hover:text-red-600 underline"
+                                        >
+                                            Xóa file
+                                        </button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <h4 className="mb-2 font-semibold text-gray-800 dark: text-white/90">
+                                            {isDragActive ? "Thả file vào đây" : "Kéo & thả file vào đây"}
+                                        </h4>
+                                        <p className="text-center text-sm text-gray-500 dark:text-gray-400 mb-3">
+                                            Chỉ chấp nhận file Excel (.xlsx)
+                                        </p>
+                                        <span className="font-medium underline text-sm text-brand-500">
+                                            Chọn file
+                                        </span>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                    {fileError && (
+                        <p className="mt-2 text-sm text-red-500">{fileError}</p>
+                    )}
+                </div>
+
+                {/* Buttons */}
+                <div className="flex justify-end gap-3">
+                    <Button variant="outline" onClick={handleClose} disabled={isUploading}>
+                        Hủy
+                    </Button>
+                    <Button
+                        onClick={handleUpload}
+                        disabled={!selectedFile || isUploading}
+                        startIcon={isUploading ? undefined : <FontAwesomeIcon icon={faFileExcel} />}
+                    >
+                        {isUploading ? "Đang xử lý..." : "Thêm sinh viên"}
                     </Button>
                 </div>
             </div>
@@ -671,6 +957,8 @@ export default function QuanLyLopHocPhanPage() {
     const [editingLopHocPhan, setEditingLopHocPhan] = useState<LopHocPhan | null>(null);
     const [viewingLopHocPhan, setViewingLopHocPhan] = useState<LopHocPhan | null>(null);
     const [searchKeyword, setSearchKeyword] = useState("");
+    const [isImportSinhVienExcelModalOpen, setIsImportSinhVienExcelModalOpen] = useState(false);
+
 
     // State cho filter
     const [filterMonHocId, setFilterMonHocId] = useState("");
@@ -1140,6 +1428,14 @@ export default function QuanLyLopHocPhanPage() {
                             />
                         </div>
                     </div>
+                    <Button
+                        variant="primary"
+                        className="mr-1 ml-auto"
+                        onClick={() => setIsImportSinhVienExcelModalOpen(true)}
+                        startIcon={<FontAwesomeIcon icon={faFileExcel} />}
+                    >
+                        Thêm SV vào LHP
+                    </Button>
                 </div>
 
                 {/* Khối lọc */}
@@ -1387,8 +1683,8 @@ export default function QuanLyLopHocPhanPage() {
                                                                     href={`http://localhost:3001/quan-ly-lop-hoc-phan/quan-ly-diem/${lhp.id}`}
                                                                     onItemClick={closeDropdown}
                                                                 >
-                                                                    <FontAwesomeIcon icon={faFileExcel} className="mr-2 w-4" />
-                                                                    Nhập điểm
+                                                                    <FontAwesomeIcon icon={faInfoCircle} className="mr-2 w-4" />
+                                                                    Chi tiết lớp
                                                                 </DropdownItem>
 
                                                                 <div className="my-1 border-t border-gray-100 dark:border-gray-700" />
@@ -1491,6 +1787,13 @@ export default function QuanLyLopHocPhanPage() {
             >
                 <DeleteConfirmModal />
             </Modal>
+
+            <ImportSinhVienExcelModal
+                isOpen={isImportSinhVienExcelModalOpen}
+                onClose={() => setIsImportSinhVienExcelModalOpen(false)}
+                onSuccess={() => fetchLopHocPhans(currentPage, searchKeyword, filterMonHocId, filterGiangVienId, filterHocKyId, filterNienKhoaId, filterNganhId)}
+                showAlert={showAlert}
+            />
         </div>
     );
 }

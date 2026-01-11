@@ -287,40 +287,34 @@ interface ApDungModalProps {
     onClose: () => void;
     formData: {
         chuongTrinhId: string;
-        nganhId: string;
         nienKhoaId: string;
         ngayApDung: string;
         ghiChu: string;
     };
     chuongTrinhOptions: ChuongTrinhDaoTao[];
-    nganhOptions: Nganh[];
     nienKhoaOptions: NienKhoa[];
-    khoaOptions: Khoa[];
-    selectedKhoaId: string;
-    onKhoaChange: (value: string) => void;
     onFormChange: (field: string, value: string) => void;
     onSubmit: () => void;
     errors: {
         chuongTrinhId: boolean;
-        nganhId: boolean;
         nienKhoaId: boolean;
         ngayApDung: boolean;
     };
+    // Thêm prop để lấy thông tin ngành/khoa từ chương trình đã chọn
+    selectedChuongTrinh: ChuongTrinhDaoTao | null;
 }
+
 
 const ApDungModal: React.FC<ApDungModalProps> = ({
     isOpen,
     onClose,
     formData,
     chuongTrinhOptions,
-    nganhOptions,
     nienKhoaOptions,
-    khoaOptions,
-    selectedKhoaId,
-    onKhoaChange,
     onFormChange,
     onSubmit,
     errors,
+    selectedChuongTrinh,
 }) => {
     if (!isOpen) return null;
 
@@ -354,46 +348,32 @@ const ApDungModal: React.FC<ApDungModalProps> = ({
                         )}
                     </div>
 
-                    {/* Chọn Khoa (để lọc Ngành) */}
-                    <div>
-                        <Label>Khoa (để lọc ngành)</Label>
-                        <SearchableSelect
-                            options={khoaOptions.map((k) => ({
-                                value: k.id.toString(),
-                                label: k.maKhoa,
-                                secondary: k.tenKhoa,
-                            }))}
-                            placeholder="Chọn khoa để lọc ngành"
-                            onChange={onKhoaChange}
-                            defaultValue={selectedKhoaId}
-                            showSecondary={true}
-                            maxDisplayOptions={10}
-                            searchPlaceholder="Tìm khoa..."
-                        />
-                    </div>
-
-                    {/* Chọn Ngành */}
-                    <div>
-                        <Label>Ngành</Label>
-                        <SearchableSelect
-                            options={nganhOptions.map((n) => ({
-                                value: n.id.toString(),
-                                label: n.maNganh,
-                                secondary: n.tenNganh,
-                            }))}
-                            placeholder="Chọn ngành"
-                            onChange={(value) => onFormChange("nganhId", value)}
-                            defaultValue={formData.nganhId}
-                            showSecondary={true}
-                            maxDisplayOptions={10}
-                            searchPlaceholder="Tìm ngành..."
-                        />
-                        {errors.nganhId && (
-                            <p className="mt-1 text-sm text-error-500">
-                                Vui lòng chọn ngành
-                            </p>
-                        )}
-                    </div>
+                    {/* Hiển thị thông tin Ngành và Khoa của chương trình đã chọn */}
+                    {selectedChuongTrinh && (
+                        <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+                            <Label className="block mb-3 text-sm font-medium">Thông tin chương trình</Label>
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sm text-gray-600 dark:text-gray-400 min-w-[60px]">Ngành:</span>
+                                    <Badge variant="solid" color="primary">
+                                        {selectedChuongTrinh.nganh.maNganh}
+                                    </Badge>
+                                    <span className="text-sm text-gray-700 dark:text-gray-300">
+                                        {selectedChuongTrinh.nganh.tenNganh}
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sm text-gray-600 dark:text-gray-400 min-w-[60px]">Khoa:</span>
+                                    <Badge variant="solid" color="info">
+                                        {selectedChuongTrinh.nganh.khoa.maKhoa}
+                                    </Badge>
+                                    <span className="text-sm text-gray-700 dark:text-gray-300">
+                                        {selectedChuongTrinh.nganh.khoa.tenKhoa}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Chọn Niên khóa */}
                     <div>
@@ -511,11 +491,10 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
     });
     const [modalKhoaId, setModalKhoaId] = useState("");
     const [modalNganhOptions, setModalNganhOptions] = useState<Nganh[]>([]);
-
+    const [selectedApDungChuongTrinh, setSelectedApDungChuongTrinh] = useState<ChuongTrinhDaoTao | null>(null);
     // State cho form áp dụng
     const [apDungFormData, setApDungFormData] = useState({
         chuongTrinhId: "",
-        nganhId: "",
         nienKhoaId: "",
         ngayApDung: "",
         ghiChu: "",
@@ -533,7 +512,6 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
 
     const [apDungErrors, setApDungErrors] = useState({
         chuongTrinhId: false,
-        nganhId: false,
         nienKhoaId: false,
         ngayApDung: false,
     });
@@ -733,15 +711,13 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
     const resetApDungForm = () => {
         setApDungFormData({
             chuongTrinhId: "",
-            nganhId: "",
             nienKhoaId: "",
             ngayApDung: "",
             ghiChu: "",
         });
-        setApDungModalKhoaId("");
+        setSelectedApDungChuongTrinh(null);
         setApDungErrors({
             chuongTrinhId: false,
-            nganhId: false,
             nienKhoaId: false,
             ngayApDung: false,
         });
@@ -753,6 +729,12 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
 
     const handleApDungFormChange = (field: string, value: string) => {
         setApDungFormData((prev) => ({ ...prev, [field]: value }));
+
+        // Khi chọn chương trình, cập nhật selectedApDungChuongTrinh
+        if (field === "chuongTrinhId") {
+            const selected = chuongTrinhs.find((ct) => ct.id.toString() === value);
+            setSelectedApDungChuongTrinh(selected || null);
+        }
     };
 
     const toggleRow = (id: number) => {
@@ -779,7 +761,6 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
     const validateApDungForm = (): boolean => {
         const newErrors = {
             chuongTrinhId: !apDungFormData.chuongTrinhId,
-            nganhId: !apDungFormData.nganhId,
             nienKhoaId: !apDungFormData.nienKhoaId,
             ngayApDung: !apDungFormData.ngayApDung,
         };
@@ -896,6 +877,12 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
     const handleCreateApDung = async () => {
         if (!validateApDungForm()) return;
 
+        // Lấy nganhId từ chương trình đã chọn
+        if (!selectedApDungChuongTrinh) {
+            showAlert("error", "Lỗi", "Vui lòng chọn chương trình đào tạo");
+            return;
+        }
+
         try {
             const accessToken = getCookie("access_token");
             const res = await fetch("http://localhost:3000/dao-tao/ap-dung", {
@@ -906,7 +893,7 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
                 },
                 body: JSON.stringify({
                     chuongTrinhId: Number(apDungFormData.chuongTrinhId),
-                    nganhId: Number(apDungFormData.nganhId),
+                    nganhId: selectedApDungChuongTrinh.nganh.id,
                     nienKhoaId: Number(apDungFormData.nienKhoaId),
                     ngayApDung: apDungFormData.ngayApDung,
                     ghiChu: apDungFormData.ghiChu.trim() || null,
@@ -995,7 +982,6 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
 
     const openApDungModal = () => {
         resetApDungForm();
-        fetchNganhsForApDungModal("");
         setIsApDungModalOpen(true);
     };
 
@@ -1042,7 +1028,7 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
 
                     <div className="flex gap-3">
                         <Button
-                            variant="outline"
+                            variant="primary"
                             onClick={openApDungModal}
                         >
                             Áp dụng Chương trình
@@ -1224,7 +1210,7 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
                                                     </TableCell>
                                                     <TableCell className="px-5 py-4 flex items-center justify-center">
                                                         <div className="flex gap-2">
-                                                            <Button size="sm" variant="outline" onClick={() => openChiTietChuongTrinhDaoTao(ct)}>
+                                                            <Button size="sm" variant="outline" href={`/quan-ly-ctdt/chi-tiet-ctdt/${ct.id}`}>
                                                                 <FontAwesomeIcon icon={faMagnifyingGlass} className="w-4 h-4" />
                                                             </Button>
                                                             <Button
@@ -1435,17 +1421,11 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
                 }}
                 formData={apDungFormData}
                 chuongTrinhOptions={chuongTrinhs}
-                nganhOptions={apDungModalNganhOptions}
                 nienKhoaOptions={nienKhoaOptions}
-                khoaOptions={khoaOptions}
-                selectedKhoaId={apDungModalKhoaId}
-                onKhoaChange={(value) => {
-                    setApDungModalKhoaId(value);
-                    setApDungFormData((prev) => ({ ...prev, nganhId: "" }));
-                }}
                 onFormChange={handleApDungFormChange}
                 onSubmit={handleCreateApDung}
                 errors={apDungErrors}
+                selectedChuongTrinh={selectedApDungChuongTrinh}
             />
 
             {/* Modal Xóa Chương trình */}

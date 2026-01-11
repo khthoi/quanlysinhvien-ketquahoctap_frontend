@@ -18,15 +18,19 @@ import Label from "@/components/form/Label";
 import Badge from "@/components/ui/badge/Badge";
 import SearchableSelect from "@/components/form/SelectCustom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faMagnifyingGlass, faEye, faPenToSquare, faTrash, faEdit, faGlassCheers, faMedal, faGraduationCap } from "@fortawesome/free-solid-svg-icons";
+import { faMagnifyingGlass, faEye, faPenToSquare, faTrash, faEdit, faGlassCheers, faMedal, faGraduationCap, faUserPlus } from "@fortawesome/free-solid-svg-icons";
 import TextArea from "@/components/form/input/TextArea";
 import { DropdownItem } from "@/components/ui/dropdown/DropdownItem";
 import { Dropdown } from "@/components/ui/dropdown/Dropdown";
 import { FaAngleDown } from "react-icons/fa6";
+import { useDropzone } from "react-dropzone";
+import { faCloudArrowUp, faDownload, faFileExcel } from "@fortawesome/free-solid-svg-icons";
 
 type TinhTrang = "DANG_HOC" | "THOI_HOC" | "DA_TOT_NGHIEP" | "BAO_LUU";
 type GioiTinh = "NAM" | "NU";
 type LoaiQuyetDinh = "KHEN_THUONG" | "KY_LUAT";
+
+type VAI_TRO = "ADMIN" | "GIANG_VIEN" | "SINH_VIEN" | "CAN_BO_PHONG_DAO_TAO";
 
 interface Lop {
     id: number;
@@ -56,6 +60,14 @@ interface SinhVien {
     ngayNhapHoc: string;
     tinhTrang: TinhTrang;
     lop: Lop;
+    nguoiDung: NguoiDung;
+}
+
+interface NguoiDung {
+    id: number;
+    tenDangNhap: string;
+    vaiTro: VAI_TRO;
+    ngayTao: string;
 }
 
 interface PaginationData {
@@ -98,6 +110,20 @@ interface ThanhTichResponse {
         lop: Lop;
     };
     khenThuongKyLuat: ThanhTich[];
+}
+
+interface XetTotNghiepResult {
+    nienKhoa: {
+        id: number;
+        maNienKhoa: string;
+        tenNienKhoa: string;
+        namHoc: string;
+        moTa: string;
+    };
+    tongSinhVienCuaNienKhoa: number;
+    soSinhVienDatTotNghiep: number;
+    soSinhVienKhongDatTotNghiep: number;
+    tongSinhVienDuocXet: number;
 }
 
 const getCookie = (name: string): string | null => {
@@ -455,6 +481,480 @@ const ViewSinhVienModal: React.FC<ViewSinhVienModalProps> = ({
     );
 };
 
+// ==================== MODAL NHẬP SINH VIÊN EXCEL ====================
+interface ImportSinhVienExcelModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onSuccess: () => void;
+    showAlert: (variant: "success" | "error" | "warning" | "info", title: string, message: string) => void;
+}
+
+const ImportSinhVienExcelModal: React.FC<ImportSinhVienExcelModalProps> = ({
+    isOpen,
+    onClose,
+    onSuccess,
+    showAlert,
+}) => {
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [fileError, setFileError] = useState<string>("");
+    const [isUploading, setIsUploading] = useState(false);
+
+    const onDrop = (acceptedFiles: File[], rejectedFiles: any[]) => {
+        setFileError("");
+
+        if (rejectedFiles.length > 0) {
+            setFileError("Chỉ chấp nhận file Excel (. xlsx)");
+            return;
+        }
+
+        if (acceptedFiles.length > 0) {
+            const file = acceptedFiles[0];
+            // Kiểm tra thêm extension
+            if (!file.name.endsWith('.xlsx')) {
+                setFileError("Chỉ chấp nhận file Excel (.xlsx)");
+                return;
+            }
+            setSelectedFile(file);
+        }
+    };
+
+    const { getRootProps, getInputProps, isDragActive } = useDropzone({
+        onDrop,
+        accept: {
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
+        },
+        maxFiles: 1,
+        multiple: false,
+    });
+
+    const handleDownloadTemplate = () => {
+        // Đường dẫn file mẫu - bạn có thể sửa lại sau
+        const templateUrl = "/templates/mau-nhap-sinh-vien.xlsx";
+        const link = document.createElement("a");
+        link.href = templateUrl;
+        link.download = "mau-nhap-sinh-vien.xlsx";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const handleUpload = async () => {
+        if (!selectedFile) {
+            setFileError("Vui lòng chọn file Excel");
+            return;
+        }
+
+        setIsUploading(true);
+
+        try {
+            const accessToken = getCookie("access_token");
+            const formData = new FormData();
+            formData.append("file", selectedFile);
+
+            const res = await fetch("http://localhost:3000/sinh-vien/import", {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+                body: formData,
+            });
+
+            const result = await res.json();
+
+            if (res.ok) {
+                // Kiểm tra nếu có lỗi trong response
+                if (result.errors && result.errors.length > 0) {
+                    const errorMessages = result.errors
+                        .map((err: any) => `Dòng ${err.row} (${err.maSinhVien}): ${err.error}`)
+                        .join("\n");
+                    showAlert(
+                        "warning",
+                        "Nhập sinh viên hoàn tất với cảnh báo",
+                        `Thành công: ${result.success}, Thất bại: ${result.failed}\n${errorMessages}`
+                    );
+                    console.log("Import errors:", result.errors);
+                } else {
+                    showAlert("success", "Thành công", `Nhập sinh viên từ Excel thành công.  Đã thêm ${result.success} sinh viên.`);
+                }
+                handleClose();
+                onSuccess();
+            } else {
+                showAlert("error", "Lỗi", result.message || "Nhập sinh viên thất bại");
+            }
+        } catch (err) {
+            showAlert("error", "Lỗi", "Có lỗi xảy ra khi nhập sinh viên");
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    const handleClose = () => {
+        setSelectedFile(null);
+        setFileError("");
+        onClose();
+    };
+
+    const removeFile = () => {
+        setSelectedFile(null);
+        setFileError("");
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <Modal isOpen={isOpen} onClose={handleClose} className="max-w-lg">
+            <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
+                <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
+                    Nhập sinh viên bằng Excel
+                </h3>
+
+                {/* Button tải file mẫu */}
+                <div className="mb-6">
+                    <Button
+                        variant="outline"
+                        onClick={handleDownloadTemplate}
+                        startIcon={<FontAwesomeIcon icon={faDownload} />}
+                        className="w-full"
+                    >
+                        Tải file Excel mẫu
+                    </Button>
+                </div>
+
+                {/* Dropzone */}
+                <div className="mb-6">
+                    <Label className="mb-2 block">Chọn file Excel nhập sinh viên</Label>
+                    <div
+                        className={`transition border-2 border-dashed cursor-pointer rounded-xl 
+                            ${fileError ? 'border-red-500' : 'border-gray-300 dark:border-gray-700'}
+                            ${isDragActive ? 'border-brand-500 bg-gray-100 dark: bg-gray-800' : 'hover:border-brand-500 dark:hover:border-brand-500'}
+                        `}
+                    >
+                        <div
+                            {...getRootProps()}
+                            className={`rounded-xl p-7 lg: p-10
+                                ${isDragActive
+                                    ? "bg-gray-100 dark:bg-gray-800"
+                                    : "bg-gray-50 dark:bg-gray-900"
+                                }
+                            `}
+                        >
+                            <input {...getInputProps()} />
+
+                            <div className="flex flex-col items-center">
+                                {/* Icon */}
+                                <div className="mb-4 flex justify-center">
+                                    <div className={`flex h-16 w-16 items-center justify-center rounded-full 
+                                        ${selectedFile
+                                            ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+                                            : 'bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-400'
+                                        }`}
+                                    >
+                                        <FontAwesomeIcon
+                                            icon={selectedFile ? faFileExcel : faCloudArrowUp}
+                                            className="text-2xl"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Text Content */}
+                                {selectedFile ? (
+                                    <>
+                                        <p className="mb-2 font-medium text-gray-800 dark:text-white/90">
+                                            {selectedFile.name}
+                                        </p>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                                            {(selectedFile.size / 1024).toFixed(2)} KB
+                                        </p>
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                removeFile();
+                                            }}
+                                            className="mt-3 text-sm text-red-500 hover:text-red-600 underline"
+                                        >
+                                            Xóa file
+                                        </button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <h4 className="mb-2 font-semibold text-gray-800 dark: text-white/90">
+                                            {isDragActive ? "Thả file vào đây" : "Kéo & thả file vào đây"}
+                                        </h4>
+                                        <p className="text-center text-sm text-gray-500 dark:text-gray-400 mb-3">
+                                            Chỉ chấp nhận file Excel (. xlsx)
+                                        </p>
+                                        <span className="font-medium underline text-sm text-brand-500">
+                                            Chọn file
+                                        </span>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                    {fileError && (
+                        <p className="mt-2 text-sm text-red-500">{fileError}</p>
+                    )}
+                </div>
+
+                {/* Buttons */}
+                <div className="flex justify-end gap-3">
+                    <Button variant="outline" onClick={handleClose} disabled={isUploading}>
+                        Hủy
+                    </Button>
+                    <Button
+                        onClick={handleUpload}
+                        disabled={!selectedFile || isUploading}
+                        startIcon={isUploading ? undefined : <FontAwesomeIcon icon={faFileExcel} />}
+                    >
+                        {isUploading ? "Đang xử lý..." : "Nhập sinh viên"}
+                    </Button>
+                </div>
+            </div>
+        </Modal>
+    );
+};
+
+// ==================== MODAL XÉT TỐT NGHIỆP ====================
+interface XetTotNghiepModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    nienKhoaOptions: NienKhoaOption[];
+}
+
+const XetTotNghiepModal: React.FC<XetTotNghiepModalProps> = ({
+    isOpen,
+    onClose,
+    nienKhoaOptions,
+}) => {
+    const [selectedNienKhoaId, setSelectedNienKhoaId] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
+    const [result, setResult] = useState<XetTotNghiepResult | null>(null);
+    const [error, setError] = useState<string | null>(null);
+
+    const handleClose = () => {
+        setSelectedNienKhoaId("");
+        setResult(null);
+        setError(null);
+        setIsLoading(false);
+        onClose();
+    };
+
+    const handleXetTotNghiep = async () => {
+        if (!selectedNienKhoaId) {
+            setError("Vui lòng chọn niên khóa");
+            return;
+        }
+
+        setIsLoading(true);
+        setError(null);
+        setResult(null);
+
+        try {
+            const accessToken = getCookie("access_token");
+            const res = await fetch(
+                `http://localhost:3000/sinh-vien/xet-tot-nghiep/${selectedNienKhoaId}/thong-ke`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                    },
+                }
+            );
+
+            const json = await res.json();
+
+            if (res.ok) {
+                setResult(json);
+            } else {
+                setError(json.message || "Xét tốt nghiệp thất bại");
+            }
+        } catch (err) {
+            setError("Có lỗi xảy ra khi xét tốt nghiệp");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleReset = () => {
+        setSelectedNienKhoaId("");
+        setResult(null);
+        setError(null);
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <Modal isOpen={isOpen} onClose={handleClose} className="max-w-2xl">
+            <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
+                <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90 flex items-center gap-2">
+                    <FontAwesomeIcon icon={faGraduationCap} className="text-brand-500" />
+                    Xét Tốt Nghiệp theo Niên Khóa
+                </h3>
+
+                {/* Chọn Niên khóa */}
+                <div className="mb-6 relative z-10">
+                    <Label className="mb-2 block">Chọn Niên khóa</Label>
+                    <div className="min-h-[270px]">
+                        <SearchableSelect
+                            options={nienKhoaOptions.map((nk) => ({
+                                value: nk.id.toString(),
+                                label: nk.maNienKhoa,
+                                secondary: nk.tenNienKhoa,
+                            }))}
+                            placeholder="Chọn niên khóa để xét tốt nghiệp"
+                            onChange={(value) => {
+                                setSelectedNienKhoaId(value);
+                                setResult(null);
+                                setError(null);
+                            }}
+                            defaultValue={selectedNienKhoaId}
+                            showSecondary={true}
+                            maxDisplayOptions={10}
+                            searchPlaceholder="Tìm niên khóa..."
+                        />
+                    </div>
+                </div>
+
+                {/* Hiển thị lỗi */}
+                {error && (
+                    <div className="mb-6">
+                        <Alert
+                            variant="error"
+                            title="Lỗi"
+                            message={error}
+                        />
+                    </div>
+                )}
+
+                {/* Hiển thị kết quả thống kê */}
+                {result && (
+                    <div className="mb-6">
+                        {/* Alert thành công */}
+                        <div className="mb-4">
+                            <Alert
+                                variant="success"
+                                title="Xét tốt nghiệp thành công"
+                                message={`Đã xét tốt nghiệp cho niên khóa ${result.nienKhoa.tenNienKhoa}`}
+                            />
+                        </div>
+
+                        {/* Thông tin niên khóa */}
+                        <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 mb-4">
+                            <h4 className="font-medium text-gray-800 dark:text-white mb-3">
+                                Thông tin Niên khóa
+                            </h4>
+                            <div className="grid grid-cols-2 gap-3 text-sm">
+                                <div>
+                                    <p className="text-gray-500 dark:text-gray-400">Mã niên khóa</p>
+                                    <p className="font-medium text-gray-800 dark: text-white">
+                                        {result.nienKhoa.maNienKhoa}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-gray-500 dark:text-gray-400">Tên niên khóa</p>
+                                    <p className="font-medium text-gray-800 dark:text-white">
+                                        {result.nienKhoa.tenNienKhoa}
+                                    </p>
+                                </div>
+                                <div className="col-span-2">
+                                    <p className="text-gray-500 dark:text-gray-400">Năm học</p>
+                                    <p className="font-medium text-gray-800 dark:text-white">
+                                        {result.nienKhoa.namHoc}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Thống kê kết quả */}
+                        <div className="p-4 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                            <h4 className="font-medium text-gray-800 dark:text-white mb-4">
+                                Kết quả Thống kê
+                            </h4>
+                            <div className="grid grid-cols-2 gap-4">
+                                {/* Tổng sinh viên niên khóa */}
+                                <div className="p-4 bg-gray-50 dark: bg-gray-800/50 rounded-lg text-center">
+                                    <p className="text-2xl font-bold text-gray-800 dark:text-white">
+                                        {result.tongSinhVienCuaNienKhoa}
+                                    </p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                        Tổng SV niên khóa
+                                    </p>
+                                </div>
+
+                                {/* Tổng sinh viên được xét */}
+                                <div className="p-4 bg-blue-50 dark: bg-blue-900/20 rounded-lg text-center">
+                                    <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                                        {result.tongSinhVienDuocXet}
+                                    </p>
+                                    <p className="text-sm text-gray-500 dark: text-gray-400 mt-1">
+                                        Tổng SV được xét
+                                    </p>
+                                </div>
+
+                                {/* Đạt tốt nghiệp */}
+                                <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg text-center">
+                                    <p className="text-2xl font-bold text-green-600 dark: text-green-400">
+                                        {result.soSinhVienDatTotNghiep}
+                                    </p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                        Đạt tốt nghiệp
+                                    </p>
+                                    <Badge variant="solid" color="success" className="mt-2">
+                                        {result.tongSinhVienDuocXet > 0
+                                            ? ((result.soSinhVienDatTotNghiep / result.tongSinhVienDuocXet) * 100).toFixed(1)
+                                            : 0}%
+                                    </Badge>
+                                </div>
+
+                                {/* Không đạt */}
+                                <div className="p-4 bg-red-50 dark: bg-red-900/20 rounded-lg text-center">
+                                    <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+                                        {result.soSinhVienKhongDatTotNghiep}
+                                    </p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                        Không đạt
+                                    </p>
+                                    <Badge variant="solid" color="error" className="mt-2">
+                                        {result.tongSinhVienDuocXet > 0
+                                            ? ((result.soSinhVienKhongDatTotNghiep / result.tongSinhVienDuocXet) * 100).toFixed(1)
+                                            : 0}%
+                                    </Badge>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                {/* Buttons */}
+                <div className="flex justify-end gap-3">
+                    {result ? (
+                        <>
+                            <Button variant="outline" onClick={handleReset}>
+                                Xét niên khóa khác
+                            </Button>
+                            <Button variant="outline" onClick={handleClose}>
+                                Đóng
+                            </Button>
+                        </>
+                    ) : (
+                        <>
+                            <Button variant="outline" onClick={handleClose} disabled={isLoading}>
+                                Hủy
+                            </Button>
+                            <Button
+                                onClick={handleXetTotNghiep}
+                                disabled={!selectedNienKhoaId || isLoading}
+                                startIcon={!isLoading ? <FontAwesomeIcon icon={faGraduationCap} /> : undefined}
+                            >
+                                {isLoading ? "Đang xử lý..." : "Xét Tốt Nghiệp"}
+                            </Button>
+                        </>
+                    )}
+                </div>
+            </div>
+        </Modal>
+    );
+};
+
 // ==================== ITEMS COUNT INFO COMPONENT ====================
 interface ItemsCountInfoProps {
     pagination: PaginationData;
@@ -537,6 +1037,11 @@ export default function QuanLySinhVienPage() {
     const [thanhTichData, setThanhTichData] = useState<ThanhTichResponse | null>(null);
     const [filterLoaiQuyetDinh, setFilterLoaiQuyetDinh] = useState<LoaiQuyetDinh | "">("");
 
+    // State cho modal tạo tài khoản
+    const [isCreateAccountModalOpen, setIsCreateAccountModalOpen] = useState(false);
+    const [creatingAccountSinhVien, setCreatingAccountSinhVien] = useState<SinhVien | null>(null);
+    const [isCreatingAccount, setIsCreatingAccount] = useState(false);
+
     // State cho modal thêm quyết định
     const [isAddQuyetDinhModalOpen, setIsAddQuyetDinhModalOpen] = useState(false);
     const [selectedSinhVienForAdd, setSelectedSinhVienForAdd] = useState<SinhVien | null>(null);
@@ -549,6 +1054,10 @@ export default function QuanLySinhVienPage() {
         ngayQuyetDinh: false,
     });
 
+    // State cho modal import excel
+    const [isImportExcelModalOpen, setIsImportExcelModalOpen] = useState(false);
+    // State cho modal xét tốt nghiệp
+    const [isXetTotNghiepModalOpen, setIsXetTotNghiepModalOpen] = useState(false);
     // State để theo dõi dropdown ĐANG MỞ (chỉ 1 cái duy nhất)
     const [activeDropdownId, setActiveDropdownId] = useState<number | null>(null);
 
@@ -1117,6 +1626,53 @@ export default function QuanLySinhVienPage() {
         return loai === "KHEN_THUONG" ? "success" : "error";
     };
 
+    // Mở modal tạo tài khoản
+    const openCreateAccountModal = (sinhVien: SinhVien) => {
+        setCreatingAccountSinhVien(sinhVien);
+        setIsCreateAccountModalOpen(true);
+    };
+
+    // Xử lý tạo tài khoản
+    const handleCreateAccount = async () => {
+        if (!creatingAccountSinhVien) return;
+
+        setIsCreatingAccount(true);
+
+        try {
+            const accessToken = getCookie("access_token");
+            const res = await fetch(
+                `http://localhost:3000/auth/users/sinh-vien/${creatingAccountSinhVien.id}`,
+                {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                    },
+                }
+            );
+
+            setIsCreateAccountModalOpen(false);
+            setCreatingAccountSinhVien(null);
+
+            if (res.ok) {
+                showAlert(
+                    "success",
+                    "Thành công",
+                    `Đã tạo tài khoản cho sinh viên "${creatingAccountSinhVien.hoTen}" với mật khẩu mặc định:  123456`
+                );
+                // Refresh lại danh sách để cập nhật trạng thái nguoiDung
+                fetchSinhViens(currentPage, searchKeyword, filterTinhTrang, filterLopId, filterNganhId, filterNienKhoaId);
+            } else {
+                const err = await res.json();
+                showAlert("error", "Lỗi", err.message || "Tạo tài khoản thất bại");
+            }
+        } catch (err) {
+            setIsCreateAccountModalOpen(false);
+            showAlert("error", "Lỗi", "Có lỗi xảy ra khi tạo tài khoản");
+        } finally {
+            setIsCreatingAccount(false);
+        }
+    };
+
     const DeleteConfirmModal = () => (
         <div className="p-6 sm:p-8 max-w-md w-full">
             <h3 className="mb-4 text-xl font-semibold text-gray-800 dark:text-white/90">
@@ -1188,7 +1744,24 @@ export default function QuanLySinhVienPage() {
                     </div>
 
                     <div className="flex gap-3">
-                        <Button onClick={openCreateModal}>
+                        {/* Thêm button này */}
+                        <Button
+                            variant="primary"
+                            onClick={() => setIsXetTotNghiepModalOpen(true)}
+                            startIcon={<FontAwesomeIcon icon={faGraduationCap} />}
+                        >
+                            Xét Tốt Nghiệp
+                        </Button>
+                        <Button
+                            variant="primary"
+                            onClick={() => setIsImportExcelModalOpen(true)}
+                            startIcon={<FontAwesomeIcon icon={faFileExcel} />}
+                        >
+                            Nhập từ Excel
+                        </Button>
+                        <Button
+                            onClick={openCreateModal}
+                        >
                             Tạo mới Sinh viên
                         </Button>
                     </div>
@@ -1356,6 +1929,20 @@ export default function QuanLySinhVienPage() {
                                                             className="w-56 mt-2 right-0"
                                                         >
                                                             <div className="py-1">
+                                                                <DropdownItem
+                                                                    tag="button"
+                                                                    onItemClick={closeDropdown}
+                                                                    disabled={sv.nguoiDung !== null && sv.nguoiDung !== undefined}
+                                                                    onClick={() => {
+                                                                        if (!sv.nguoiDung) {
+                                                                            openCreateAccountModal(sv);
+                                                                        }
+                                                                    }}
+                                                                    className={sv.nguoiDung ? "opacity-50 cursor-not-allowed" : ""}
+                                                                >
+                                                                    <FontAwesomeIcon icon={faUserPlus} className="mr-2 w-4" />
+                                                                    {sv.nguoiDung ? "Đã có tài khoản" : "Tạo tài khoản"}
+                                                                </DropdownItem>
                                                                 <DropdownItem
                                                                     tag="button"
                                                                     onItemClick={closeDropdown}
@@ -1678,6 +2265,120 @@ export default function QuanLySinhVienPage() {
                         </Button>
                         <Button onClick={handleAddQuyetDinh}>
                             Thêm
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Modal Import Excel */}
+            <ImportSinhVienExcelModal
+                isOpen={isImportExcelModalOpen}
+                onClose={() => setIsImportExcelModalOpen(false)}
+                onSuccess={() => {
+                    fetchSinhViens(currentPage, searchKeyword, filterTinhTrang, filterLopId, filterNganhId, filterNienKhoaId);
+                }}
+                showAlert={showAlert}
+            />
+            {/* Modal Xét Tốt Nghiệp */}
+            <XetTotNghiepModal
+                isOpen={isXetTotNghiepModalOpen}
+                onClose={() => setIsXetTotNghiepModalOpen(false)}
+                nienKhoaOptions={nienKhoaOptions}
+            />
+
+            {/* Modal Tạo tài khoản */}
+            <Modal
+                isOpen={isCreateAccountModalOpen}
+                onClose={() => {
+                    if (!isCreatingAccount) {
+                        setIsCreateAccountModalOpen(false);
+                        setCreatingAccountSinhVien(null);
+                    }
+                }}
+                className="max-w-md"
+            >
+                <div className="p-6 sm:p-8">
+                    <h3 className="mb-4 text-xl font-semibold text-gray-800 dark:text-white/90 flex items-center gap-2">
+                        <FontAwesomeIcon icon={faUserPlus} className="text-brand-500" />
+                        Tạo tài khoản hệ thống
+                    </h3>
+
+                    {/* Thông tin sinh viên */}
+                    {creatingAccountSinhVien && (
+                        <div className="mb-6 p-4 bg-gray-50 dark: bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+                            <div className="space-y-2 text-sm">
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500 dark:text-gray-400">Mã SV:</span>
+                                    <span className="font-medium text-gray-800 dark:text-white">
+                                        {creatingAccountSinhVien.maSinhVien}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500 dark:text-gray-400">Họ tên:</span>
+                                    <span className="font-medium text-gray-800 dark:text-white">
+                                        {creatingAccountSinhVien.hoTen}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500 dark:text-gray-400">Email:</span>
+                                    <span className="font-medium text-gray-800 dark:text-white">
+                                        {creatingAccountSinhVien.email}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500 dark:text-gray-400">Lớp:</span>
+                                    <span className="font-medium text-gray-800 dark:text-white">
+                                        {creatingAccountSinhVien.lop.maLop} - {creatingAccountSinhVien.lop.tenLop}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Thông tin tài khoản sẽ tạo */}
+                    <div className="mb-6 p-4 bg-blue-50 dark: bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                        <p className="text-sm text-blue-800 dark:text-blue-300 mb-2">
+                            <strong>Thông tin tài khoản sẽ được tạo: </strong>
+                        </p>
+                        <ul className="text-sm text-blue-700 dark:text-blue-400 space-y-1 ml-4 list-disc">
+                            <li>Tên đăng nhập:  <strong>{creatingAccountSinhVien?.maSinhVien}</strong></li>
+                            <li>Vai trò:  <strong>Sinh viên</strong></li>
+                            <li>Mật khẩu mặc định: <strong>123456</strong></li>
+                        </ul>
+                    </div>
+
+                    {/* Cảnh báo */}
+                    <div className="mb-6 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                        <p className="text-sm text-yellow-800 dark:text-yellow-300">
+                            ⚠️ Vui lòng thông báo cho sinh viên đổi mật khẩu sau khi đăng nhập lần đầu.
+                        </p>
+                    </div>
+
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                        Bạn có chắc chắn muốn tạo tài khoản hệ thống cho sinh viên{" "}
+                        <span className="font-semibold text-gray-900 dark:text-white">
+                            {creatingAccountSinhVien?.hoTen}
+                        </span>?
+                    </p>
+
+                    <div className="flex justify-end gap-3">
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setIsCreateAccountModalOpen(false);
+                                setCreatingAccountSinhVien(null);
+                            }}
+                            disabled={isCreatingAccount}
+                        >
+                            Hủy
+                        </Button>
+                        <Button
+                            variant="primary"
+                            onClick={handleCreateAccount}
+                            disabled={isCreatingAccount}
+                            startIcon={!isCreatingAccount ? <FontAwesomeIcon icon={faUserPlus} /> : undefined}
+                        >
+                            {isCreatingAccount ? "Đang tạo..." : "Xác nhận tạo"}
                         </Button>
                     </div>
                 </div>

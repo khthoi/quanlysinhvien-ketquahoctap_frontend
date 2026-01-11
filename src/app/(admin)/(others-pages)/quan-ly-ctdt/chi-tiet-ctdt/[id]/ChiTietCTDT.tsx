@@ -115,6 +115,12 @@ interface NamHoc {
     hocKys: HocKy[];
 }
 
+interface tongSinhVienTheoNienKhoa {
+    nienKhoa: number;
+    maNienKhoa: string;
+    soLuong: number;
+}
+
 // Cập nhật interface ChuongTrinhResponse
 interface ChuongTrinhResponse {
     message: string;
@@ -122,6 +128,8 @@ interface ChuongTrinhResponse {
     apDung: ApDung[];
     monHocs: MonHocCTDT[];
     lopHocPhans: LopHocPhan[]; // Thêm mới
+    tongSinhVienTheoNienKhoa: tongSinhVienTheoNienKhoa[]; // Thêm mới
+    tongSinhVienApDung: number; // Thêm mới
 }
 
 interface PaginationData {
@@ -919,7 +927,7 @@ export default function QuanLyMonHocChuongTrinhPage() {
     ) => {
         try {
             const accessToken = getCookie("access_token");
-            let url = `http://localhost:3000/danh-muc/mon-hoc`;
+            let url = `http://localhost:3000/danh-muc/mon-hoc/paginated?page=1&limit=9999`;
             if (search) url += `&search=${encodeURIComponent(search)}`;
             if (loaiMon) url += `&loaiMon=${loaiMon}`;
 
@@ -1393,17 +1401,34 @@ export default function QuanLyMonHocChuongTrinhPage() {
                             </p>
                         </div>
 
+                        {/* Tổng số sinh viên đang áp dụng CTDT */}
+                        <div>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">Tổng số sinh viên đang áp dụng CTDT</p>
+                            <p className="font-semibold text-gray-800 dark:text-white">
+                                <Badge variant="solid" color="success">
+                                    {chuongTrinh.tongSinhVienApDung} sinh viên
+                                </Badge>
+                            </p>
+                        </div>
+
                         {/* Niên khóa áp dụng */}
                         {chuongTrinh.apDung?.length > 0 && (
                             <div className="grid grid-cols-12 gap-4">
                                 <div className="col-span-6">
                                     <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">Niên khóa áp dụng</p>
                                     <SearchableSelect
-                                        options={chuongTrinh.apDung.map((ad) => ({
-                                            value: ad.nienKhoa.id.toString(),
-                                            label: ad.nienKhoa.maNienKhoa,
-                                            secondary: `${ad.nienKhoa.tenNienKhoa} (Áp dụng: ${formatDateVN(ad.ngayApDung)})`,
-                                        }))}
+                                        options={chuongTrinh.apDung.map((ad) => {
+                                            const matched = chuongTrinh.tongSinhVienTheoNienKhoa.find(
+                                                (nk) => nk.nienKhoa === ad.nienKhoa.id
+                                            );
+                                            return {
+                                                value: ad.nienKhoa.id.toString(),
+                                                label: ad.nienKhoa.maNienKhoa,
+                                                secondary: `${ad.nienKhoa.tenNienKhoa} (Áp dụng: ${formatDateVN(
+                                                    ad.ngayApDung
+                                                )}) - Tổng số sinh viên: ${matched?.soLuong ?? 0}`,
+                                            };
+                                        })}
                                         placeholder="Xem niên khóa áp dụng"
                                         onChange={(value) => setSelectedNienKhoaId(value)}
                                         defaultValue={selectedNienKhoaId}

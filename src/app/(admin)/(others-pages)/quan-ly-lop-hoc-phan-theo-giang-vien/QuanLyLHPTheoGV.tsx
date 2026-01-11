@@ -18,7 +18,7 @@ import Label from "@/components/form/Label";
 import Badge from "@/components/ui/badge/Badge";
 import SearchableSelect from "@/components/form/SelectCustom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faMagnifyingGlass, faEye, faTrash, faEdit } from "@fortawesome/free-solid-svg-icons";
+import { faMagnifyingGlass, faEye, faTrash, faEdit, faFileExcel } from "@fortawesome/free-solid-svg-icons";
 import TextArea from "@/components/form/input/TextArea";
 import { DropdownItem } from "@/components/ui/dropdown/DropdownItem";
 import { Dropdown } from "@/components/ui/dropdown/Dropdown";
@@ -908,7 +908,14 @@ export default function QuanLyLopHocPhanPage() {
                                                                     <FontAwesomeIcon icon={faEye} className="mr-2 w-4" />
                                                                     Xem chi tiết
                                                                 </DropdownItem>
-
+                                                                <DropdownItem
+                                                                    tag="a"
+                                                                    href={`http://localhost:3001/quan-ly-lop-hoc-phan-theo-giang-vien/quan-ly-diem/${lhp.id}`}
+                                                                    onItemClick={closeDropdown}
+                                                                >
+                                                                    <FontAwesomeIcon icon={faFileExcel} className="mr-2 w-4" />
+                                                                    Nhập điểm
+                                                                </DropdownItem>
                                                             </div>
                                                         </Dropdown>
                                                     </div>

@@ -41,6 +41,7 @@ interface Lop {
         maNienKhoa: string;
         tenNienKhoa: string;
     };
+    tongSinhVien: number;
 }
 
 interface KhoaOption {
@@ -691,12 +692,15 @@ export default function QuanLyLopNienChePage() {
                         <div className="min-w-[900px]">
                             <Table>
                                 <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
-                                    <TableRow className="grid grid-cols-[15%_25%_20%_20%_20%]">
+                                    <TableRow className="grid grid-cols-[15%_20%_10%_15%_20%_20%]">
                                         <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-theme-xs">
                                             Mã Lớp
                                         </TableCell>
                                         <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-theme-xs">
                                             Tên Lớp
+                                        </TableCell>
+                                        <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-theme-xs">
+                                            Sĩ Số
                                         </TableCell>
                                         <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-theme-xs">
                                             Mã Ngành
@@ -711,12 +715,17 @@ export default function QuanLyLopNienChePage() {
                                 </TableHeader>
                                 <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05] text-center text-theme-sm">
                                     {lops.map((lop) => (
-                                        <TableRow key={lop.id} className="grid grid-cols-[15%_25%_20%_20%_20%] items-center">
+                                        <TableRow key={lop.id} className="grid grid-cols-[15%_20%_10%_15%_20%_20%] items-center">
                                             <TableCell className="px-5 py-4 text-gray-800 dark:text-white/90">
                                                 {lop.maLop}
                                             </TableCell>
                                             <TableCell className="px-5 py-4 text-gray-800 dark:text-white/90">
                                                 {lop.tenLop}
+                                            </TableCell>
+                                            <TableCell className="px-5 py-4 text-gray-800 dark:text-white/90">
+                                               <Badge variant="solid" color="success">
+                                                    {lop.tongSinhVien}
+                                                </Badge>
                                             </TableCell>
                                             <TableCell className="px-5 py-4">
                                                 <Badge variant="solid" color="primary">

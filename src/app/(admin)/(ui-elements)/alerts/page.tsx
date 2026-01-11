@@ -23,6 +23,7 @@ export default function Alerts() {
             message="Be cautious when performing this action."
             showLink={true}
             linkHref="/"
+            autoDismiss={true}
             linkText="Learn more"
           />
           <Alert
