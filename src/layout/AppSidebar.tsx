@@ -68,7 +68,7 @@ const allNavItems: NavItem[] = [
   {
     icon: <GridIcon />,
     name: "Dashboard",
-    subItems: [{ name: "Ecommerce", path: "/", pro: false }],
+    subItems: [{ name: "Tổng quan hệ thống", path: "/", pro: false }],
   },
   {
     icon: <CalenderIcon />,

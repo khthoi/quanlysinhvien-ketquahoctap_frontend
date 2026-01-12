@@ -1241,7 +1241,7 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
                                                     <>
                                                         {/* Sub-Table Header */}
                                                         <TableRow className="grid grid-cols-[5%_15%_25%_15%_17%_23%] items-center bg-gray-100/80 dark:bg-white/[0.04] border-t border-gray-200 dark:border-white/[0.05]">
-                                                            <TableCell className="px-3 py-2. 5">
+                                                            <TableCell className="px-3 py-2.5">
                                                                 <span></span>
                                                             </TableCell>
                                                             <TableCell className="px-5 py-2.5 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">

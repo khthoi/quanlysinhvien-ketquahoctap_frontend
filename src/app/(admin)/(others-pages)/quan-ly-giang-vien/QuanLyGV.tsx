@@ -131,7 +131,7 @@ const getGioiTinhLabel = (gioiTinh: string): string => {
         case "NU":
             return "Nữ";
         case "KHONG_XAC_DINH":
-            return "Không xác định";
+            return "Không XĐ";
         default:
             return gioiTinh;
     }
@@ -332,16 +332,13 @@ const GiangVienModal: React.FC<GiangVienModalProps> = ({
                     <div>
                         <Label>Giới Tính</Label>
                         <div className="relative">
-                            <Select
+                            <SearchableSelect
                                 options={gioiTinhOptions}
                                 placeholder="Chọn giới tính"
                                 onChange={(value: string) => onFormChange("gioiTinh", value)}
                                 defaultValue={formData.gioiTinh}
                                 className="dark:bg-dark-900"
                             />
-                            <span className="absolute text-gray-500 -translate-y-1/2 pointer-events-none right-3 top-1/2 dark:text-gray-400">
-                                <ChevronDownIcon />
-                            </span>
                         </div>
                         {errors.gioiTinh && (
                             <p className="mt-1 text-sm text-error-500">
@@ -1182,7 +1179,7 @@ export default function QuanLyGiangVienPage() {
                                             {isRowExpanded(gv.id) && gv.monHocGiangViens.length > 0 && (
                                                 <>
                                                     {/* Sub-Table Header */}
-                                                    <TableRow className="grid grid-cols-[5%_15%_25%_12%_18%_25%] items-center bg-gray-100/80 dark: bg-white/[0.04] border-t border-gray-200 dark:border-white/[0.05]">
+                                                    <TableRow className="grid grid-cols-[5%_15%_25%_12%_18%_25%] items-center bg-gray-100/80 dark:bg-white/[0.04] border-t border-gray-200 dark:border-white/[0.05]">
                                                         <TableCell className="px-3 py-2.5">
                                                             <span></span>
                                                         </TableCell>

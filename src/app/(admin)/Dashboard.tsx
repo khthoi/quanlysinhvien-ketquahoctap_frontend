@@ -383,7 +383,7 @@ export default function DashboardOverview() {
             </div>
 
             {/* Niên khóa */}
-            <div className="p-4 rounded-xl bg-gradient-to-br from-green-50 to-green-100 dark: from-green-900/20 dark:to-green-800/20 border border-green-200 dark:border-green-800">
+            <div className="p-4 rounded-xl bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 border border-green-200 dark:border-green-800">
               <div className="flex items-center gap-3 mb-2">
                 <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-green-500/20">
                   <FontAwesomeIcon
@@ -395,7 +395,7 @@ export default function DashboardOverview() {
                   Niên khóa
                 </span>
               </div>
-              <p className="text-2xl font-bold text-green-800 dark: text-green-200">
+              <p className="text-2xl font-bold text-green-800 dark:text-green-200">
                 {data.tongNienKhoa}
               </p>
             </div>
