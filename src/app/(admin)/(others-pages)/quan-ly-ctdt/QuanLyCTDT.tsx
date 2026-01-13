@@ -1042,7 +1042,7 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
                 </div>
 
                 {/* Filter */}
-                <div className="mb-6 p-4 bg-gray-50 dark: bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+                <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
                     <Label className="block mb-3 text-base font-medium">Bộ lọc</Label>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         {/* Lọc theo Khoa */}

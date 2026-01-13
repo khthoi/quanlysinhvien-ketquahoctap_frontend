@@ -88,7 +88,6 @@ interface LopHocPhan {
     nienKhoa: string;
     giangVien: string;
     siSo: number;
-    khoaDiem: boolean;
 }
 
 interface GiangVien {
@@ -97,22 +96,6 @@ interface GiangVien {
     hoTen: string;
     email: string;
     sdt: string;
-}
-
-interface HocKy {
-    id: number;
-    hocKy: number;
-    ngayBatDau: string;
-    ngayKetThuc: string;
-}
-
-interface NamHoc {
-    id: number;
-    maNamHoc: string;
-    tenNamHoc: string;
-    namBatDau: number;
-    namKetThuc: number;
-    hocKys: HocKy[];
 }
 
 interface tongSinhVienTheoNienKhoa {
@@ -546,11 +529,6 @@ const XemLopHocPhanModal: React.FC<XemLopHocPhanModalProps> = ({
                                             <TableCell className="px-4 py-3 text-center text-gray-800 dark:text-white/90">
                                                 {lhp.siSo}
                                             </TableCell>
-                                            <TableCell className="px-4 py-3 text-center">
-                                                <Badge variant="solid" color={lhp.khoaDiem ? "error" : "success"}>
-                                                    {lhp.khoaDiem ? "Đã khóa điểm" : "Mở"}
-                                                </Badge>
-                                            </TableCell>
                                         </TableRow>
                                     ))
                                 )}
@@ -577,25 +555,18 @@ interface ThemLopHocPhanModalProps {
     nganhInfo: Nganh | null;
     apDungNienKhoas: ApDung[];
     giangVienOptions: GiangVien[];
-    namHocOptions: NamHoc[];
-    selectedNamHocId: string;
-    onNamHocChange: (value: string) => void;
     onGiangVienSearch: (search: string) => void;
-    onNamHocSearch: (search: string) => void;
     formData: {
         maLopHocPhan: string;
         giangVienId: string;
-        hocKyId: string;
         nienKhoaId: string;
         ghiChu: string;
-        khoaDiem: boolean;
     };
     onFormChange: (field: string, value: string | boolean) => void;
     onSubmit: () => void;
     errors: {
         maLopHocPhan: boolean;
         giangVienId: boolean;
-        hocKyId: boolean;
         nienKhoaId: boolean;
     };
 }
@@ -607,11 +578,7 @@ const ThemLopHocPhanModal: React.FC<ThemLopHocPhanModalProps> = ({
     nganhInfo,
     apDungNienKhoas,
     giangVienOptions,
-    namHocOptions,
-    selectedNamHocId,
-    onNamHocChange,
     onGiangVienSearch,
-    onNamHocSearch,
     formData,
     onFormChange,
     onSubmit,
@@ -621,10 +588,6 @@ const ThemLopHocPhanModal: React.FC<ThemLopHocPhanModalProps> = ({
     const [namHocSearchKeyword, setNamHocSearchKeyword] = useState("");
 
     if (!isOpen || !monHocInfo) return null;
-
-    // Lấy danh sách học kỳ từ năm học được chọn
-    const selectedNamHoc = namHocOptions.find((nh) => nh.id.toString() === selectedNamHocId);
-    const hocKyOptions = selectedNamHoc?.hocKys || [];
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} className="max-w-2xl">
@@ -690,48 +653,6 @@ const ThemLopHocPhanModal: React.FC<ThemLopHocPhanModalProps> = ({
                         )}
                     </div>
 
-                    {/* Năm học */}
-                    <div>
-                        <Label>Năm học</Label>
-                        <SearchableSelect
-                            options={namHocOptions.map((nh) => ({
-                                value: nh.id.toString(),
-                                label: nh.maNamHoc,
-                                secondary: nh.tenNamHoc,
-                            }))}
-                            placeholder="Chọn năm học"
-                            onChange={(value) => {
-                                onNamHocChange(value);
-                                onFormChange("hocKyId", ""); // Reset học kỳ khi đổi năm học
-                            }}
-                            defaultValue={selectedNamHocId}
-                            showSecondary={true}
-                        />
-                    </div>
-
-                    {/* Học kỳ */}
-                    <div>
-                        <Label>Học kỳ</Label>
-                        <SearchableSelect
-                            options={hocKyOptions.map((hk) => ({
-                                value: hk.id.toString(),
-                                label: `Học kỳ ${hk.hocKy}`,
-                                secondary: `${formatDateVN(hk.ngayBatDau)} - ${formatDateVN(hk.ngayKetThuc)}`,
-                            }))}
-                            placeholder={selectedNamHocId ? "Chọn học kỳ" : "Vui lòng chọn năm học trước"}
-                            onChange={(value) => onFormChange("hocKyId", value)}
-                            defaultValue={formData.hocKyId}
-                            showSecondary={true}
-                            disabled={!selectedNamHocId || hocKyOptions.length === 0}
-                        />
-                        {errors.hocKyId && (
-                            <p className="mt-1 text-sm text-error-500">Vui lòng chọn học kỳ</p>
-                        )}
-                        {selectedNamHocId && hocKyOptions.length === 0 && (
-                            <p className="mt-1 text-sm text-warning-500">Năm học này chưa có học kỳ nào</p>
-                        )}
-                    </div>
-
                     {/* Giảng viên */}
                     <div>
                         <Label>Giảng viên</Label>
@@ -761,19 +682,6 @@ const ThemLopHocPhanModal: React.FC<ThemLopHocPhanModalProps> = ({
                             defaultValue={formData.ghiChu}
                             onChange={(value) => onFormChange("ghiChu", value)}
                         />
-                    </div>
-
-                    {/* Khóa điểm */}
-                    <div className="flex items-center gap-3">
-                        <Checkbox
-                            id="khoaDiem"
-                            checked={formData.khoaDiem}
-                            onChange={(checked) => onFormChange("khoaDiem", checked)}
-                            className="w-4 h-4 text-brand-600 border-gray-300 rounded focus:ring-brand-500"
-                        />
-                        <Label htmlFor="khoaDiem" className="mb-0 cursor-pointer">
-                            Khóa điểm
-                        </Label>
                     </div>
                 </div>
 
@@ -858,22 +766,17 @@ export default function QuanLyMonHocChuongTrinhPage() {
     // State cho modal thêm lớp học phần
     const [isThemLopHocPhanModalOpen, setIsThemLopHocPhanModalOpen] = useState(false);
     const [giangVienOptions, setGiangVienOptions] = useState<GiangVien[]>([]);
-    const [namHocOptions, setNamHocOptions] = useState<NamHoc[]>([]);
-    const [selectedNamHocIdForLHP, setSelectedNamHocIdForLHP] = useState("");
 
     const [themLopHocPhanFormData, setThemLopHocPhanFormData] = useState({
         maLopHocPhan: "",
         giangVienId: "",
-        hocKyId: "",
         nienKhoaId: "",
         ghiChu: "",
-        khoaDiem: false,
     });
 
     const [themLopHocPhanErrors, setThemLopHocPhanErrors] = useState({
         maLopHocPhan: false,
         giangVienId: false,
-        hocKyId: false,
         nienKhoaId: false,
     });
 
@@ -967,27 +870,6 @@ export default function QuanLyMonHocChuongTrinhPage() {
         }
     };
 
-    // Fetch năm học
-    const fetchNamHocOptions = async (search: string = "") => {
-        try {
-            const accessToken = getCookie("access_token");
-            let url = `http://localhost:3000/dao-tao/nam-hoc?page=1&limit=9999`;
-            if (search) url += `&search=${encodeURIComponent(search)}`;
-
-            const res = await fetch(url, {
-                headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                },
-            });
-            const json = await res.json();
-            if (json.data) {
-                setNamHocOptions(json.data);
-            }
-        } catch (err) {
-            console.error("Không thể tải danh sách năm học:", err);
-        }
-    };
-
     // Fetch dữ liệu khi component mount
     useEffect(() => {
         fetchChuongTrinh();
@@ -1066,18 +948,14 @@ export default function QuanLyMonHocChuongTrinhPage() {
         setThemLopHocPhanFormData({
             maLopHocPhan: "",
             giangVienId: "",
-            hocKyId: "",
             nienKhoaId: "",
             ghiChu: "",
-            khoaDiem: false,
         });
         setThemLopHocPhanErrors({
             maLopHocPhan: false,
             giangVienId: false,
-            hocKyId: false,
             nienKhoaId: false,
         });
-        setSelectedNamHocIdForLHP("");
     };
 
     // Handle form change cho thêm lớp học phần
@@ -1090,7 +968,6 @@ export default function QuanLyMonHocChuongTrinhPage() {
         const newErrors = {
             maLopHocPhan: !themLopHocPhanFormData.maLopHocPhan.trim(),
             giangVienId: !themLopHocPhanFormData.giangVienId,
-            hocKyId: !themLopHocPhanFormData.hocKyId,
             nienKhoaId: !themLopHocPhanFormData.nienKhoaId,
         };
         setThemLopHocPhanErrors(newErrors);
@@ -1108,7 +985,6 @@ export default function QuanLyMonHocChuongTrinhPage() {
         setSelectedMonHocForLopHocPhan(monHoc);
         resetThemLopHocPhanForm();
         fetchGiangVienOptions(monHoc.monHoc.id);
-        fetchNamHocOptions();
         setIsThemLopHocPhanModalOpen(true);
     };
 
@@ -1117,11 +993,6 @@ export default function QuanLyMonHocChuongTrinhPage() {
         if (selectedMonHocForLopHocPhan) {
             fetchGiangVienOptions(selectedMonHocForLopHocPhan.monHoc.id, search);
         }
-    };
-
-    // Xử lý tìm kiếm năm học
-    const handleNamHocSearch = (search: string) => {
-        fetchNamHocOptions(search);
     };
 
     // Xử lý thêm lớp học phần
@@ -1142,11 +1013,9 @@ export default function QuanLyMonHocChuongTrinhPage() {
                         maLopHocPhan: themLopHocPhanFormData.maLopHocPhan.trim(),
                         giangVienId: Number(themLopHocPhanFormData.giangVienId),
                         monHocId: selectedMonHocForLopHocPhan.monHoc.id,
-                        hocKyId: Number(themLopHocPhanFormData.hocKyId),
                         nienKhoaId: Number(themLopHocPhanFormData.nienKhoaId),
                         nganhId: chuongTrinh.chuongTrinh.nganh.id,
                         ghiChu: themLopHocPhanFormData.ghiChu.trim() || null,
-                        khoaDiem: themLopHocPhanFormData.khoaDiem,
                     }),
                 }
             );
@@ -1747,11 +1616,7 @@ export default function QuanLyMonHocChuongTrinhPage() {
                 nganhInfo={chuongTrinh?.chuongTrinh.nganh || null}
                 apDungNienKhoas={chuongTrinh?.apDung || []}
                 giangVienOptions={giangVienOptions}
-                namHocOptions={namHocOptions}
-                selectedNamHocId={selectedNamHocIdForLHP}
-                onNamHocChange={setSelectedNamHocIdForLHP}
                 onGiangVienSearch={handleGiangVienSearch}
-                onNamHocSearch={handleNamHocSearch}
                 formData={themLopHocPhanFormData}
                 onFormChange={handleThemLopHocPhanFormChange}
                 onSubmit={handleThemLopHocPhan}

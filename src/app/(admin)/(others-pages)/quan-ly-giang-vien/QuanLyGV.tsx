@@ -1124,7 +1124,7 @@ export default function QuanLyGiangVienPage() {
                                                         <Dropdown
                                                             isOpen={activeDropdownId === gv.id}
                                                             onClose={closeDropdown}
-                                                            className="w-56 mt-2 right-0"
+                                                            className="w-56"
                                                         >
                                                             <div className="py-1">
                                                                 <DropdownItem

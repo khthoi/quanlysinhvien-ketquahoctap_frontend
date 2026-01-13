@@ -329,7 +329,6 @@ interface EditLopHocPhanModalProps {
     // Options
     monHocOptions: MonHocOption[];
     giangVienOptions: GiangVienOption[];
-    namHocOptions: NamHocOption[];
     nienKhoaOptions: NienKhoaOption[];
     khoaOptions: KhoaOption[];
     nganhOptions: NganhOption[];
@@ -338,29 +337,23 @@ interface EditLopHocPhanModalProps {
     monHocId: string;
     giangVienId: string;
     namHocId: string;
-    hocKyId: string;
     nienKhoaId: string;
     khoaId: string;
     nganhId: string;
     ghiChu: string;
-    khoaDiem: boolean;
     // Handlers
     onMaLopHocPhanChange: (value: string) => void;
     onMonHocIdChange: (value: string) => void;
     onGiangVienIdChange: (value: string) => void;
-    onNamHocIdChange: (value: string) => void;
-    onHocKyIdChange: (value: string) => void;
     onNienKhoaIdChange: (value: string) => void;
     onKhoaIdChange: (value: string) => void;
     onNganhIdChange: (value: string) => void;
     onGhiChuChange: (value: string) => void;
-    onKhoaDiemChange: (value: boolean) => void;
     onSubmit: () => void;
     errors: {
         maLopHocPhan: boolean;
         monHocId: boolean;
         giangVienId: boolean;
-        hocKyId: boolean;
         nienKhoaId: boolean;
         nganhId: boolean;
     };
@@ -372,38 +365,27 @@ const EditLopHocPhanModal: React.FC<EditLopHocPhanModalProps> = ({
     lopHocPhan,
     monHocOptions,
     giangVienOptions,
-    namHocOptions,
     nienKhoaOptions,
     khoaOptions,
     nganhOptions,
     maLopHocPhan,
     monHocId,
     giangVienId,
-    namHocId,
-    hocKyId,
     nienKhoaId,
     khoaId,
     nganhId,
     ghiChu,
-    khoaDiem,
     onMaLopHocPhanChange,
     onMonHocIdChange,
     onGiangVienIdChange,
-    onNamHocIdChange,
-    onHocKyIdChange,
     onNienKhoaIdChange,
     onKhoaIdChange,
     onNganhIdChange,
     onGhiChuChange,
-    onKhoaDiemChange,
     onSubmit,
     errors,
 }) => {
     if (!isOpen) return null;
-
-    // Lọc học kỳ theo năm học đã chọn
-    const selectedNamHoc = namHocOptions.find(nh => nh.id.toString() === namHocId);
-    const hocKyFilteredOptions = selectedNamHoc?.hocKys || [];
 
     // Lọc ngành theo khoa đã chọn
     const nganhFilteredOptions = nganhOptions.filter(n => n.khoa.id.toString() === khoaId);
@@ -481,49 +463,6 @@ const EditLopHocPhanModal: React.FC<EditLopHocPhanModalProps> = ({
                         )}
                     </div>
 
-                    {/* Năm học */}
-                    <div>
-                        <Label>Năm học</Label>
-                        <SearchableSelect
-                            options={namHocOptions.map((nh) => ({
-                                value: nh.id.toString(),
-                                label: nh.maNamHoc,
-                                secondary: nh.tenNamHoc,
-                            }))}
-                            placeholder="Chọn năm học"
-                            onChange={(value) => {
-                                onNamHocIdChange(value);
-                                onHocKyIdChange(""); // Reset học kỳ khi đổi năm học
-                            }}
-                            defaultValue={namHocId}
-                            showSecondary={true}
-                            maxDisplayOptions={10}
-                            searchPlaceholder="Tìm năm học..."
-                        />
-                    </div>
-
-                    {/* Học kỳ - phụ thuộc vào năm học */}
-                    <div>
-                        <Label>Học kỳ</Label>
-                        <SearchableSelect
-                            options={hocKyFilteredOptions.map((hk) => ({
-                                value: hk.id.toString(),
-                                label: `Học kỳ ${hk.hocKy}`,
-                                secondary: `${new Date(hk.ngayBatDau).toLocaleDateString("vi-VN")} - ${new Date(hk.ngayKetThuc).toLocaleDateString("vi-VN")}`,
-                            }))}
-                            placeholder={namHocId ? "Chọn học kỳ" : "Vui lòng chọn năm học trước"}
-                            onChange={(value) => onHocKyIdChange(value)}
-                            defaultValue={hocKyId}
-                            showSecondary={true}
-                            maxDisplayOptions={10}
-                            searchPlaceholder="Tìm học kỳ..."
-                            disabled={!namHocId}
-                        />
-                        {errors.hocKyId && (
-                            <p className="mt-1 text-sm text-error-500">Vui lòng chọn học kỳ</p>
-                        )}
-                    </div>
-
                     {/* Niên khóa */}
                     <div>
                         <Label>Niên khóa</Label>
@@ -586,18 +525,6 @@ const EditLopHocPhanModal: React.FC<EditLopHocPhanModalProps> = ({
                         {errors.nganhId && (
                             <p className="mt-1 text-sm text-error-500">Vui lòng chọn ngành</p>
                         )}
-                    </div>
-
-                    {/* Khóa điểm */}
-                    <div>
-                        <Label>Khóa điểm</Label>
-                        <div className="mt-4">
-                            <Switch
-                                label={khoaDiem ? "Đã khóa" : "Chưa khóa"}
-                                defaultChecked={khoaDiem}
-                                onChange={(checked) => onKhoaDiemChange(checked)}
-                            />
-                        </div>
                     </div>
 
                     {/* Ghi chú */}
@@ -826,7 +753,7 @@ const ImportSinhVienExcelModal: React.FC<ImportSinhVienExcelModalProps> = ({
                             className={`rounded-xl p-7 lg:p-10
                                 ${isDragActive
                                     ? "bg-gray-100 dark:bg-gray-800"
-                                    : "bg-gray-50 dark: bg-gray-900"
+                                    : "bg-gray-50 dark:bg-gray-900"
                                 }
                             `}
                         >
@@ -1006,7 +933,6 @@ export default function QuanLyLopHocPhanPage() {
         maLopHocPhan: false,
         monHocId: false,
         giangVienId: false,
-        hocKyId: false,
         nienKhoaId: false,
         nganhId: false,
     });
@@ -1228,7 +1154,6 @@ export default function QuanLyLopHocPhanPage() {
             maLopHocPhan: !maLopHocPhan.trim(),
             monHocId: !monHocId,
             giangVienId: !giangVienId,
-            hocKyId: !hocKyId,
             nienKhoaId: !nienKhoaId,
             nganhId: !nganhId,
         };
@@ -1240,18 +1165,14 @@ export default function QuanLyLopHocPhanPage() {
         setMaLopHocPhan("");
         setMonHocId("");
         setGiangVienId("");
-        setNamHocId("");
-        setHocKyId("");
         setNienKhoaId("");
         setKhoaId("");
         setNganhId("");
         setGhiChu("");
-        setKhoaDiem(false);
         setErrors({
             maLopHocPhan: false,
             monHocId: false,
             giangVienId: false,
-            hocKyId: false,
             nienKhoaId: false,
             nganhId: false,
         });
@@ -1272,11 +1193,9 @@ export default function QuanLyLopHocPhanPage() {
                     maLopHocPhan: maLopHocPhan.trim(),
                     giangVienId: Number(giangVienId),
                     monHocId: Number(monHocId),
-                    hocKyId: Number(hocKyId),
                     nienKhoaId: Number(nienKhoaId),
                     nganhId: Number(nganhId),
                     ghiChu: ghiChu.trim() || null,
-                    khoaDiem,
                 }),
             });
 
@@ -1738,7 +1657,6 @@ export default function QuanLyLopHocPhanPage() {
                 lopHocPhan={editingLopHocPhan}
                 monHocOptions={monHocOptions}
                 giangVienOptions={giangVienOptions}
-                namHocOptions={namHocOptions}
                 nienKhoaOptions={nienKhoaOptions}
                 khoaOptions={khoaOptions}
                 nganhOptions={nganhOptions}
@@ -1746,22 +1664,17 @@ export default function QuanLyLopHocPhanPage() {
                 monHocId={monHocId}
                 giangVienId={giangVienId}
                 namHocId={namHocId}
-                hocKyId={hocKyId}
                 nienKhoaId={nienKhoaId}
                 khoaId={khoaId}
                 nganhId={nganhId}
                 ghiChu={ghiChu}
-                khoaDiem={khoaDiem}
                 onMaLopHocPhanChange={setMaLopHocPhan}
                 onMonHocIdChange={setMonHocId}
                 onGiangVienIdChange={setGiangVienId}
-                onNamHocIdChange={setNamHocId}
-                onHocKyIdChange={setHocKyId}
                 onNienKhoaIdChange={setNienKhoaId}
                 onKhoaIdChange={setKhoaId}
                 onNganhIdChange={setNganhId}
                 onGhiChuChange={setGhiChu}
-                onKhoaDiemChange={setKhoaDiem}
                 onSubmit={handleUpdate}
                 errors={errors}
             />

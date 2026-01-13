@@ -18,7 +18,7 @@ import Label from "@/components/form/Label";
 import Badge from "@/components/ui/badge/Badge";
 import SearchableSelect from "@/components/form/SelectCustom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faMagnifyingGlass, faEye, faTrash, faEdit, faFileExcel } from "@fortawesome/free-solid-svg-icons";
+import { faMagnifyingGlass, faEye, faTrash, faEdit, faFileExcel, faLock } from "@fortawesome/free-solid-svg-icons";
 import TextArea from "@/components/form/input/TextArea";
 import { DropdownItem } from "@/components/ui/dropdown/DropdownItem";
 import { Dropdown } from "@/components/ui/dropdown/Dropdown";
@@ -365,6 +365,11 @@ export default function QuanLyLopHocPhanPage() {
     const [khoaOptions, setKhoaOptions] = useState<KhoaOption[]>([]);
     const [nganhOptions, setNganhOptions] = useState<NganhOption[]>([]);
 
+    // State cho modal khóa điểm
+    const [isKhoaDiemModalOpen, setIsKhoaDiemModalOpen] = useState(false);
+    const [khoaDiemLopHocPhan, setKhoaDiemLopHocPhan] = useState<LopHocPhan | null>(null);
+    const [isKhoaDiemLoading, setIsKhoaDiemLoading] = useState(false);
+
     // State để theo dõi dropdown ĐANG MỞ
     const [activeDropdownId, setActiveDropdownId] = useState<number | null>(null);
 
@@ -527,6 +532,49 @@ export default function QuanLyLopHocPhanPage() {
             }
         } catch (err) {
             console.error("Không thể tải danh sách ngành:", err);
+        }
+    };
+
+    // Mở modal khóa điểm
+    const openKhoaDiemModal = (lopHocPhan: LopHocPhan) => {
+        setKhoaDiemLopHocPhan(lopHocPhan);
+        setIsKhoaDiemModalOpen(true);
+    };
+
+    // Xử lý khóa điểm
+    const handleKhoaDiem = async () => {
+        if (!khoaDiemLopHocPhan) return;
+
+        setIsKhoaDiemLoading(true);
+
+        try {
+            const accessToken = getCookie("access_token");
+            const res = await fetch(
+                `http://localhost:3000/giang-day/lop-hoc-phan/khoa-diem/${khoaDiemLopHocPhan.id}`,
+                {
+                    method: "PATCH",
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                    },
+                }
+            );
+
+            setIsKhoaDiemModalOpen(false);
+            setKhoaDiemLopHocPhan(null);
+
+            if (res.ok) {
+                showAlert("success", "Thành công", `Đã khóa điểm lớp học phần "${khoaDiemLopHocPhan.maLopHocPhan}" thành công`);
+                // Refresh lại danh sách
+                fetchLopHocPhans(currentPage, searchKeyword, filterMonHocId, filterGiangVienId, filterHocKyId, filterNienKhoaId, filterNganhId, filterTrangThai);
+            } else {
+                const err = await res.json();
+                showAlert("error", "Lỗi", err.message || "Khóa điểm thất bại");
+            }
+        } catch (err) {
+            setIsKhoaDiemModalOpen(false);
+            showAlert("error", "Lỗi", "Có lỗi xảy ra khi khóa điểm");
+        } finally {
+            setIsKhoaDiemLoading(false);
         }
     };
 
@@ -696,7 +744,7 @@ export default function QuanLyLopHocPhanPage() {
                 </div>
 
                 {/* Khối lọc */}
-                <div className="mb-6 p-4 bg-gray-50 dark: bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+                <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
                     <Label className="block mb-3 text-base font-medium">Bộ lọc</Label>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         {/* Lọc theo Môn học */}
@@ -897,7 +945,7 @@ export default function QuanLyLopHocPhanPage() {
                                                         <Dropdown
                                                             isOpen={activeDropdownId === lhp.id}
                                                             onClose={closeDropdown}
-                                                            className="w-48 mt-2 right-0"
+                                                            className="w-48"
                                                         >
                                                             <div className="py-1">
                                                                 <DropdownItem
@@ -915,6 +963,30 @@ export default function QuanLyLopHocPhanPage() {
                                                                 >
                                                                     <FontAwesomeIcon icon={faFileExcel} className="mr-2 w-4" />
                                                                     Nhập điểm
+                                                                </DropdownItem>
+
+                                                                <div className="my-1 border-t border-gray-100 dark:border-gray-700" />
+
+                                                                <DropdownItem
+                                                                    tag="button"
+                                                                    onItemClick={closeDropdown}
+                                                                    disabled={lhp.khoaDiem}
+                                                                    onClick={() => {
+                                                                        if (!lhp.khoaDiem) {
+                                                                            openKhoaDiemModal(lhp);
+                                                                        }
+                                                                    }}
+                                                                    className={
+                                                                        lhp.khoaDiem
+                                                                            ? "opacity-50 cursor-not-allowed"
+                                                                            : "dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30"
+                                                                    }
+                                                                >
+                                                                    <FontAwesomeIcon
+                                                                        icon={faLock}
+                                                                        className={`mr-2 w-4 ${!lhp.khoaDiem ? "text-red-600 dark:text-red-400" : ""}`}
+                                                                    />
+                                                                    {lhp.khoaDiem ? "Đã khóa điểm" : "Khóa điểm"}
                                                                 </DropdownItem>
                                                             </div>
                                                         </Dropdown>
@@ -954,6 +1026,92 @@ export default function QuanLyLopHocPhanPage() {
                 }}
                 lopHocPhan={viewingLopHocPhan}
             />
+
+            {/* Modal Xác nhận Khóa điểm */}
+            <Modal
+                isOpen={isKhoaDiemModalOpen}
+                onClose={() => {
+                    if (!isKhoaDiemLoading) {
+                        setIsKhoaDiemModalOpen(false);
+                        setKhoaDiemLopHocPhan(null);
+                    }
+                }}
+                className="max-w-md"
+            >
+                <div className="p-6 sm:p-8">
+                    <h3 className="mb-4 text-xl font-semibold text-gray-800 dark:text-white/90 flex items-center gap-2">
+                        <FontAwesomeIcon icon={faLock} className="text-warning-500" />
+                        Xác nhận Khóa điểm
+                    </h3>
+
+                    {/* Thông tin lớp học phần */}
+                    {khoaDiemLopHocPhan && (
+                        <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark: border-gray-700">
+                            <div className="space-y-2 text-sm">
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500 dark:text-gray-400">Mã LHP:</span>
+                                    <span className="font-medium text-gray-800 dark:text-white">
+                                        {khoaDiemLopHocPhan.maLopHocPhan}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500 dark:text-gray-400">Môn học:</span>
+                                    <span className="font-medium text-gray-800 dark:text-white">
+                                        {khoaDiemLopHocPhan.monHoc.tenMonHoc}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500 dark:text-gray-400">Sĩ số:</span>
+                                    <span className="font-medium text-gray-800 dark:text-white">
+                                        {khoaDiemLopHocPhan.siSo} sinh viên
+                                    </span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-500 dark: text-gray-400">Học kỳ:</span>
+                                    <span className="font-medium text-gray-800 dark:text-white">
+                                        HK{khoaDiemLopHocPhan.hocKy.hocKy} - {khoaDiemLopHocPhan.hocKy.namHoc.tenNamHoc}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Cảnh báo */}
+                    <div className="mb-6 p-3 bg-warning-50 dark:bg-warning-900/20 rounded-lg border border-warning-200 dark:border-warning-800">
+                        <p className="text-sm text-warning-800 dark:text-warning-300">
+                            ⚠️ <strong>Lưu ý:</strong> Sau khi khóa điểm, bạn sẽ không thể chỉnh sửa điểm của lớp học phần này nữa. Hành động này không thể hoàn tác.
+                        </p>
+                    </div>
+
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                        Bạn có chắc chắn muốn <strong>khóa điểm</strong> lớp học phần{" "}
+                        <span className="font-semibold text-gray-900 dark:text-white">
+                            {khoaDiemLopHocPhan?.maLopHocPhan}
+                        </span>?
+                    </p>
+
+                    <div className="flex justify-end gap-3">
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setIsKhoaDiemModalOpen(false);
+                                setKhoaDiemLopHocPhan(null);
+                            }}
+                            disabled={isKhoaDiemLoading}
+                        >
+                            Hủy
+                        </Button>
+                        <Button
+                            variant="primary"
+                            onClick={handleKhoaDiem}
+                            disabled={isKhoaDiemLoading}
+                            startIcon={!isKhoaDiemLoading ? <FontAwesomeIcon icon={faLock} /> : undefined}
+                        >
+                            {isKhoaDiemLoading ? "Đang xử lý..." : "Xác nhận Khóa điểm"}
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 }
