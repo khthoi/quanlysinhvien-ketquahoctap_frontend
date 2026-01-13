@@ -1180,7 +1180,7 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
                                                             onClick={() => toggleRow(ct.id)}
                                                             disabled={ct.apDungChuongTrinhs.length === 0}
                                                             className={`flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 transition-colors ${ct.apDungChuongTrinhs.length > 0
-                                                                ? "hover:bg-gray-100 dark:hover: bg-white/[0.05]"
+                                                                ? "hover:bg-gray-100 dark:hover:bg-white/[0.05]"
                                                                 : "opacity-30 cursor-not-allowed"
                                                                 }`}
                                                         >
@@ -1228,7 +1228,7 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
                                                                 size="sm"
                                                                 variant="outline"
                                                                 onClick={() => openDeleteChuongTrinhModal(ct)}
-                                                                className="p-2 text-error-500 border-error-300 hover:bg-error-50 dark:border-error-500/30 dark:hover: bg-error-500/10"
+                                                                className="p-2 text-error-500 border-error-300 hover:bg-error-50 dark:border-error-500/30 dark:hover:bg-error-500/10"
                                                             >
                                                                 <FontAwesomeIcon icon={faTrash} className="w-4 h-4" />
                                                             </Button>
