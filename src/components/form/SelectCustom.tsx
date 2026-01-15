@@ -10,15 +10,15 @@ interface Option {
 }
 
 interface SearchableSelectProps {
-  options:  Option[];
+  options: Option[];
   placeholder?: string;
   onChange: (value: string) => void;
-  className?:  string;
+  className?: string;
   defaultValue?: string;
   disabled?: boolean;
   showSecondary?: boolean;
-  secondarySeparator?:  string;
-  maxDisplayOptions?:  number;
+  secondarySeparator?: string;
+  maxDisplayOptions?: number;
   searchPlaceholder?: string;
 }
 
@@ -53,12 +53,12 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
 
   // Sync với defaultValue
   useEffect(() => {
-    setSelectedValue(defaultValue ??  "");
+    setSelectedValue(defaultValue ?? "");
   }, [defaultValue]);
 
   // Reset state khi đóng dropdown
   useEffect(() => {
-    if (! isOpen) {
+    if (!isOpen) {
       setPosition(null);
       setIsPositioned(false);
       setSearchTerm("");
@@ -98,24 +98,57 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
     }
   }, []);
 
-  // Tính toán vị trí khi mở dropdown
+  // Tính toán vị trí khi mở dropdown - cần tính 2 lần
   useEffect(() => {
     if (isOpen && mounted) {
-      // Delay nhỏ để đảm bảo DOM đã render
-      const timer = requestAnimationFrame(() => {
+      // Lần 1: Tính toán ban đầu để render dropdown (ẩn)
+      const timer1 = requestAnimationFrame(() => {
         calculatePosition();
+
+        // Lần 2: Tính toán lại sau khi dropdown đã render để có chiều cao chính xác
+        const timer2 = requestAnimationFrame(() => {
+          if (dropdownRef.current && triggerRef.current) {
+            const rect = triggerRef.current.getBoundingClientRect();
+            const dropdownHeight = dropdownRef.current.offsetHeight;
+            const dropdownWidth = rect.width;
+
+            const spaceBelow = window.innerHeight - rect.bottom;
+            const spaceAbove = rect.top;
+
+            let top: number;
+            let left = rect.left;
+
+            // Nếu không đủ chỗ bên dưới VÀ có đủ chỗ bên trên
+            if (spaceBelow < dropdownHeight && spaceAbove > dropdownHeight) {
+              top = rect.top - dropdownHeight - 4;
+            } else {
+              top = rect.bottom + 4;
+            }
+
+            if (left < 8) left = 8;
+            if (left + dropdownWidth > window.innerWidth - 8) {
+              left = window.innerWidth - dropdownWidth - 8;
+            }
+
+            setPosition({ top, left, width: dropdownWidth });
+            setIsPositioned(true);
+          }
+        });
+
+        return () => cancelAnimationFrame(timer2);
       });
-      return () => cancelAnimationFrame(timer);
+
+      return () => cancelAnimationFrame(timer1);
     }
-  }, [isOpen, mounted, calculatePosition]);
+  }, [isOpen, mounted]);
 
   // Click outside để đóng dropdown
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node;
 
-      const isOutsideContainer = containerRef.current && !containerRef. current.contains(target);
-      const isOutsideDropdown = ! dropdownRef.current || !dropdownRef.current.contains(target);
+      const isOutsideContainer = containerRef.current && !containerRef.current.contains(target);
+      const isOutsideDropdown = !dropdownRef.current || !dropdownRef.current.contains(target);
 
       if (isOutsideContainer && isOutsideDropdown) {
         setIsOpen(false);
@@ -140,7 +173,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
     if (isOpen) {
       const handleScroll = (e: Event) => {
         // Không đóng nếu scroll trong dropdown
-        if (dropdownRef. current?. contains(e.target as Node)) {
+        if (dropdownRef.current?.contains(e.target as Node)) {
           return;
         }
         setIsOpen(false);
@@ -165,14 +198,14 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
 
   // Lọc options theo search term
   const filteredOptions = useMemo(() => {
-    if (!searchTerm. trim()) {
+    if (!searchTerm.trim()) {
       return options;
     }
     const lowerSearch = searchTerm.toLowerCase();
     return options.filter(
       (option) =>
         option.label.toLowerCase().includes(lowerSearch) ||
-        (option.secondary && option.secondary. toLowerCase().includes(lowerSearch))
+        (option.secondary && option.secondary.toLowerCase().includes(lowerSearch))
     );
   }, [options, searchTerm]);
 
@@ -182,17 +215,17 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
 
   // Format label hiển thị
   const formatOptionLabel = (option: Option): string => {
-    if (! showSecondary || ! option.secondary) {
+    if (!showSecondary || !option.secondary) {
       return option.label;
     }
-    return `${option.label}${secondarySeparator}${option. secondary}`;
+    return `${option.label}${secondarySeparator}${option.secondary}`;
   };
 
   // Lấy label của option được chọn
   const getSelectedLabel = (): string => {
-    if (! selectedValue) return placeholder;
+    if (!selectedValue) return placeholder;
     const selected = options.find((opt) => opt.value === selectedValue);
-    return selected ?  formatOptionLabel(selected) : placeholder;
+    return selected ? formatOptionLabel(selected) : placeholder;
   };
 
   const handleSelect = (value: string) => {
@@ -212,7 +245,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
   const handleToggle = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (! disabled) {
+    if (!disabled) {
       setIsOpen((prev) => !prev);
     }
   };
@@ -226,11 +259,11 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
         ref={dropdownRef}
         style={{
           position: "fixed",
-          top: position ?  position.top : -9999,
+          top: position ? position.top : -9999,
           left: position ? position.left : -9999,
           width: position ? position.width : "auto",
           visibility: isPositioned ? "visible" : "hidden",
-          opacity:  isPositioned ? 1 :  0,
+          opacity: isPositioned ? 1 : 0,
         }}
         className="z-[99999] rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-900 transition-opacity duration-75"
       >
@@ -259,11 +292,10 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
           <div
             onClick={() => handleSelect("")}
             onMouseDown={(e) => e.preventDefault()}
-            className={`px-4 py-2.5 text-sm cursor-pointer transition-colors ${
-              selectedValue === ""
+            className={`px-4 py-2.5 text-sm cursor-pointer transition-colors ${selectedValue === ""
                 ? "bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400"
                 : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
-            }`}
+              }`}
           >
             {placeholder}
           </div>
@@ -275,11 +307,10 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
                   key={option.value}
                   onClick={() => handleSelect(option.value)}
                   onMouseDown={(e) => e.preventDefault()}
-                  className={`px-4 py-2.5 text-sm cursor-pointer transition-colors ${
-                    selectedValue === option.value
+                  className={`px-4 py-2.5 text-sm cursor-pointer transition-colors ${selectedValue === option.value
                       ? "bg-brand-50 text-brand-600 dark: bg-brand-500/10 dark:text-brand-400"
                       : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
-                  }`}
+                    }`}
                 >
                   <div className="flex flex-col">
                     <span className="font-medium">{option.label}</span>
@@ -323,17 +354,16 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
         type="button"
         onClick={handleToggle}
         disabled={disabled}
-        className={`h-11 w-full appearance-none rounded-lg border border-gray-300 px-4 py-2.5 pr-11 text-left text-sm shadow-theme-xs focus:border-brand-300 focus:outline-none focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:focus:border-brand-800 ${
-          selectedValue
+        className={`h-11 w-full appearance-none rounded-lg border border-gray-300 px-4 py-2.5 pr-11 text-left text-sm shadow-theme-xs focus:border-brand-300 focus:outline-none focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:focus:border-brand-800 ${selectedValue
             ? "text-gray-800 dark:text-white/90"
             : "text-gray-400 dark:text-gray-400"
-        } ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
+          } ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
       >
         <span className="block truncate">{getSelectedLabel()}</span>
 
         {/* Icons */}
         <span className="absolute inset-y-0 right-0 flex items-center gap-1 pr-3">
-          {selectedValue && ! disabled && (
+          {selectedValue && !disabled && (
             <span
               onClick={handleClear}
               onMouseDown={(e) => e.stopPropagation()}
@@ -344,9 +374,8 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
           )}
           <FontAwesomeIcon
             icon={faChevronDown}
-            className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${
-              isOpen ? "rotate-180" : ""
-            }`}
+            className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""
+              }`}
           />
         </span>
       </button>

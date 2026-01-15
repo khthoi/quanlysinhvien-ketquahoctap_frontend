@@ -308,8 +308,7 @@ const HocKyModal: React.FC<HocKyModalProps> = ({
                             <div className="mt-2 p-3 bg-brand-50 dark:bg-brand-500/10 rounded-lg">
                                 <p className="text-sm text-brand-600 dark:text-brand-400">
                                     <span className="font-medium">Đã chọn: </span>
-                                    {namHocOptions.find(nh => nh.id.toString() === formData.namHocId)?.maNamHoc} -
-                                    {namHocOptions.find(nh => nh.id.toString() === formData.namHocId)?.tenNamHoc || 'Đang tải...'}
+                                    {namHocOptions.find(nh => nh.id.toString() === formData.namHocId)?.maNamHoc} - {namHocOptions.find(nh => nh.id.toString() === formData.namHocId)?.tenNamHoc || 'Đang tải...'}
                                 </p>
                             </div>
                         )}
@@ -1012,7 +1011,7 @@ export default function QuanLyNamHocHocKyPage() {
                                                 {isRowExpanded(nh.id) && nh.hocKys.length > 0 && (
                                                     <>
                                                         {/* Sub-Table Header */}
-                                                        <TableRow className="grid grid-cols-[7%_16%_20%_20%_49%] items-center bg-gray-100/80 dark:bg-white/[0.04] border-t border-gray-200 dark:border-white/[0.05]">
+                                                        <TableRow className="grid grid-cols-[6%_15%_24%_15%_15%_25%] items-center bg-gray-100/80 dark:bg-white/[0.04] border-t border-gray-200 dark:border-white/[0.05]">
                                                             <TableCell className="px-3 py-2. 5">
                                                                 <span></span>
                                                             </TableCell>
@@ -1026,6 +1025,9 @@ export default function QuanLyNamHocHocKyPage() {
                                                                 Ngày Kết thúc
                                                             </TableCell>
                                                             <TableCell className="px-5 py-2.5 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider text-center">
+                                                                <span></span>
+                                                            </TableCell>
+                                                            <TableCell className="px-5 py-2.5 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider text-center">
                                                                 Hành động
                                                             </TableCell>
                                                         </TableRow>
@@ -1034,7 +1036,7 @@ export default function QuanLyNamHocHocKyPage() {
                                                         {nh.hocKys.map((hk, index) => (
                                                             <TableRow
                                                                 key={hk.id}
-                                                                className={`grid grid-cols-[6%_17%_20%_20%_49%] items-center bg-gray-50/50 dark:bg-white/[0.01] ${index === nh.hocKys.length - 1
+                                                                className={`grid grid-cols-[6%_15%_24%_15%_15%_25%] items-center bg-gray-50/50 dark:bg-white/[0.01] ${index === nh.hocKys.length - 1
                                                                     ? "border-b border-gray-200 dark:border-white/[0.05]"
                                                                     : ""
                                                                     }`}
@@ -1064,6 +1066,9 @@ export default function QuanLyNamHocHocKyPage() {
                                                                 </TableCell>
                                                                 <TableCell className="px-5 py-3 text-gray-600 dark:text-gray-300 text-center">
                                                                     <span className="text-sm">{formatDateVN(hk.ngayKetThuc)}</span>
+                                                                </TableCell>
+                                                                <TableCell className="px-5 py-3 text-gray-600 dark:text-gray-300 text-center">
+                                                                    <span></span>
                                                                 </TableCell>
                                                                 <TableCell className="px-5 py-3 flex items-center justify-center">
                                                                     <Button

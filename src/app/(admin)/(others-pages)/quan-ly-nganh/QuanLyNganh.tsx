@@ -23,6 +23,8 @@ import { faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
 import { ChevronDownIcon } from "@/icons";
 import Select from "@/components/form/Select";
 import SearchableSelect from "@/components/form/SelectCustom";
+import { useDropzone } from "react-dropzone";
+import { faCloudArrowUp, faDownload, faFileExcel } from "@fortawesome/free-solid-svg-icons";
 
 interface Nganh {
     id: number;
@@ -169,35 +171,272 @@ const NganhModal: React.FC<NganhModalProps> = ({
 
 // ==================== ITEMS COUNT INFO COMPONENT ====================
 interface ItemsCountInfoProps {
-  pagination: PaginationData;
+    pagination: PaginationData;
 }
 
 const ItemsCountInfo: React.FC<ItemsCountInfoProps> = ({ pagination }) => {
-  const { total, page, limit } = pagination;
-  
-  // Tính số items đang hiển thị
-  const startItem = total === 0 ? 0 : (page - 1) * limit + 1;
-  const endItem = Math.min(page * limit, total);
-  
-  return (
-    <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-      <span>
-        Hiển thị{" "}
-        <span className="font-medium text-gray-700 dark:text-gray-300">
-          {startItem}
-        </span>
-        {" - "}
-        <span className="font-medium text-gray-700 dark:text-gray-300">
-          {endItem}
-        </span>
-        {" "}trên{" "}
-        <span className="font-medium text-gray-700 dark: text-gray-300">
-          {total}
-        </span>
-        {" "}kết quả
-      </span>
-    </div>
-  );
+    const { total, page, limit } = pagination;
+
+    // Tính số items đang hiển thị
+    const startItem = total === 0 ? 0 : (page - 1) * limit + 1;
+    const endItem = Math.min(page * limit, total);
+
+    return (
+        <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+            <span>
+                Hiển thị{" "}
+                <span className="font-medium text-gray-700 dark:text-gray-300">
+                    {startItem}
+                </span>
+                {" - "}
+                <span className="font-medium text-gray-700 dark:text-gray-300">
+                    {endItem}
+                </span>
+                {" "}trên{" "}
+                <span className="font-medium text-gray-700 dark: text-gray-300">
+                    {total}
+                </span>
+                {" "}kết quả
+            </span>
+        </div>
+    );
+};
+
+// ==================== MODAL NHẬP NGÀNH EXCEL ====================
+interface ImportNganhExcelModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onSuccess: () => void;
+    showAlert: (variant: "success" | "error" | "warning" | "info", title: string, message: string) => void;
+}
+
+const ImportNganhExcelModal: React.FC<ImportNganhExcelModalProps> = ({
+    isOpen,
+    onClose,
+    onSuccess,
+    showAlert,
+}) => {
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [fileError, setFileError] = useState<string>("");
+    const [isUploading, setIsUploading] = useState(false);
+
+    const onDrop = (acceptedFiles: File[], rejectedFiles: any[]) => {
+        setFileError("");
+
+        if (rejectedFiles.length > 0) {
+            setFileError("Chỉ chấp nhận file Excel (.xlsx)");
+            return;
+        }
+
+        if (acceptedFiles.length > 0) {
+            const file = acceptedFiles[0];
+            if (!file.name.endsWith('.xlsx')) {
+                setFileError("Chỉ chấp nhận file Excel (.xlsx)");
+                return;
+            }
+            setSelectedFile(file);
+        }
+    };
+
+    const { getRootProps, getInputProps, isDragActive } = useDropzone({
+        onDrop,
+        accept: {
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
+        },
+        maxFiles: 1,
+        multiple: false,
+    });
+
+    const handleDownloadTemplate = () => {
+        const templateUrl = "/templates/mau-nhap-nganh.xlsx";
+        const link = document.createElement("a");
+        link.href = templateUrl;
+        link.download = "mau-nhap-nganh.xlsx";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const handleUpload = async () => {
+        if (!selectedFile) {
+            setFileError("Vui lòng chọn file Excel");
+            return;
+        }
+
+        setIsUploading(true);
+
+        try {
+            const accessToken = getCookie("access_token");
+            const formData = new FormData();
+            formData.append("file", selectedFile);
+
+            const res = await fetch("http://localhost:3000/danh-muc/nganh/import-excel", {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+                body: formData,
+            });
+
+            const result = await res.json();
+
+            if (res.ok) {
+                if (result.errors?.length > 0) {
+                    const errorMessages = result.errors
+                        .map((err: any) =>
+                            `Dòng ${err.row}${err.maNganh ? ` (${err.maNganh})` : ""}: ${err.error}`
+                        )
+                        .join("\n");
+
+                    showAlert(
+                        "warning",
+                        "Nhập ngành hoàn tất với cảnh báo",
+                        `Tổng: ${result.totalRows}, Thành công: ${result.success}, Thất bại: ${result.failed}\n${errorMessages}`
+                    );
+                } else {
+                    showAlert(
+                        "success",
+                        "Thành công",
+                        `Nhập ngành từ Excel thành công. Đã thêm ${result.success} ngành.`
+                    );
+                }
+                handleClose();
+                onSuccess();
+            } else {
+                showAlert("error", "Lỗi", result.message || "Nhập ngành thất bại");
+            }
+        } catch (err) {
+            showAlert("error", "Lỗi", "Có lỗi xảy ra khi nhập ngành");
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    const handleClose = () => {
+        setSelectedFile(null);
+        setFileError("");
+        onClose();
+    };
+
+    const removeFile = () => {
+        setSelectedFile(null);
+        setFileError("");
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <Modal isOpen={isOpen} onClose={handleClose} className="max-w-lg">
+            <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
+                <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
+                    Nhập ngành bằng Excel
+                </h3>
+
+                {/* Button tải file mẫu */}
+                <div className="mb-6">
+                    <Button
+                        variant="outline"
+                        onClick={handleDownloadTemplate}
+                        startIcon={<FontAwesomeIcon icon={faDownload} />}
+                        className="w-full"
+                    >
+                        Tải file Excel mẫu
+                    </Button>
+                </div>
+
+                {/* Dropzone */}
+                <div className="mb-6">
+                    <Label className="mb-2 block">Chọn file Excel nhập ngành</Label>
+                    <div
+                        className={`transition border-2 border-dashed cursor-pointer rounded-xl 
+                            ${fileError ? 'border-red-500' : 'border-gray-300 dark:border-gray-700'}
+                            ${isDragActive ? 'border-brand-500 bg-gray-100 dark:bg-gray-800' : 'hover:border-brand-500 dark:hover:border-brand-500'}
+                        `}
+                    >
+                        <div
+                            {...getRootProps()}
+                            className={`rounded-xl p-7 lg:p-10
+                                ${isDragActive
+                                    ? "bg-gray-100 dark:bg-gray-800"
+                                    : "bg-gray-50 dark:bg-gray-900"
+                                }
+                            `}
+                        >
+                            <input {...getInputProps()} />
+
+                            <div className="flex flex-col items-center">
+                                {/* Icon */}
+                                <div className="mb-4 flex justify-center">
+                                    <div className={`flex h-16 w-16 items-center justify-center rounded-full 
+                                        ${selectedFile
+                                            ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+                                            : 'bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-400'
+                                        }`}
+                                    >
+                                        <FontAwesomeIcon
+                                            icon={selectedFile ? faFileExcel : faCloudArrowUp}
+                                            className="text-2xl"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Text Content */}
+                                {selectedFile ? (
+                                    <>
+                                        <p className="mb-2 font-medium text-gray-800 dark:text-white/90">
+                                            {selectedFile.name}
+                                        </p>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                                            {(selectedFile.size / 1024).toFixed(2)} KB
+                                        </p>
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                removeFile();
+                                            }}
+                                            className="mt-3 text-sm text-red-500 hover:text-red-600 underline"
+                                        >
+                                            Xóa file
+                                        </button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <h4 className="mb-2 font-semibold text-gray-800 dark:text-white/90">
+                                            {isDragActive ? "Thả file vào đây" : "Kéo & thả file vào đây"}
+                                        </h4>
+                                        <p className="text-center text-sm text-gray-500 dark:text-gray-400 mb-3">
+                                            Chỉ chấp nhận file Excel (.xlsx)
+                                        </p>
+                                        <span className="font-medium underline text-sm text-brand-500">
+                                            Chọn file
+                                        </span>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                    {fileError && (
+                        <p className="mt-2 text-sm text-red-500">{fileError}</p>
+                    )}
+                </div>
+
+                {/* Buttons */}
+                <div className="flex justify-end gap-3">
+                    <Button variant="outline" onClick={handleClose} disabled={isUploading}>
+                        Hủy
+                    </Button>
+                    <Button
+                        onClick={handleUpload}
+                        disabled={!selectedFile || isUploading}
+                        startIcon={isUploading ? undefined : <FontAwesomeIcon icon={faFileExcel} />}
+                    >
+                        {isUploading ? "Đang xử lý..." : "Xác nhận"}
+                    </Button>
+                </div>
+            </div>
+        </Modal>
+    );
 };
 
 // ==================== TRANG CHÍNH QUẢN LÝ NGÀNH ====================
@@ -227,6 +466,8 @@ export default function QuanLyNganhPage() {
     const [searchKeyword, setSearchKeyword] = useState("");
     const [selectedFilterKhoaId, setSelectedFilterKhoaId] = useState<number | "">("");
     const [khoaOptions, setKhoaOptions] = useState<KhoaOption[]>([]);
+    // Thêm vào phần khai báo state trong QuanLyLopNienChePage
+    const [isImportExcelModalOpen, setIsImportExcelModalOpen] = useState(false);
 
     const [errors, setErrors] = useState({
         maNganh: false,
@@ -472,14 +713,23 @@ export default function QuanLyNganhPage() {
                         </div>
                     </div>
 
-                    <Button
-                        onClick={() => {
-                            resetForm();
-                            setIsCreateModalOpen(true);
-                        }}
-                    >
-                        Tạo mới Ngành
-                    </Button>
+                    <div className="flex gap-3">
+                        <Button
+                            variant="primary"
+                            onClick={() => setIsImportExcelModalOpen(true)}
+                            startIcon={<FontAwesomeIcon icon={faFileExcel} />}
+                        >
+                            Nhập từ Excel
+                        </Button>
+                        <Button
+                            onClick={() => {
+                                resetForm();
+                                setIsCreateModalOpen(true);
+                            }}
+                        >
+                            Tạo mới Ngành
+                        </Button>
+                    </div>
                 </div>
 
                 {/* Khối filter khoa */}
@@ -491,11 +741,11 @@ export default function QuanLyNganhPage() {
                             <div className="relative">
                                 <SearchableSelect
                                     options={[
-                                        { value: "", label: "Tất cả khoa" },
                                         ...khoaOptions.map((khoa) => ({
                                             value: khoa.id.toString(),
                                             label: khoa.maKhoa,
                                             secondary: khoa.tenKhoa,
+                                            placeholder: "Chọn khoa",
                                         })),
                                     ]}
                                     onChange={(value) => setSelectedFilterKhoaId(value ? Number(value) : "")}
@@ -640,6 +890,16 @@ export default function QuanLyNganhPage() {
             >
                 <DeleteConfirmModal />
             </Modal>
+
+            {/* Modal Import Excel */}
+            <ImportNganhExcelModal
+                isOpen={isImportExcelModalOpen}
+                onClose={() => setIsImportExcelModalOpen(false)}
+                onSuccess={() => {
+                    fetchNganhs(currentPage, searchKeyword, selectedFilterKhoaId);
+                }}
+                showAlert={showAlert}
+            />
         </div>
     );
 }

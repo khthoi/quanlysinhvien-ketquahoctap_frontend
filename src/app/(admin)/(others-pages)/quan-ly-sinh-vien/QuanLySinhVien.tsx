@@ -24,7 +24,13 @@ import { DropdownItem } from "@/components/ui/dropdown/DropdownItem";
 import { Dropdown } from "@/components/ui/dropdown/Dropdown";
 import { FaAngleDown } from "react-icons/fa6";
 import { useDropzone } from "react-dropzone";
-import { faCloudArrowUp, faDownload, faFileExcel } from "@fortawesome/free-solid-svg-icons";
+import {
+    faCloudArrowUp, faDownload, faFileExcel,
+    faUsersGear,        // Thêm mới
+    faCircleCheck,      // Thêm mới
+    faCircleExclamation, // Thêm mới
+    faSpinner           // Thêm mới
+} from "@fortawesome/free-solid-svg-icons";
 
 type TinhTrang = "DANG_HOC" | "THOI_HOC" | "DA_TOT_NGHIEP" | "BAO_LUU";
 type GioiTinh = "NAM" | "NU";
@@ -1061,6 +1067,21 @@ export default function QuanLySinhVienPage() {
     // State để theo dõi dropdown ĐANG MỞ (chỉ 1 cái duy nhất)
     const [activeDropdownId, setActiveDropdownId] = useState<number | null>(null);
 
+    // State cho modal cấp tài khoản hàng loạt
+    const [isBulkCreateAccountModalOpen, setIsBulkCreateAccountModalOpen] = useState(false);
+    const [isBulkCreatingAccounts, setIsBulkCreatingAccounts] = useState(false);
+    const [bulkCreateResult, setBulkCreateResult] = useState<{
+        message: string;
+        totalSinhVien: number;
+        success: number;
+        failed: number;
+        errors: Array<{
+            sinhVienId: number;
+            maSinhVien: string;
+            error: string;
+        }>;
+    } | null>(null);
+
     // Toggle: nếu click vào dropdown đang mở → đóng nó, ngược lại mở nó và đóng cái khác
     const toggleDropdown = (sinhVienId: number) => {
         setActiveDropdownId((prev) =>
@@ -1455,6 +1476,47 @@ export default function QuanLySinhVienPage() {
         }
     };
 
+    // Xử lý tạo tài khoản hàng loạt
+    const handleBulkCreateAccounts = async () => {
+        setIsBulkCreatingAccounts(true);
+        setBulkCreateResult(null);
+
+        try {
+            const accessToken = getCookie("access_token");
+            const res = await fetch(
+                "http://localhost:3000/auth/users/sinh-vien/auto-create-accounts",
+                {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                    },
+                }
+            );
+
+            const result = await res.json();
+
+            if (res.ok) {
+                setBulkCreateResult(result);
+                // Refresh lại danh sách để cập nhật trạng thái nguoiDung
+                fetchSinhViens(currentPage, searchKeyword, filterTinhTrang, filterLopId, filterNganhId, filterNienKhoaId);
+            } else {
+                showAlert("error", "Lỗi", result.message || "Tạo tài khoản hàng loạt thất bại");
+                setIsBulkCreateAccountModalOpen(false);
+            }
+        } catch (err) {
+            showAlert("error", "Lỗi", "Có lỗi xảy ra khi tạo tài khoản hàng loạt");
+            setIsBulkCreateAccountModalOpen(false);
+        } finally {
+            setIsBulkCreatingAccounts(false);
+        }
+    };
+
+    // Đóng modal và reset state
+    const closeBulkCreateModal = () => {
+        setIsBulkCreateAccountModalOpen(false);
+        setBulkCreateResult(null);
+    };
+
     const openEditModal = (sinhVien: SinhVien) => {
         setEditingSinhVien(sinhVien);
         setMaSinhVien(sinhVien.maSinhVien);
@@ -1751,6 +1813,13 @@ export default function QuanLySinhVienPage() {
                             startIcon={<FontAwesomeIcon icon={faGraduationCap} />}
                         >
                             Xét Tốt Nghiệp
+                        </Button>
+                        <Button
+                            variant="primary"
+                            onClick={() => setIsBulkCreateAccountModalOpen(true)}
+                            startIcon={<FontAwesomeIcon icon={faUsersGear} />}
+                        >
+                            Cấp tài khoản hàng loạt
                         </Button>
                         <Button
                             variant="primary"
@@ -2380,6 +2449,231 @@ export default function QuanLySinhVienPage() {
                         >
                             {isCreatingAccount ? "Đang tạo..." : "Xác nhận tạo"}
                         </Button>
+                    </div>
+                </div>
+            </Modal>
+            {/* Modal Cấp tài khoản hàng loạt */}
+            <Modal
+                isOpen={isBulkCreateAccountModalOpen}
+                onClose={closeBulkCreateModal}
+                className="max-w-xl"
+            >
+                <div className="p-6 sm:p-8">
+                    {/* Header */}
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500 shadow-lg dark:bg-emerald-600">
+                            <FontAwesomeIcon icon={faUsersGear} className="text-xl text-white" />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-semibold text-gray-800 dark:text-white/90">
+                                Cấp tài khoản hàng loạt
+                            </h3>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                                Tạo tài khoản cho tất cả sinh viên chưa có tài khoản
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Nội dung trước khi tạo */}
+                    {!bulkCreateResult && !isBulkCreatingAccounts && (
+                        <>
+                            {/* Thông tin tài khoản sẽ tạo */}
+                            <div className="mb-6 rounded-xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50 dark:border-emerald-800/50 dark:from-emerald-900/20 dark:to-teal-900/20">
+                                <div className="p-4">
+                                    <div className="flex items-start gap-3">
+                                        <div className="flex-shrink-0">
+                                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-800/50">
+                                                <FontAwesomeIcon
+                                                    icon={faUserPlus}
+                                                    className="text-lg text-emerald-600 dark:text-emerald-400"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="flex-1">
+                                            <h4 className="font-semibold text-emerald-800 dark:text-emerald-300 mb-2">
+                                                Thông tin tài khoản sẽ được tạo
+                                            </h4>
+                                            <ul className="text-sm text-emerald-700/80 dark:text-emerald-300/70 space-y-1.5">
+                                                <li className="flex items-center gap-2">
+                                                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                                    <span>Tên đăng nhập: <strong>Mã sinh viên</strong></span>
+                                                </li>
+                                                <li className="flex items-center gap-2">
+                                                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                                    <span>Mật khẩu mặc định: <strong>123456</strong></span>
+                                                </li>
+                                                <li className="flex items-center gap-2">
+                                                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                                    <span>Vai trò: <strong>Sinh viên</strong></span>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Cảnh báo */}
+                            <div className="mb-6 rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50 dark:border-amber-800/50 dark:from-amber-900/20 dark:to-yellow-900/20">
+                                <div className="p-4">
+                                    <div className="flex items-start gap-3">
+                                        <div className="flex-shrink-0">
+                                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-800/50">
+                                                <FontAwesomeIcon
+                                                    icon={faCircleExclamation}
+                                                    className="text-lg text-amber-600 dark:text-amber-400"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="flex-1">
+                                            <h4 className="font-semibold text-amber-800 dark:text-amber-300 mb-1">
+                                                Lưu ý quan trọng
+                                            </h4>
+                                            <p className="text-sm text-amber-700/80 dark:text-amber-300/70">
+                                                Vui lòng thông báo cho các sinh viên đổi mật khẩu sau khi đăng nhập lần đầu để đảm bảo an toàn tài khoản.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6 text-center">
+                                Hệ thống sẽ tự động tạo tài khoản cho <strong>tất cả sinh viên chưa có tài khoản</strong>.
+                                <br />Sinh viên đã có tài khoản sẽ được bỏ qua.
+                            </p>
+                        </>
+                    )}
+
+                    {/* Loading state */}
+                    {isBulkCreatingAccounts && (
+                        <div className="py-12 flex flex-col items-center justify-center">
+                            <div className="relative">
+                                <div className="h-20 w-20 rounded-full border-4 border-emerald-100 dark:border-emerald-900/50"></div>
+                                <div className="absolute top-0 left-0 h-20 w-20 rounded-full border-4 border-emerald-500 border-t-transparent animate-spin"></div>
+                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+                                    <FontAwesomeIcon
+                                        icon={faUsersGear}
+                                        className="text-2xl text-emerald-500"
+                                    />
+                                </div>
+                            </div>
+                            <p className="mt-6 text-lg font-medium text-gray-700 dark:text-gray-300">
+                                Đang tạo tài khoản...
+                            </p>
+                            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                                Vui lòng đợi trong giây lát
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Kết quả sau khi tạo */}
+                    {bulkCreateResult && (
+                        <>
+                            {/* Summary */}
+                            <div className="mb-6 grid grid-cols-3 gap-4">
+                                <div className="rounded-xl bg-gray-50 dark:bg-gray-800/50 p-4 text-center border border-gray-200 dark:border-gray-700">
+                                    <p className="text-2xl font-bold text-gray-800 dark:text-white">
+                                        {bulkCreateResult.totalSinhVien ? bulkCreateResult.totalSinhVien : 0}
+                                    </p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">Tổng xử lý</p>
+                                </div>
+                                <div className="rounded-xl bg-emerald-50 dark:bg-emerald-900/20 p-4 text-center border border-emerald-200 dark:border-emerald-800">
+                                    <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                                        {bulkCreateResult.success}
+                                    </p>
+                                    <p className="text-sm text-emerald-600/70 dark:text-emerald-400/70">Thành công</p>
+                                </div>
+                                <div className="rounded-xl bg-red-50 dark:bg-red-900/20 p-4 text-center border border-red-200 dark:border-red-800">
+                                    <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+                                        {bulkCreateResult.failed}
+                                    </p>
+                                    <p className="text-sm text-red-600/70 dark:text-red-400/70">Thất bại</p>
+                                </div>
+                            </div>
+
+                            {/* Success message */}
+                            {bulkCreateResult.success > 0 && (
+                                <div className="mb-4 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 p-4 border border-emerald-200 dark:border-emerald-800">
+                                    <div className="flex items-center gap-2">
+                                        <FontAwesomeIcon
+                                            icon={faCircleCheck}
+                                            className="text-emerald-500"
+                                        />
+                                        <p className="text-sm text-emerald-700 dark:text-emerald-300">
+                                            Đã tạo thành công <strong>{bulkCreateResult.success}</strong> tài khoản sinh viên
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Error list */}
+                            {bulkCreateResult.errors && bulkCreateResult.errors.length > 0 && (
+                                <div className="mb-4">
+                                    <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+                                        <FontAwesomeIcon
+                                            icon={faCircleExclamation}
+                                            className="text-red-500"
+                                        />
+                                        Chi tiết lỗi ({bulkCreateResult.errors.length})
+                                    </h4>
+                                    <div className="max-h-48 overflow-y-auto rounded-lg border border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10">
+                                        <table className="w-full text-sm">
+                                            <thead className="sticky top-0 bg-red-100 dark:bg-red-900/30">
+                                                <tr>
+                                                    <th className="px-3 py-2 text-left text-red-700 dark:text-red-300 font-medium">Mã SV</th>
+                                                    <th className="px-3 py-2 text-left text-red-700 dark:text-red-300 font-medium">Lỗi</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-red-100 dark:divide-red-900/30">
+                                                {bulkCreateResult.errors.map((err, index) => (
+                                                    <tr key={index}>
+                                                        <td className="px-3 py-2 text-red-800 dark:text-red-200 font-medium">
+                                                            {err.maSinhVien}
+                                                        </td>
+                                                        <td className="px-3 py-2 text-red-600 dark:text-red-400">
+                                                            {err.error}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            )}
+                        </>
+                    )}
+
+                    {/* Buttons */}
+                    <div className="flex justify-end gap-3 pt-2">
+                        {!bulkCreateResult ? (
+                            <>
+                                <Button
+                                    variant="outline"
+                                    onClick={closeBulkCreateModal}
+                                    disabled={isBulkCreatingAccounts}
+                                >
+                                    Hủy
+                                </Button>
+                                <Button
+                                    variant="primary"
+                                    onClick={handleBulkCreateAccounts}
+                                    disabled={isBulkCreatingAccounts}
+                                    startIcon={
+                                        isBulkCreatingAccounts
+                                            ? <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
+                                            : <FontAwesomeIcon icon={faUsersGear} />
+                                    }
+                                >
+                                    {isBulkCreatingAccounts ? "Đang xử lý..." : "Xác nhận tạo tài khoản"}
+                                </Button>
+                            </>
+                        ) : (
+                            <Button
+                                variant="primary"
+                                onClick={closeBulkCreateModal}
+                            >
+                                Đóng
+                            </Button>
+                        )}
                     </div>
                 </div>
             </Modal>

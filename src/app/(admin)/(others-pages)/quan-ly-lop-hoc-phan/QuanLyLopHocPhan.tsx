@@ -591,7 +591,7 @@ const ImportSinhVienExcelModal: React.FC<ImportSinhVienExcelModalProps> = ({
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
         onDrop,
         accept: {
-            "application/vnd. openxmlformats-officedocument. spreadsheetml. sheet": [".xlsx"],
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
         },
         maxFiles: 1,
         multiple: false,
@@ -1358,7 +1358,7 @@ export default function QuanLyLopHocPhanPage() {
                 </div>
 
                 {/* Khối lọc */}
-                <div className="mb-6 p-4 bg-gray-50 dark: bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+                <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
                     <Label className="block mb-3 text-base font-medium">Bộ lọc</Label>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         {/* Lọc theo Môn học */}

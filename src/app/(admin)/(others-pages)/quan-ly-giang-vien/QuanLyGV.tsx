@@ -28,7 +28,11 @@ import {
     faChevronUp,
     faUnlink,
     faPlus,
-    faUserPlus
+    faUserPlus,
+    faUsersGear,        // Thêm mới
+    faCircleCheck,      // Thêm mới
+    faCircleExclamation, // Thêm mới
+    faSpinner           // Thêm mới
 } from "@fortawesome/free-solid-svg-icons";
 import { ChevronDownIcon } from "@/icons";
 import Select from "@/components/form/Select";
@@ -36,6 +40,8 @@ import SearchableSelect from "@/components/form/SelectCustom";
 import { Dropdown } from "@/components/ui/dropdown/Dropdown";
 import { DropdownItem } from "@/components/ui/dropdown/DropdownItem";
 import { FaAngleDown } from "react-icons/fa6";
+import { useDropzone } from "react-dropzone";
+import { faCloudArrowUp, faDownload, faFileExcel } from "@fortawesome/free-solid-svg-icons";
 
 // ==================== INTERFACES ====================
 enum VaiTro {
@@ -484,6 +490,243 @@ const ChiTietModal: React.FC<ChiTietModalProps> = ({
     );
 };
 
+// ==================== MODAL NHẬP GIẢNG VIÊN EXCEL ====================
+interface ImportGiangVienExcelModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onSuccess: () => void;
+    showAlert: (variant: "success" | "error" | "warning" | "info", title: string, message: string) => void;
+}
+
+const ImportGiangVienExcelModal: React.FC<ImportGiangVienExcelModalProps> = ({
+    isOpen,
+    onClose,
+    onSuccess,
+    showAlert,
+}) => {
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [fileError, setFileError] = useState<string>("");
+    const [isUploading, setIsUploading] = useState(false);
+
+    const onDrop = (acceptedFiles: File[], rejectedFiles: any[]) => {
+        setFileError("");
+
+        if (rejectedFiles.length > 0) {
+            setFileError("Chỉ chấp nhận file Excel (.xlsx)");
+            return;
+        }
+
+        if (acceptedFiles.length > 0) {
+            const file = acceptedFiles[0];
+            if (!file.name.endsWith('.xlsx')) {
+                setFileError("Chỉ chấp nhận file Excel (.xlsx)");
+                return;
+            }
+            setSelectedFile(file);
+        }
+    };
+
+    const { getRootProps, getInputProps, isDragActive } = useDropzone({
+        onDrop,
+        accept: {
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
+        },
+        maxFiles: 1,
+        multiple: false,
+    });
+
+    const handleDownloadTemplate = () => {
+        const templateUrl = "/templates/mau-nhap-giang-vien.xlsx";
+        const link = document.createElement("a");
+        link.href = templateUrl;
+        link.download = "mau-nhap-giang-vien.xlsx";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const handleUpload = async () => {
+        if (!selectedFile) {
+            setFileError("Vui lòng chọn file Excel");
+            return;
+        }
+
+        setIsUploading(true);
+
+        try {
+            const accessToken = getCookie("access_token");
+            const formData = new FormData();
+            formData.append("file", selectedFile);
+
+            const res = await fetch("http://localhost:3000/danh-muc/giang-vien/import-excel", {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+                body: formData,
+            });
+
+            const result = await res.json();
+
+            if (res.ok) {
+                if (result.errors?.length > 0) {
+                    const errorMessages = result.errors
+                        .map((err: any) =>
+                            `Dòng ${err.row}${err.maGiangVien ? ` (${err.maGiangVien})` : ""}: ${err.error}`
+                        )
+                        .join("\n");
+
+                    showAlert(
+                        "warning",
+                        "Nhập giảng viên hoàn tất với cảnh báo",
+                        `Tổng: ${result.totalRows}, Thành công: ${result.success}, Thất bại: ${result.failed}\n${errorMessages}`
+                    );
+                } else {
+                    showAlert(
+                        "success",
+                        "Thành công",
+                        `Nhập giảng viên từ Excel thành công. Đã thêm ${result.success} giảng viên.`
+                    );
+                }
+                handleClose();
+                onSuccess();
+            } else {
+                showAlert("error", "Lỗi", result.message || "Nhập giảng viên thất bại");
+            }
+        } catch (err) {
+            showAlert("error", "Lỗi", "Có lỗi xảy ra khi nhập giảng viên");
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    const handleClose = () => {
+        setSelectedFile(null);
+        setFileError("");
+        onClose();
+    };
+
+    const removeFile = () => {
+        setSelectedFile(null);
+        setFileError("");
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <Modal isOpen={isOpen} onClose={handleClose} className="max-w-lg">
+            <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
+                <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
+                    Nhập giảng viên bằng Excel
+                </h3>
+
+                {/* Button tải file mẫu */}
+                <div className="mb-6">
+                    <Button
+                        variant="outline"
+                        onClick={handleDownloadTemplate}
+                        startIcon={<FontAwesomeIcon icon={faDownload} />}
+                        className="w-full"
+                    >
+                        Tải file Excel mẫu
+                    </Button>
+                </div>
+
+                {/* Dropzone */}
+                <div className="mb-6">
+                    <Label className="mb-2 block">Chọn file Excel nhập lớp</Label>
+                    <div
+                        className={`transition border-2 border-dashed cursor-pointer rounded-xl 
+                            ${fileError ? 'border-red-500' : 'border-gray-300 dark:border-gray-700'}
+                            ${isDragActive ? 'border-brand-500 bg-gray-100 dark:bg-gray-800' : 'hover:border-brand-500 dark:hover:border-brand-500'}
+                        `}
+                    >
+                        <div
+                            {...getRootProps()}
+                            className={`rounded-xl p-7 lg:p-10
+                                ${isDragActive
+                                    ? "bg-gray-100 dark:bg-gray-800"
+                                    : "bg-gray-50 dark:bg-gray-900"
+                                }
+                            `}
+                        >
+                            <input {...getInputProps()} />
+
+                            <div className="flex flex-col items-center">
+                                {/* Icon */}
+                                <div className="mb-4 flex justify-center">
+                                    <div className={`flex h-16 w-16 items-center justify-center rounded-full 
+                                        ${selectedFile
+                                            ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+                                            : 'bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-400'
+                                        }`}
+                                    >
+                                        <FontAwesomeIcon
+                                            icon={selectedFile ? faFileExcel : faCloudArrowUp}
+                                            className="text-2xl"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Text Content */}
+                                {selectedFile ? (
+                                    <>
+                                        <p className="mb-2 font-medium text-gray-800 dark:text-white/90">
+                                            {selectedFile.name}
+                                        </p>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                                            {(selectedFile.size / 1024).toFixed(2)} KB
+                                        </p>
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                removeFile();
+                                            }}
+                                            className="mt-3 text-sm text-red-500 hover:text-red-600 underline"
+                                        >
+                                            Xóa file
+                                        </button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <h4 className="mb-2 font-semibold text-gray-800 dark:text-white/90">
+                                            {isDragActive ? "Thả file vào đây" : "Kéo & thả file vào đây"}
+                                        </h4>
+                                        <p className="text-center text-sm text-gray-500 dark:text-gray-400 mb-3">
+                                            Chỉ chấp nhận file Excel (.xlsx)
+                                        </p>
+                                        <span className="font-medium underline text-sm text-brand-500">
+                                            Chọn file
+                                        </span>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                    {fileError && (
+                        <p className="mt-2 text-sm text-red-500">{fileError}</p>
+                    )}
+                </div>
+
+                {/* Buttons */}
+                <div className="flex justify-end gap-3">
+                    <Button variant="outline" onClick={handleClose} disabled={isUploading}>
+                        Hủy
+                    </Button>
+                    <Button
+                        onClick={handleUpload}
+                        disabled={!selectedFile || isUploading}
+                        startIcon={isUploading ? undefined : <FontAwesomeIcon icon={faFileExcel} />}
+                    >
+                        {isUploading ? "Đang xử lý..." : "Xác nhận"}
+                    </Button>
+                </div>
+            </div>
+        </Modal>
+    );
+};
+
 // ==================== TRANG CHÍNH QUẢN LÝ GIẢNG VIÊN ====================
 export default function QuanLyGiangVienPage() {
     // State cho danh sách và pagination
@@ -512,6 +755,22 @@ export default function QuanLyGiangVienPage() {
     const [isCreateAccountModalOpen, setIsCreateAccountModalOpen] = useState(false);
     const [creatingAccountGiangVien, setCreatingAccountGiangVien] = useState<GiangVien | null>(null);
     const [isCreatingAccount, setIsCreatingAccount] = useState(false);
+    // Thêm vào phần khai báo state trong QuanLyLopNienChePage
+    const [isImportExcelModalOpen, setIsImportExcelModalOpen] = useState(false);
+    // State cho modal cấp tài khoản hàng loạt
+    const [isBulkCreateAccountModalOpen, setIsBulkCreateAccountModalOpen] = useState(false);
+    const [isBulkCreatingAccounts, setIsBulkCreatingAccounts] = useState(false);
+    const [bulkCreateResult, setBulkCreateResult] = useState<{
+        message: string;
+        totalGiangVien: number;
+        success: number;
+        failed: number;
+        errors: Array<{
+            giangVienId: number;
+            maGiangVien: string;
+            error: string;
+        }>;
+    } | null>(null);
 
     // State cho form
     const [formData, setFormData] = useState({
@@ -875,6 +1134,47 @@ export default function QuanLyGiangVienPage() {
         }
     };
 
+    // Xử lý tạo tài khoản hàng loạt
+    const handleBulkCreateAccounts = async () => {
+        setIsBulkCreatingAccounts(true);
+        setBulkCreateResult(null);
+
+        try {
+            const accessToken = getCookie("access_token");
+            const res = await fetch(
+                "http://localhost:3000/auth/users/giang-vien/auto-create-accounts",
+                {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                    },
+                }
+            );
+
+            const result = await res.json();
+
+            if (res.ok) {
+                setBulkCreateResult(result);
+                // Refresh lại danh sách để cập nhật trạng thái nguoiDung
+                fetchGiangViens(currentPage, searchKeyword.trim(), selectedFilterMonHocId);
+            } else {
+                showAlert("error", "Lỗi", result.message || "Tạo tài khoản hàng loạt thất bại");
+                setIsBulkCreateAccountModalOpen(false);
+            }
+        } catch (err) {
+            showAlert("error", "Lỗi", "Có lỗi xảy ra khi tạo tài khoản hàng loạt");
+            setIsBulkCreateAccountModalOpen(false);
+        } finally {
+            setIsBulkCreatingAccounts(false);
+        }
+    };
+
+    // Đóng modal và reset state
+    const closeBulkCreateModal = () => {
+        setIsBulkCreateAccountModalOpen(false);
+        setBulkCreateResult(null);
+    };
+
     // Open modals
     const openEditModal = (giangVien: GiangVien) => {
         setEditingGiangVien(giangVien);
@@ -972,14 +1272,31 @@ export default function QuanLyGiangVienPage() {
                         </div>
                     </div>
 
-                    <Button
-                        onClick={() => {
-                            resetForm();
-                            setIsCreateModalOpen(true);
-                        }}
-                    >
-                        Thêm Giảng Viên
-                    </Button>
+                    <div className="flex gap-3">
+                        {/* Button Cấp tài khoản hàng loạt - THÊM MỚI */}
+                        <Button
+                            variant="primary"
+                            onClick={() => setIsBulkCreateAccountModalOpen(true)}
+                            startIcon={<FontAwesomeIcon icon={faUsersGear} />}
+                        >
+                            Cấp tài khoản hàng loạt
+                        </Button>
+                        <Button
+                            variant="primary"
+                            onClick={() => setIsImportExcelModalOpen(true)}
+                            startIcon={<FontAwesomeIcon icon={faFileExcel} />}
+                        >
+                            Nhập từ Excel
+                        </Button>
+                        <Button
+                            onClick={() => {
+                                resetForm();
+                                setIsCreateModalOpen(true);
+                            }}
+                        >
+                            Thêm Giảng Viên
+                        </Button>
+                    </div>
                 </div>
 
                 {/* Filter theo Môn học */}
@@ -1496,6 +1813,242 @@ export default function QuanLyGiangVienPage() {
                         >
                             {isCreatingAccount ? "Đang tạo..." : "Xác nhận tạo"}
                         </Button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Modal Import Excel */}
+            <ImportGiangVienExcelModal
+                isOpen={isImportExcelModalOpen}
+                onClose={() => setIsImportExcelModalOpen(false)}
+                onSuccess={() => {
+                    fetchGiangViens(currentPage, searchKeyword, selectedFilterMonHocId);
+                }}
+                showAlert={showAlert}
+            />
+
+            {/* Modal Cấp tài khoản hàng loạt */}
+            <Modal
+                isOpen={isBulkCreateAccountModalOpen}
+                onClose={closeBulkCreateModal}
+                className="max-w-xl"
+            >
+                <div className="p-6 sm:p-8">
+                    {/* Header */}
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500 shadow-lg dark:bg-emerald-600">
+                            <FontAwesomeIcon icon={faUsersGear} className="text-xl text-white" />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-semibold text-gray-800 dark:text-white/90">
+                                Cấp tài khoản hàng loạt
+                            </h3>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                                Tạo tài khoản cho tất cả giảng viên chưa có tài khoản
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Nội dung trước khi tạo */}
+                    {!bulkCreateResult && !isBulkCreatingAccounts && (
+                        <>
+                            {/* Thông tin tài khoản sẽ tạo */}
+                            <div className="mb-6 rounded-xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50 dark:border-emerald-800/50 dark:from-emerald-900/20 dark:to-teal-900/20">
+                                <div className="p-4">
+                                    <div className="flex items-start gap-3">
+                                        <div className="flex-shrink-0">
+                                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-800/50">
+                                                <FontAwesomeIcon
+                                                    icon={faUserPlus}
+                                                    className="text-lg text-emerald-600 dark:text-emerald-400"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="flex-1">
+                                            <h4 className="font-semibold text-emerald-800 dark:text-emerald-300 mb-2">
+                                                Thông tin tài khoản sẽ được tạo
+                                            </h4>
+                                            <ul className="text-sm text-emerald-700/80 dark:text-emerald-300/70 space-y-1.5">
+                                                <li className="flex items-center gap-2">
+                                                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                                    <span>Tên đăng nhập: <strong>Mã giảng viên</strong></span>
+                                                </li>
+                                                <li className="flex items-center gap-2">
+                                                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                                    <span>Mật khẩu mặc định: <strong>123456</strong></span>
+                                                </li>
+                                                <li className="flex items-center gap-2">
+                                                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                                    <span>Vai trò: <strong>Giảng viên</strong></span>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Cảnh báo */}
+                            <div className="mb-6 rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50 to-yellow-50 dark:border-amber-800/50 dark:from-amber-900/20 dark:to-yellow-900/20">
+                                <div className="p-4">
+                                    <div className="flex items-start gap-3">
+                                        <div className="flex-shrink-0">
+                                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-800/50">
+                                                <FontAwesomeIcon
+                                                    icon={faCircleExclamation}
+                                                    className="text-lg text-amber-600 dark:text-amber-400"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="flex-1">
+                                            <h4 className="font-semibold text-amber-800 dark:text-amber-300 mb-1">
+                                                Lưu ý quan trọng
+                                            </h4>
+                                            <p className="text-sm text-amber-700/80 dark:text-amber-300/70">
+                                                Vui lòng thông báo cho các giảng viên đổi mật khẩu sau khi đăng nhập lần đầu để đảm bảo an toàn tài khoản.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6 text-center">
+                                Hệ thống sẽ tự động tạo tài khoản cho <strong>tất cả giảng viên chưa có tài khoản</strong>.
+                                <br />Giảng viên đã có tài khoản sẽ được bỏ qua.
+                            </p>
+                        </>
+                    )}
+
+                    {/* Loading state */}
+                    {isBulkCreatingAccounts && (
+                        <div className="py-12 flex flex-col items-center justify-center">
+                            <div className="relative">
+                                <div className="h-20 w-20 rounded-full border-4 border-emerald-100 dark:border-emerald-900/50"></div>
+                                <div className="absolute top-0 left-0 h-20 w-20 rounded-full border-4 border-emerald-500 border-t-transparent animate-spin"></div>
+                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+                                    <FontAwesomeIcon
+                                        icon={faUsersGear}
+                                        className="text-2xl text-emerald-500"
+                                    />
+                                </div>
+                            </div>
+                            <p className="mt-6 text-lg font-medium text-gray-700 dark:text-gray-300">
+                                Đang tạo tài khoản...
+                            </p>
+                            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                                Vui lòng đợi trong giây lát
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Kết quả sau khi tạo */}
+                    {bulkCreateResult && (
+                        <>
+                            {/* Summary */}
+                            <div className="mb-6 grid grid-cols-3 gap-4">
+                                <div className="rounded-xl bg-gray-50 dark:bg-gray-800/50 p-4 text-center border border-gray-200 dark:border-gray-700">
+                                    <p className="text-2xl font-bold text-gray-800 dark:text-white">
+                                        {bulkCreateResult.totalGiangVien}
+                                    </p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">Tổng xử lý</p>
+                                </div>
+                                <div className="rounded-xl bg-emerald-50 dark:bg-emerald-900/20 p-4 text-center border border-emerald-200 dark:border-emerald-800">
+                                    <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                                        {bulkCreateResult.success}
+                                    </p>
+                                    <p className="text-sm text-emerald-600/70 dark:text-emerald-400/70">Thành công</p>
+                                </div>
+                                <div className="rounded-xl bg-red-50 dark:bg-red-900/20 p-4 text-center border border-red-200 dark:border-red-800">
+                                    <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+                                        {bulkCreateResult.failed}
+                                    </p>
+                                    <p className="text-sm text-red-600/70 dark:text-red-400/70">Thất bại</p>
+                                </div>
+                            </div>
+
+                            {/* Success message */}
+                            {bulkCreateResult.success > 0 && (
+                                <div className="mb-4 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 p-4 border border-emerald-200 dark:border-emerald-800">
+                                    <div className="flex items-center gap-2">
+                                        <FontAwesomeIcon
+                                            icon={faCircleCheck}
+                                            className="text-emerald-500"
+                                        />
+                                        <p className="text-sm text-emerald-700 dark:text-emerald-300">
+                                            Đã tạo thành công <strong>{bulkCreateResult.success}</strong> tài khoản giảng viên
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Error list */}
+                            {bulkCreateResult.errors && bulkCreateResult.errors.length > 0 && (
+                                <div className="mb-4">
+                                    <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+                                        <FontAwesomeIcon
+                                            icon={faCircleExclamation}
+                                            className="text-red-500"
+                                        />
+                                        Chi tiết lỗi ({bulkCreateResult.errors.length})
+                                    </h4>
+                                    <div className="max-h-48 overflow-y-auto rounded-lg border border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10">
+                                        <table className="w-full text-sm">
+                                            <thead className="sticky top-0 bg-red-100 dark:bg-red-900/30">
+                                                <tr>
+                                                    <th className="px-3 py-2 text-left text-red-700 dark:text-red-300 font-medium">Mã GV</th>
+                                                    <th className="px-3 py-2 text-left text-red-700 dark:text-red-300 font-medium">Lỗi</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-red-100 dark:divide-red-900/30">
+                                                {bulkCreateResult.errors.map((err, index) => (
+                                                    <tr key={index}>
+                                                        <td className="px-3 py-2 text-red-800 dark:text-red-200 font-medium">
+                                                            {err.maGiangVien}
+                                                        </td>
+                                                        <td className="px-3 py-2 text-red-600 dark:text-red-400">
+                                                            {err.error}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            )}
+                        </>
+                    )}
+
+                    {/* Buttons */}
+                    <div className="flex justify-end gap-3 pt-2">
+                        {!bulkCreateResult ? (
+                            <>
+                                <Button
+                                    variant="outline"
+                                    onClick={closeBulkCreateModal}
+                                    disabled={isBulkCreatingAccounts}
+                                >
+                                    Hủy
+                                </Button>
+                                <Button
+                                    variant="primary"
+                                    onClick={handleBulkCreateAccounts}
+                                    disabled={isBulkCreatingAccounts}
+                                    startIcon={
+                                        isBulkCreatingAccounts
+                                            ? <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
+                                            : <FontAwesomeIcon icon={faUsersGear} />
+                                    }
+                                >
+                                    {isBulkCreatingAccounts ? "Đang xử lý..." : "Xác nhận tạo tài khoản"}
+                                </Button>
+                            </>
+                        ) : (
+                            <Button
+                                variant="primary"
+                                onClick={closeBulkCreateModal}
+                            >
+                                Đóng
+                            </Button>
+                        )}
                     </div>
                 </div>
             </Modal>
