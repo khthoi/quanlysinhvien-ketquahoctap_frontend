@@ -417,7 +417,7 @@ const ChiTietModal: React.FC<ChiTietModalProps> = ({
                             <p className="font-medium text-gray-800 dark:text-white/90">{formatDateVN(giangVien.ngaySinh)}</p>
                         </div>
                         <div>
-                            <span className="text-sm text-gray-500 dark: text-gray-400">Giới tính:</span>
+                            <span className="text-sm text-gray-500 dark:text-gray-400">Giới tính:</span>
                             <p className="mt-1">
                                 <Badge variant="solid" color={getGioiTinhColor(giangVien.gioiTinh)}>
                                     {getGioiTinhLabel(giangVien.gioiTinh)}
@@ -428,15 +428,15 @@ const ChiTietModal: React.FC<ChiTietModalProps> = ({
                     <div className="space-y-3">
                         <div>
                             <span className="text-sm text-gray-500 dark:text-gray-400">Email:</span>
-                            <p className="font-medium text-gray-800 dark: text-white/90">{giangVien.email}</p>
+                            <p className="font-medium text-gray-800 dark:text-white/90">{giangVien.email}</p>
                         </div>
                         <div>
                             <span className="text-sm text-gray-500 dark:text-gray-400">Số điện thoại:</span>
                             <p className="font-medium text-gray-800 dark:text-white/90">{giangVien.sdt}</p>
                         </div>
                         <div>
-                            <span className="text-sm text-gray-500 dark: text-gray-400">Địa chỉ:</span>
-                            <p className="font-medium text-gray-800 dark: text-white/90">{giangVien.diaChi}</p>
+                            <span className="text-sm text-gray-500 dark:text-gray-400">Địa chỉ:</span>
+                            <p className="font-medium text-gray-800 dark:text-white/90">{giangVien.diaChi}</p>
                         </div>
                     </div>
                 </div>

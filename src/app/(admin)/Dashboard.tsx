@@ -327,10 +327,10 @@ export default function DashboardOverview() {
         </div>
 
         {/* Card Cơ cấu đào tạo */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 dark: border-gray-800 dark: bg-white/[0.03]">
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-800 dark: text-white/90">
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
                 Cơ cấu Đào tạo
               </h3>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
@@ -347,7 +347,7 @@ export default function DashboardOverview() {
 
           <div className="grid grid-cols-2 gap-4">
             {/* Khoa */}
-            <div className="p-4 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border border-blue-200 dark: border-blue-800">
+            <div className="p-4 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border border-blue-200 dark:border-blue-800">
               <div className="flex items-center gap-3 mb-2">
                 <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-blue-500/20">
                   <FontAwesomeIcon

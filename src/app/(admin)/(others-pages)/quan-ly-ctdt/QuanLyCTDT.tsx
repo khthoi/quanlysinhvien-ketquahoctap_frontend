@@ -1522,7 +1522,7 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
                                                 {isRowExpanded(ct.id) && ct.apDungChuongTrinhs.length > 0 && (
                                                     <>
                                                         {/* Sub-Table Header */}
-                                                        <TableRow className="grid grid-cols-[5%_15%_25%_15%_17%_23%] items-center bg-gray-100/80 dark:bg-white/[0.04] border-t border-gray-200 dark:border-white/[0.05]">
+                                                        <TableRow className="grid grid-cols-[5%_15%_30%_12%_15%_23%] items-center bg-gray-100/80 dark:bg-white/[0.04] border-t border-gray-200 dark:border-white/[0.05]">
                                                             <TableCell className="px-3 py-2.5">
                                                                 <span></span>
                                                             </TableCell>
@@ -1547,7 +1547,7 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
                                                         {ct.apDungChuongTrinhs.map((ad, index) => (
                                                             <TableRow
                                                                 key={ad.id}
-                                                                className={`grid grid-cols-[5%_15%_25%_15%_17%_23%] items-center bg-gray-50/50 dark:bg-white/[0.01] ${index === ct.apDungChuongTrinhs.length - 1
+                                                                className={`grid grid-cols-[5%_15%_30%_12%_15%_23%] items-center bg-gray-50/50 dark:bg-white/[0.01] ${index === ct.apDungChuongTrinhs.length - 1
                                                                     ? "border-b border-gray-200 dark:border-white/[0.05]"
                                                                     : ""
                                                                     }`}

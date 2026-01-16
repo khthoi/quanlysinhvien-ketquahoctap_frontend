@@ -18,7 +18,24 @@ import Label from "@/components/form/Label";
 import Badge from "@/components/ui/badge/Badge";
 import SearchableSelect from "@/components/form/SelectCustom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faMagnifyingGlass, faEye, faTrash, faEdit, faUsers, faFileExcel, faInfoCircle, faCloudArrowUp, faDownload } from "@fortawesome/free-solid-svg-icons";
+import {
+    faMagnifyingGlass,
+    faEye,
+    faTrash,
+    faEdit,
+    faUsers,
+    faFileExcel,
+    faInfoCircle,
+    faCloudArrowUp,
+    faDownload,
+    faChartBar,
+    faSpinner,         // Thêm mới
+    faCircleInfo,      // Thêm mới
+    faTriangleExclamation, // Thêm mới
+    faCheckCircle,     // Thêm mới
+    faTimesCircle,     // Thêm mới
+    faFileImport       // Thêm mới } from "@fortawesome/free-solid-svg-icons";
+} from "@fortawesome/free-solid-svg-icons";
 import TextArea from "@/components/form/input/TextArea";
 import { DropdownItem } from "@/components/ui/dropdown/DropdownItem";
 import { Dropdown } from "@/components/ui/dropdown/Dropdown";
@@ -245,17 +262,17 @@ const ViewLopHocPhanModal: React.FC<ViewLopHocPhanModalProps> = ({
                         </div>
                         <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Số tín chỉ</p>
-                            <p className="font-medium text-gray-800 dark: text-white">{lopHocPhan.monHoc.soTinChi}</p>
+                            <p className="font-medium text-gray-800 dark:text-white">{lopHocPhan.monHoc.soTinChi}</p>
                         </div>
                         <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Giảng viên</p>
-                            <p className="font-medium text-gray-800 dark: text-white">
+                            <p className="font-medium text-gray-800 dark:text-white">
                                 {lopHocPhan.giangVien.maGiangVien} - {lopHocPhan.giangVien.hoTen}
                             </p>
                         </div>
                         <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Email giảng viên</p>
-                            <p className="font-medium text-gray-800 dark: text-white">{lopHocPhan.giangVien.email}</p>
+                            <p className="font-medium text-gray-800 dark:text-white">{lopHocPhan.giangVien.email}</p>
                         </div>
                         <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Ngành</p>
@@ -277,7 +294,7 @@ const ViewLopHocPhanModal: React.FC<ViewLopHocPhanModalProps> = ({
                         </div>
                         <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Học kỳ</p>
-                            <p className="font-medium text-gray-800 dark: text-white">
+                            <p className="font-medium text-gray-800 dark:text-white">
                                 Học kỳ {lopHocPhan.hocKy.hocKy} - {lopHocPhan.hocKy.namHoc.tenNamHoc}
                             </p>
                         </div>
@@ -403,7 +420,7 @@ const EditLopHocPhanModal: React.FC<EditLopHocPhanModalProps> = ({
     return (
         <Modal isOpen={isOpen} onClose={onClose} className="max-w-3xl">
             <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
-                <h3 className="mb-6 text-xl font-semibold text-gray-800 dark: text-white/90">
+                <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
                     Sửa Lớp Học Phần
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -573,7 +590,7 @@ const ImportSinhVienExcelModal: React.FC<ImportSinhVienExcelModalProps> = ({
         setFileError("");
 
         if (rejectedFiles.length > 0) {
-            setFileError("Chỉ chấp nhận file Excel (. xlsx)");
+            setFileError("Chỉ chấp nhận file Excel (.xlsx)");
             return;
         }
 
@@ -834,6 +851,642 @@ const ImportSinhVienExcelModal: React.FC<ImportSinhVienExcelModalProps> = ({
     );
 };
 
+// ==================== MODAL THỐNG KÊ LHP ĐỀ XUẤT ====================
+interface ThongKeLHPDeXuatModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    namHocOptions: NamHocOption[];
+    showAlert: (variant: "success" | "error" | "warning" | "info", title: string, message: string) => void;
+}
+
+const ThongKeLHPDeXuatModal: React.FC<ThongKeLHPDeXuatModalProps> = ({
+    isOpen,
+    onClose,
+    namHocOptions,
+    showAlert,
+}) => {
+    const [selectedNamHocId, setSelectedNamHocId] = useState("");
+    const [selectedHocKy, setSelectedHocKy] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
+    const [errors, setErrors] = useState({ namHoc: false, hocKy: false });
+
+    // Lấy danh sách học kỳ từ năm học đã chọn
+    const selectedNamHoc = namHocOptions.find(nh => nh.id.toString() === selectedNamHocId);
+    const hocKyOptions = selectedNamHoc?.hocKys || [];
+
+    const handleClose = () => {
+        setSelectedNamHocId("");
+        setSelectedHocKy("");
+        setErrors({ namHoc: false, hocKy: false });
+        onClose();
+    };
+
+    const validateForm = () => {
+        const newErrors = {
+            namHoc: !selectedNamHocId,
+            hocKy: !selectedHocKy,
+        };
+        setErrors(newErrors);
+        return !newErrors.namHoc && !newErrors.hocKy;
+    };
+
+    const handleSubmit = async () => {
+        if (!validateForm()) return;
+
+        setIsLoading(true);
+
+        try {
+            const accessToken = getCookie("access_token");
+            const selectedNamHocData = namHocOptions.find(nh => nh.id.toString() === selectedNamHocId);
+            const selectedHocKyData = hocKyOptions.find(hk => hk.id.toString() === selectedHocKy);
+
+            if (!selectedNamHocData || !selectedHocKyData) {
+                showAlert("error", "Lỗi", "Không tìm thấy thông tin năm học hoặc học kỳ");
+                setIsLoading(false);
+                return;
+            }
+
+            const res = await fetch("http://localhost:3000/giang-day/len-ke-hoach-tao-lhp", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${accessToken}`,
+                },
+                body: JSON.stringify({
+                    maNamHoc: selectedNamHocData.maNamHoc,
+                    hocKy: selectedHocKyData.hocKy,
+                }),
+            });
+
+            if (res.ok) {
+                // Xử lý tải file Excel
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = `thong-ke-lhp-de-xuat-${selectedNamHocData.maNamHoc}-HK${selectedHocKyData.hocKy}.xlsx`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+
+                showAlert("success", "Thành công", "Đã xuất file thống kê lớp học phần đề xuất");
+                handleClose();
+            } else {
+                const err = await res.json();
+                showAlert("error", "Lỗi", err.message || "Không thể xuất thống kê");
+            }
+        } catch (err) {
+            console.error("Lỗi xuất thống kê LHP đề xuất:", err);
+            showAlert("error", "Lỗi", "Có lỗi xảy ra khi xuất thống kê");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <Modal isOpen={isOpen} onClose={handleClose} className="max-w-lg">
+            <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
+                {/* Header */}
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-100 text-brand-600 dark:bg-brand-900/30 dark:text-brand-400">
+                        <FontAwesomeIcon icon={faChartBar} className="text-xl" />
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-semibold text-gray-800 dark:text-white/90">
+                            Xuất thống kê LHP đề xuất
+                        </h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                            Tạo danh sách lớp học phần dự kiến
+                        </p>
+                    </div>
+                </div>
+
+                {/* Thông tin hướng dẫn */}
+                <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <div className="flex gap-3">
+                        <FontAwesomeIcon
+                            icon={faCircleInfo}
+                            className="text-blue-500 dark:text-blue-400 mt-0.5 flex-shrink-0"
+                        />
+                        <div className="text-sm text-blue-700 dark:text-blue-300">
+                            <p className="font-medium mb-1">Hướng dẫn sử dụng: </p>
+                            <ul className="list-disc list-inside space-y-1 text-blue-600 dark:text-blue-400">
+                                <li>Chọn năm học và học kỳ cần xuất thống kê</li>
+                                <li>Hệ thống sẽ tạo file Excel chứa danh sách LHP đề xuất</li>
+                                <li>File có thể dùng để import tạo LHP hàng loạt</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Form chọn năm học và học kỳ */}
+                <div className="space-y-4 mb-6">
+                    {/* Năm học */}
+                    <div>
+                        <Label className="block mb-2">
+                            Năm học <span className="text-red-500">*</span>
+                        </Label>
+                        <SearchableSelect
+                            options={namHocOptions.map((nh) => ({
+                                value: nh.id.toString(),
+                                label: nh.maNamHoc,
+                                secondary: nh.tenNamHoc,
+                            }))}
+                            placeholder="Chọn năm học"
+                            onChange={(value) => {
+                                setSelectedNamHocId(value);
+                                setSelectedHocKy(""); // Reset học kỳ khi đổi năm học
+                                setErrors(prev => ({ ...prev, namHoc: false }));
+                            }}
+                            defaultValue={selectedNamHocId}
+                            showSecondary={true}
+                            maxDisplayOptions={10}
+                            searchPlaceholder="Tìm năm học..."
+                        />
+                        {errors.namHoc && (
+                            <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
+                                <FontAwesomeIcon icon={faTriangleExclamation} className="text-xs" />
+                                Vui lòng chọn năm học
+                            </p>
+                        )}
+                    </div>
+
+                    {/* Học kỳ */}
+                    <div>
+                        <Label className="block mb-2">
+                            Học kỳ <span className="text-red-500">*</span>
+                        </Label>
+                        <SearchableSelect
+                            options={hocKyOptions.map((hk) => ({
+                                value: hk.id.toString(),
+                                label: `Học kỳ ${hk.hocKy}`,
+                                secondary: `${new Date(hk.ngayBatDau).toLocaleDateString("vi-VN")} - ${new Date(hk.ngayKetThuc).toLocaleDateString("vi-VN")}`,
+                            }))}
+                            placeholder={selectedNamHocId ? "Chọn học kỳ" : "Vui lòng chọn năm học trước"}
+                            onChange={(value) => {
+                                setSelectedHocKy(value);
+                                setErrors(prev => ({ ...prev, hocKy: false }));
+                            }}
+                            defaultValue={selectedHocKy}
+                            showSecondary={true}
+                            maxDisplayOptions={10}
+                            searchPlaceholder="Tìm học kỳ..."
+                            disabled={!selectedNamHocId}
+                        />
+                        {errors.hocKy && (
+                            <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
+                                <FontAwesomeIcon icon={faTriangleExclamation} className="text-xs" />
+                                Vui lòng chọn học kỳ
+                            </p>
+                        )}
+                    </div>
+                </div>
+
+                {/* Cảnh báo */}
+                <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                    <div className="flex gap-3">
+                        <FontAwesomeIcon
+                            icon={faTriangleExclamation}
+                            className="text-amber-500 dark:text-amber-400 mt-0.5 flex-shrink-0"
+                        />
+                        <div className="text-sm text-amber-700 dark:text-amber-300">
+                            <p className="font-medium">Lưu ý:</p>
+                            <p className="text-amber-600 dark:text-amber-400">
+                                Thống kê được tạo dựa trên chương trình đào tạo và số lượng sinh viên hiện tại.
+                                Vui lòng kiểm tra kỹ trước khi sử dụng.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Buttons */}
+                <div className="flex justify-end gap-3">
+                    <Button variant="outline" onClick={handleClose} disabled={isLoading}>
+                        Hủy
+                    </Button>
+                    <Button
+                        onClick={handleSubmit}
+                        disabled={isLoading}
+                        startIcon={
+                            isLoading ? (
+                                <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
+                            ) : (
+                                <FontAwesomeIcon icon={faDownload} />
+                            )
+                        }
+                    >
+                        {isLoading ? "Đang xuất..." : "Xuất thống kê"}
+                    </Button>
+                </div>
+            </div>
+        </Modal>
+    );
+};
+
+// ==================== MODAL NHẬP LHP TỪ EXCEL ====================
+interface ImportLHPExcelModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onSuccess: () => void;
+    showAlert: (variant: "success" | "error" | "warning" | "info", title: string, message: string) => void;
+}
+
+interface ImportLHPResult {
+    row: number;
+    maLopHocPhan: string;
+    status: "success" | "failed";
+    message: string;
+    soSinhVienDaDangKy?: number;
+}
+
+const ImportLHPExcelModal: React.FC<ImportLHPExcelModalProps> = ({
+    isOpen,
+    onClose,
+    onSuccess,
+    showAlert,
+}) => {
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [fileError, setFileError] = useState<string>("");
+    const [isUploading, setIsUploading] = useState(false);
+    const [importResult, setImportResult] = useState<{
+        summary: { success: number; failed: number; total: number };
+        details: ImportLHPResult[];
+    } | null>(null);
+
+    const onDrop = (acceptedFiles: File[], rejectedFiles: any[]) => {
+        setFileError("");
+        setImportResult(null);
+
+        if (rejectedFiles.length > 0) {
+            setFileError("Chỉ chấp nhận file Excel (.xlsx)");
+            return;
+        }
+
+        if (acceptedFiles.length > 0) {
+            const file = acceptedFiles[0];
+            if (!file.name.endsWith('.xlsx')) {
+                setFileError("Chỉ chấp nhận file Excel (.xlsx)");
+                return;
+            }
+            setSelectedFile(file);
+        }
+    };
+
+    const { getRootProps, getInputProps, isDragActive } = useDropzone({
+        onDrop,
+        accept: {
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
+        },
+        maxFiles: 1,
+        multiple: false,
+    });
+
+    const handleDownloadTemplate = () => {
+        const templateUrl = "/templates/mau-nhap-lop-hoc-phan.xlsx";
+        const link = document.createElement("a");
+        link.href = templateUrl;
+        link.download = "mau-nhap-lop-hoc-phan.xlsx";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const handleUpload = async () => {
+        if (!selectedFile) {
+            setFileError("Vui lòng chọn file Excel");
+            return;
+        }
+
+        setIsUploading(true);
+        setImportResult(null);
+
+        try {
+            const accessToken = getCookie("access_token");
+            const formData = new FormData();
+            formData.append("file", selectedFile);
+
+            const res = await fetch(
+                `http://localhost:3000/giang-day/lop-hoc-phan/import-tu-excel`,
+                {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                    },
+                    body: formData,
+                }
+            );
+
+            const data = await res.json();
+            console.log("Response nhập LHP Excel:", data);
+
+            if (res.ok) {
+                const { summary, details } = data;
+
+                setImportResult({ summary, details });
+
+                if (summary.failed === 0) {
+                    showAlert(
+                        "success",
+                        "Thành công",
+                        `Đã tạo ${summary.success} lớp học phần từ file Excel`
+                    );
+                } else if (summary.success > 0) {
+                    showAlert(
+                        "warning",
+                        "Hoàn tất với một số lỗi",
+                        `Thành công: ${summary.success} | Thất bại: ${summary.failed}`
+                    );
+                } else {
+                    showAlert(
+                        "error",
+                        "Thất bại",
+                        `Không thể tạo lớp học phần.  ${summary.failed} lỗi. `
+                    );
+                }
+
+                onSuccess();
+            } else {
+                showAlert("error", "Lỗi", data.message || "Nhập lớp học phần thất bại");
+            }
+        } catch (err) {
+            console.error("Lỗi nhập LHP Excel:", err);
+            showAlert("error", "Lỗi", "Có lỗi xảy ra khi nhập lớp học phần");
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    const handleClose = () => {
+        setSelectedFile(null);
+        setFileError("");
+        setImportResult(null);
+        onClose();
+    };
+
+    const removeFile = () => {
+        setSelectedFile(null);
+        setFileError("");
+        setImportResult(null);
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <Modal isOpen={isOpen} onClose={handleClose} className="max-w-5xl">
+            <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
+                {/* Header */}
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400">
+                        <FontAwesomeIcon icon={faFileImport} className="text-xl" />
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-semibold text-gray-800 dark:text-white/90">
+                            Nhập Lớp Học Phần từ Excel
+                        </h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                            Tạo hàng loạt lớp học phần từ file Excel
+                        </p>
+                    </div>
+                </div>
+
+                {/* Thông tin hướng dẫn */}
+                <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <div className="flex gap-3">
+                        <FontAwesomeIcon
+                            icon={faCircleInfo}
+                            className="text-blue-500 dark:text-blue-400 mt-0.5 flex-shrink-0"
+                        />
+                        <div className="text-sm text-blue-700 dark:text-blue-300">
+                            <p className="font-medium mb-1">Hướng dẫn: </p>
+                            <ul className="list-disc list-inside space-y-1 text-blue-600 dark:text-blue-400">
+                                <li>Tải file mẫu và điền đầy đủ thông tin</li>
+                                <li>File phải có định dạng .xlsx</li>
+                                <li>Hệ thống sẽ tự động tạo LHP và thêm sinh viên</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Button tải file mẫu */}
+                <div className="mb-6">
+                    <Button
+                        variant="outline"
+                        onClick={handleDownloadTemplate}
+                        startIcon={<FontAwesomeIcon icon={faDownload} />}
+                        className="w-full"
+                    >
+                        Tải file Excel mẫu nhập lớp học phần
+                    </Button>
+                </div>
+
+                {/* Dropzone */}
+                <div className="mb-6">
+                    <Label className="mb-2 block">Chọn file Excel danh sách lớp học phần</Label>
+                    <div
+                        className={`transition border-2 border-dashed cursor-pointer rounded-xl 
+                            ${fileError ? 'border-red-500' : 'border-gray-300 dark:border-gray-700'}
+                            ${isDragActive ? 'border-brand-500 bg-gray-100 dark:bg-gray-800' : 'hover:border-brand-500 dark:hover:border-brand-500'}
+                        `}
+                    >
+                        <div
+                            {...getRootProps()}
+                            className={`rounded-xl p-7 lg:p-10
+                                ${isDragActive
+                                    ? "bg-gray-100 dark:bg-gray-800"
+                                    : "bg-gray-50 dark:bg-gray-900"
+                                }
+                            `}
+                        >
+                            <input {...getInputProps()} />
+
+                            <div className="flex flex-col items-center">
+                                <div className="mb-4 flex justify-center">
+                                    <div className={`flex h-16 w-16 items-center justify-center rounded-full 
+                                        ${selectedFile
+                                            ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+                                            : 'bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-400'
+                                        }`}
+                                    >
+                                        <FontAwesomeIcon
+                                            icon={selectedFile ? faFileExcel : faCloudArrowUp}
+                                            className="text-2xl"
+                                        />
+                                    </div>
+                                </div>
+
+                                {selectedFile ? (
+                                    <>
+                                        <p className="mb-2 font-medium text-gray-800 dark:text-white/90">
+                                            {selectedFile.name}
+                                        </p>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                                            {(selectedFile.size / 1024).toFixed(2)} KB
+                                        </p>
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                removeFile();
+                                            }}
+                                            className="mt-3 text-sm text-red-500 hover: text-red-600 underline"
+                                        >
+                                            Xóa file
+                                        </button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <h4 className="mb-2 font-semibold text-gray-800 dark: text-white/90">
+                                            {isDragActive ? "Thả file vào đây" : "Kéo & thả file vào đây"}
+                                        </h4>
+                                        <p className="text-center text-sm text-gray-500 dark:text-gray-400 mb-3">
+                                            Chỉ chấp nhận file Excel (.xlsx)
+                                        </p>
+                                        <span className="font-medium underline text-sm text-brand-500">
+                                            Chọn file
+                                        </span>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                    {fileError && (
+                        <p className="mt-2 text-sm text-red-500 flex items-center gap-1">
+                            <FontAwesomeIcon icon={faTriangleExclamation} className="text-xs" />
+                            {fileError}
+                        </p>
+                    )}
+                </div>
+
+                {/* Cảnh báo */}
+                <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                    <div className="flex gap-3">
+                        <FontAwesomeIcon
+                            icon={faTriangleExclamation}
+                            className="text-amber-500 dark:text-amber-400 mt-0.5 flex-shrink-0"
+                        />
+                        <div className="text-sm text-amber-700 dark:text-amber-300">
+                            <p className="font-medium">Lưu ý quan trọng:</p>
+                            <ul className="list-disc list-inside text-amber-600 dark:text-amber-400 mt-1 space-y-1">
+                                <li>Đảm bảo mã môn học, giảng viên, ngành, niên khóa đã tồn tại</li>
+                                <li>Hệ thống sẽ bỏ qua các dòng có lỗi và tiếp tục xử lý</li>
+                                <li>Kiểm tra kỹ dữ liệu trước khi import</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Kết quả import */}
+                {importResult && (
+                    <div className="mb-6">
+                        {/* Summary */}
+                        <div className="grid grid-cols-3 gap-4 mb-4">
+                            <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg text-center">
+                                <p className="text-2xl font-bold text-gray-800 dark:text-white">
+                                    {importResult.summary.total}
+                                </p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">Tổng số</p>
+                            </div>
+                            <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg text-center">
+                                <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                                    {importResult.summary.success}
+                                </p>
+                                <p className="text-sm text-green-600 dark:text-green-400">Thành công</p>
+                            </div>
+                            <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg text-center">
+                                <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+                                    {importResult.summary.failed}
+                                </p>
+                                <p className="text-sm text-red-600 dark:text-red-400">Thất bại</p>
+                            </div>
+                        </div>
+
+                        {/* Chi tiết */}
+                        <div className="max-h-60 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg">
+                            <table className="w-full text-sm">
+                                <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
+                                    <tr>
+                                        <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Dòng</th>
+                                        <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Mã LHP</th>
+                                        <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Trạng thái</th>
+                                        <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-400">Chi tiết</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                                    {importResult.details.map((item, index) => (
+                                        <tr key={index} className={item.status === 'failed' ? 'bg-red-50 dark:bg-red-900/10' : ''}>
+                                            <td className="px-3 py-2 text-gray-800 dark:text-white">{item.row}</td>
+                                            <td className="px-3 py-2 text-gray-800 dark:text-white font-mono text-xs">
+                                                {item.maLopHocPhan}
+                                            </td>
+                                            <td className="px-3 py-2">
+                                                {item.status === 'success' ? (
+                                                    <span className="inline-flex items-center gap-1 text-green-600 dark:text-green-400">
+                                                        <FontAwesomeIcon icon={faCheckCircle} className="text-xs" />
+                                                        Thành công
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center gap-1 text-red-600 dark:text-red-400">
+                                                        <FontAwesomeIcon icon={faTimesCircle} className="text-xs" />
+                                                        Thất bại
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="px-3 py-2 text-gray-600 dark:text-gray-400 text-xs">
+                                                {item.message}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
+                {/* Loading Overlay */}
+                {isUploading && (
+                    <div className="mb-6 p-6 bg-gray-50 dark:bg-gray-800 rounded-lg flex flex-col items-center justify-center">
+                        <FontAwesomeIcon
+                            icon={faSpinner}
+                            className="text-4xl text-brand-500 animate-spin mb-4"
+                        />
+                        <p className="text-gray-700 dark:text-gray-300 font-medium">
+                            Đang xử lý file Excel...
+                        </p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                            Vui lòng không đóng cửa sổ này
+                        </p>
+                    </div>
+                )}
+
+                {/* Buttons */}
+                <div className="flex justify-end gap-3">
+                    <Button variant="outline" onClick={handleClose} disabled={isUploading}>
+                        {importResult ? "Đóng" : "Hủy"}
+                    </Button>
+                    {!importResult && (
+                        <Button
+                            onClick={handleUpload}
+                            disabled={!selectedFile || isUploading}
+                            startIcon={
+                                isUploading ? (
+                                    <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
+                                ) : (
+                                    <FontAwesomeIcon icon={faFileImport} />
+                                )
+                            }
+                        >
+                            {isUploading ? "Đang xử lý..." : "Nhập lớp học phần"}
+                        </Button>
+                    )}
+                </div>
+            </div>
+        </Modal>
+    );
+};
+
 // ==================== ITEMS COUNT INFO COMPONENT ====================
 interface ItemsCountInfoProps {
     pagination: PaginationData;
@@ -915,6 +1568,9 @@ export default function QuanLyLopHocPhanPage() {
     const [nienKhoaOptions, setNienKhoaOptions] = useState<NienKhoaOption[]>([]);
     const [khoaOptions, setKhoaOptions] = useState<KhoaOption[]>([]);
     const [nganhOptions, setNganhOptions] = useState<NganhOption[]>([]);
+    // Thêm vào phần khai báo state
+    const [isThongKeLHPModalOpen, setIsThongKeLHPModalOpen] = useState(false);
+    const [isImportLHPExcelModalOpen, setIsImportLHPExcelModalOpen] = useState(false);
 
     // State để theo dõi dropdown ĐANG MỞ
     const [activeDropdownId, setActiveDropdownId] = useState<number | null>(null);
@@ -1347,14 +2003,30 @@ export default function QuanLyLopHocPhanPage() {
                             />
                         </div>
                     </div>
-                    <Button
-                        variant="primary"
-                        className="mr-1 ml-auto"
-                        onClick={() => setIsImportSinhVienExcelModalOpen(true)}
-                        startIcon={<FontAwesomeIcon icon={faFileExcel} />}
-                    >
-                        Thêm SV vào LHP
-                    </Button>
+                    {/* Thay thế phần này trong JSX */}
+                    <div className="flex gap-2 mr-1 ml-auto">
+                        <Button
+                            variant="primary"
+                            onClick={() => setIsThongKeLHPModalOpen(true)}
+                            startIcon={<FontAwesomeIcon icon={faChartBar} />}
+                        >
+                            TK LHP đề xuất
+                        </Button>
+                        <Button
+                            variant="primary"
+                            onClick={() => setIsImportLHPExcelModalOpen(true)}
+                            startIcon={<FontAwesomeIcon icon={faFileImport} />}
+                        >
+                            Nhập LHP
+                        </Button>
+                        <Button
+                            variant="primary"
+                            onClick={() => setIsImportSinhVienExcelModalOpen(true)}
+                            startIcon={<FontAwesomeIcon icon={faFileExcel} />}
+                        >
+                            Thêm SV vào LHP
+                        </Button>
+                    </div>
                 </div>
 
                 {/* Khối lọc */}
@@ -1548,7 +2220,7 @@ export default function QuanLyLopHocPhanPage() {
                                                 <TableCell className="px-5 py-4 text-gray-800 dark:text-white/90">
                                                     {lhp.nganh.maNganh}
                                                 </TableCell>
-                                                <TableCell className="px-5 py-4 text-gray-800 dark: text-white/90">
+                                                <TableCell className="px-5 py-4 text-gray-800 dark:text-white/90">
                                                     {lhp.monHoc.maMonHoc}
                                                 </TableCell>
                                                 <TableCell className="px-5 py-4 text-gray-800 dark:text-white/90">
@@ -1704,6 +2376,22 @@ export default function QuanLyLopHocPhanPage() {
             <ImportSinhVienExcelModal
                 isOpen={isImportSinhVienExcelModalOpen}
                 onClose={() => setIsImportSinhVienExcelModalOpen(false)}
+                onSuccess={() => fetchLopHocPhans(currentPage, searchKeyword, filterMonHocId, filterGiangVienId, filterHocKyId, filterNienKhoaId, filterNganhId)}
+                showAlert={showAlert}
+            />
+
+            {/* Modal Thống kê LHP đề xuất */}
+            <ThongKeLHPDeXuatModal
+                isOpen={isThongKeLHPModalOpen}
+                onClose={() => setIsThongKeLHPModalOpen(false)}
+                namHocOptions={namHocOptions}
+                showAlert={showAlert}
+            />
+
+            {/* Modal Nhập LHP từ Excel */}
+            <ImportLHPExcelModal
+                isOpen={isImportLHPExcelModalOpen}
+                onClose={() => setIsImportLHPExcelModalOpen(false)}
                 onSuccess={() => fetchLopHocPhans(currentPage, searchKeyword, filterMonHocId, filterGiangVienId, filterHocKyId, filterNienKhoaId, filterNganhId)}
                 showAlert={showAlert}
             />

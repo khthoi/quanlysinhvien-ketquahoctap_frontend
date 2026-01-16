@@ -23,7 +23,7 @@ import { DropdownItem } from "@/components/ui/dropdown/DropdownItem";
 import { Dropdown } from "@/components/ui/dropdown/Dropdown";
 import { FaAngleDown } from "react-icons/fa6";
 import { useDropzone } from "react-dropzone";
-import { faCloudArrowUp, faDownload, faFileExcel } from "@fortawesome/free-solid-svg-icons";
+import { faCloudArrowUp, faDownload, faFileExcel, faUserMinus, faTriangleExclamation, faCircleInfo, } from "@fortawesome/free-solid-svg-icons";
 
 type LoaiThamGia = "CHINH_QUY" | "HOC_LAI" | "HOC_CAI_THIEN" | "HOC_BO_SUNG";
 
@@ -550,7 +550,7 @@ const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
                             className={`rounded-xl p-7 lg:p-10
                                 ${isDragActive
                                     ? "bg-gray-100 dark:bg-gray-800"
-                                    : "bg-gray-50 dark: bg-gray-900"
+                                    : "bg-gray-50 dark:bg-gray-900"
                                 }
                             `}
                         >
@@ -587,14 +587,14 @@ const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
                                                 e.stopPropagation();
                                                 removeFile();
                                             }}
-                                            className="mt-3 text-sm text-red-500 hover: text-red-600 underline"
+                                            className="mt-3 text-sm text-red-500 hover:text-red-600 underline"
                                         >
                                             Xóa file
                                         </button>
                                     </>
                                 ) : (
                                     <>
-                                        <h4 className="mb-2 font-semibold text-gray-800 dark: text-white/90">
+                                        <h4 className="mb-2 font-semibold text-gray-800 dark:text-white/90">
                                             {isDragActive ? "Thả file vào đây" : "Kéo & thả file vào đây"}
                                         </h4>
                                         <p className="text-center text-sm text-gray-500 dark:text-gray-400 mb-3">
@@ -689,6 +689,11 @@ export default function ChiTietLopHocPhanPage() {
     const [diemThanhPhan, setDiemThanhPhan] = useState("");
     const [diemThi, setDiemThi] = useState("");
     const [isImportExcelModalOpen, setIsImportExcelModalOpen] = useState(false);
+
+    // State cho modal xóa sinh viên
+    const [isDeleteSinhVienModalOpen, setIsDeleteSinhVienModalOpen] = useState(false);
+    const [deletingSinhVien, setDeletingSinhVien] = useState<SinhVienDiem | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const [errors, setErrors] = useState({
         diemQuaTrinh: "",
@@ -832,6 +837,52 @@ export default function ChiTietLopHocPhanPage() {
         }
     };
 
+    // Mở modal xóa sinh viên
+    const openDeleteSinhVienModal = (sinhVienDiem: SinhVienDiem) => {
+        setDeletingSinhVien(sinhVienDiem);
+        setIsDeleteSinhVienModalOpen(true);
+    };
+
+    // Xử lý xóa sinh viên khỏi lớp học phần
+    const handleDeleteSinhVien = async () => {
+        if (!deletingSinhVien || !lopHocPhanId) return;
+
+        setIsDeleting(true);
+
+        try {
+            const accessToken = getCookie("access_token");
+            const res = await fetch(
+                `http://localhost:3000/giang-day/lop-hoc-phan/${lopHocPhanId}/sinh-vien-dang-ky/${deletingSinhVien.sinhVien.id}`,
+                {
+                    method: "DELETE",
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                    },
+                }
+            );
+
+            setIsDeleteSinhVienModalOpen(false);
+            setDeletingSinhVien(null);
+
+            if (res.ok) {
+                showAlert(
+                    "success",
+                    "Thành công",
+                    `Đã xóa sinh viên ${deletingSinhVien.sinhVien.maSinhVien} - ${deletingSinhVien.sinhVien.hoTen} khỏi lớp học phần`
+                );
+                fetchDanhSachSinhVien(currentPage, searchKeyword);
+            } else {
+                const err = await res.json();
+                showAlert("error", "Lỗi", err.message || "Xóa sinh viên thất bại");
+            }
+        } catch (err) {
+            setIsDeleteSinhVienModalOpen(false);
+            showAlert("error", "Lỗi", "Có lỗi xảy ra khi xóa sinh viên");
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
     const openViewModal = (sinhVienDiem: SinhVienDiem) => {
         setViewingSinhVien(sinhVienDiem);
         setIsViewModalOpen(true);
@@ -868,7 +919,7 @@ export default function ChiTietLopHocPhanPage() {
                 {/* Thông tin lớp học phần */}
                 {lopHocPhanInfo && (
                     <div className="mb-6 p-6 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
-                        <h3 className="mb-4 text-lg font-semibold text-gray-800 dark: text-white/90">
+                        <h3 className="mb-4 text-lg font-semibold text-gray-800 dark:text-white/90">
                             Thông tin Lớp Học Phần
                         </h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -884,18 +935,18 @@ export default function ChiTietLopHocPhanPage() {
                             </div>
                             <div>
                                 <p className="text-sm text-gray-500 dark:text-gray-400">Giảng viên</p>
-                                <p className="font-medium text-gray-800 dark: text-white">
+                                <p className="font-medium text-gray-800 dark:text-white">
                                     {lopHocPhanInfo.maGiangVien} - {lopHocPhanInfo.giangVien}
                                 </p>
                             </div>
                             <div>
-                                <p className="text-sm text-gray-500 dark: text-gray-400">Ngành</p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">Ngành</p>
                                 <p className="font-medium text-gray-800 dark:text-white">
                                     {lopHocPhanInfo.maNganh} - {lopHocPhanInfo.tenNganh}
                                 </p>
                             </div>
                             <div>
-                                <p className="text-sm text-gray-500 dark: text-gray-400">Niên khóa</p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">Niên khóa</p>
                                 <p className="font-medium text-gray-800 dark:text-white">
                                     {lopHocPhanInfo.maNienKhoa} - {lopHocPhanInfo.tenNienKhoa}
                                 </p>
@@ -908,7 +959,7 @@ export default function ChiTietLopHocPhanPage() {
                             </div>
                             <div>
                                 <p className="text-sm text-gray-500 dark:text-gray-400">Thời gian</p>
-                                <p className="font-medium text-gray-800 dark: text-white">
+                                <p className="font-medium text-gray-800 dark:text-white">
                                     {new Date(lopHocPhanInfo.ngayBatDau).toLocaleDateString("vi-VN")} - {new Date(lopHocPhanInfo.ngayKetThuc).toLocaleDateString("vi-VN")}
                                 </p>
                             </div>
@@ -1055,6 +1106,23 @@ export default function ChiTietLopHocPhanPage() {
                                                                     <FontAwesomeIcon icon={faEdit} className="mr-2 w-4" />
                                                                     Sửa điểm
                                                                 </DropdownItem>
+
+                                                                {/* THÊM MỚI - Divider và DropdownItem Xóa sinh viên */}
+                                                                <div className="my-1 border-t border-gray-100 dark:border-gray-700" />
+
+                                                                <DropdownItem
+                                                                    tag="button"
+                                                                    onItemClick={closeDropdown}
+                                                                    onClick={() => openDeleteSinhVienModal(item)}
+                                                                    disabled={!item.chuaCoDiem}
+                                                                    className={!item.chuaCoDiem
+                                                                        ? "opacity-50 cursor-not-allowed"
+                                                                        : "text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/30"
+                                                                    }
+                                                                >
+                                                                    <FontAwesomeIcon icon={faUserMinus} className="mr-2 w-4" />
+                                                                    Xóa khỏi lớp
+                                                                </DropdownItem>
                                                             </div>
                                                         </Dropdown>
                                                     </div>
@@ -1121,6 +1189,148 @@ export default function ChiTietLopHocPhanPage() {
                 onSuccess={() => fetchDanhSachSinhVien(currentPage, searchKeyword)}
                 showAlert={showAlert}
             />
+
+            {/* Modal Xóa sinh viên khỏi lớp học phần */}
+            <Modal
+                isOpen={isDeleteSinhVienModalOpen}
+                onClose={() => {
+                    if (!isDeleting) {
+                        setIsDeleteSinhVienModalOpen(false);
+                        setDeletingSinhVien(null);
+                    }
+                }}
+                className="max-w-md"
+            >
+                <div className="p-6 sm:p-8">
+                    {/* Header với icon cảnh báo */}
+                    <div className="flex items-center gap-4 mb-6">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
+                            <FontAwesomeIcon
+                                icon={faUserMinus}
+                                className="text-2xl text-red-600 dark:text-red-400"
+                            />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-semibold text-gray-800 dark:text-white/90">
+                                Xóa sinh viên khỏi lớp
+                            </h3>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                                Hành động này không thể hoàn tác
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Thông tin sinh viên sẽ xóa */}
+                    {deletingSinhVien && (
+                        <div className="mb-6 p-4 rounded-xl border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/50">
+                            <div className="space-y-3">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm text-gray-500 dark:text-gray-400">Mã sinh viên:</span>
+                                    <span className="font-semibold text-gray-800 dark:text-white">
+                                        {deletingSinhVien.sinhVien.maSinhVien}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm text-gray-500 dark:text-gray-400">Họ tên:</span>
+                                    <span className="font-semibold text-gray-800 dark:text-white">
+                                        {deletingSinhVien.sinhVien.hoTen}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm text-gray-500 dark:text-gray-400">Lớp niên chế:</span>
+                                    <span className="font-medium text-gray-700 dark:text-gray-300">
+                                        {deletingSinhVien.sinhVien.malop}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm text-gray-500 dark:text-gray-400">Loại tham gia:</span>
+                                    <Badge variant="solid" color={getLoaiThamGiaColor(deletingSinhVien.loaiThamGia)}>
+                                        {getLoaiThamGiaLabel(deletingSinhVien.loaiThamGia)}
+                                    </Badge>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Cảnh báo */}
+                    <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800/50 dark:bg-amber-900/20">
+                        <div className="p-4">
+                            <div className="flex items-start gap-3">
+                                <div className="flex-shrink-0">
+                                    <FontAwesomeIcon
+                                        icon={faTriangleExclamation}
+                                        className="text-lg text-amber-600 dark:text-amber-400 mt-0.5"
+                                    />
+                                </div>
+                                <div className="flex-1">
+                                    <h4 className="font-semibold text-amber-800 dark:text-amber-300 mb-1 text-sm">
+                                        Lưu ý quan trọng
+                                    </h4>
+                                    <ul className="text-xs text-amber-700/80 dark:text-amber-300/70 space-y-1 list-disc list-inside">
+                                        <li>Sinh viên sẽ bị xóa hoàn toàn khỏi lớp học phần này</li>
+                                        <li>Sinh viên cần đăng ký lại nếu muốn tham gia lớp</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Thông tin về sinh viên đã có điểm */}
+                    <div className="mb-6 rounded-xl border border-blue-200 bg-blue-50 dark:border-blue-800/50 dark:bg-blue-900/20">
+                        <div className="p-4">
+                            <div className="flex items-start gap-3">
+                                <div className="flex-shrink-0">
+                                    <FontAwesomeIcon
+                                        icon={faCircleInfo}
+                                        className="text-lg text-blue-600 dark:text-blue-400 mt-0.5"
+                                    />
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-xs text-blue-700/80 dark:text-blue-300/70">
+                                        <strong>Lưu ý:</strong> Chỉ có thể xóa sinh viên chưa có điểm.
+                                        Đối với sinh viên đã có điểm, vui lòng liên hệ <strong>Phòng Đào tạo</strong> để được hỗ trợ.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-6 text-center">
+                        Chắc chắn muốn xóa sinh viên này khỏi lớp học phần?
+                    </p>
+
+                    {/* Buttons */}
+                    <div className="flex justify-end gap-3">
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setIsDeleteSinhVienModalOpen(false);
+                                setDeletingSinhVien(null);
+                            }}
+                            disabled={isDeleting}
+                        >
+                            Hủy
+                        </Button>
+                        <Button
+                            variant="primary"
+                            onClick={handleDeleteSinhVien}
+                            disabled={isDeleting}
+                        >
+                            {isDeleting ? (
+                                <>
+                                    <span className="animate-spin mr-2">⏳</span>
+                                    Đang xóa...
+                                </>
+                            ) : (
+                                <>
+                                    <FontAwesomeIcon icon={faUserMinus} className="mr-2" />
+                                    Xác nhận xóa
+                                </>
+                            )}
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 }
