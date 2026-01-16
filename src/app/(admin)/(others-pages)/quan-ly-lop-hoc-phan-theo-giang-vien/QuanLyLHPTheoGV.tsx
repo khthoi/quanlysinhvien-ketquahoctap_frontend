@@ -219,7 +219,7 @@ const ViewLopHocPhanModal: React.FC<ViewLopHocPhanModalProps> = ({
                         </div>
                         <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Số tín chỉ</p>
-                            <p className="font-medium text-gray-800 dark: text-white">{lopHocPhan.monHoc.soTinChi}</p>
+                            <p className="font-medium text-gray-800 dark:text-white">{lopHocPhan.monHoc.soTinChi}</p>
                         </div>
                         <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Ngành</p>

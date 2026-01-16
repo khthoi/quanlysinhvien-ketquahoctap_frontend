@@ -186,6 +186,7 @@ const ALLOWED_PATHS:  Record<VAI_TRO, string[]> = {
     "/quan-ly-ctdt",
     "/quan-ly-sinh-vien",
     "/quan-ly-lop-hoc-phan",
+    "/quan-ly-lop-hoc-phan-theo-giang-vien",
   ],
   GIANG_VIEN: ["/quan-ly-lop-hoc-phan-theo-giang-vien", "/profile"],
   SINH_VIEN: [], // Sinh viên không được phép truy cập

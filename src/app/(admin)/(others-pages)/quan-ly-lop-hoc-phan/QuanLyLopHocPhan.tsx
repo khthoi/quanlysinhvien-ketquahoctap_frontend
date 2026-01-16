@@ -29,12 +29,14 @@ import {
     faCloudArrowUp,
     faDownload,
     faChartBar,
-    faSpinner,         // Thêm mới
-    faCircleInfo,      // Thêm mới
-    faTriangleExclamation, // Thêm mới
-    faCheckCircle,     // Thêm mới
-    faTimesCircle,     // Thêm mới
-    faFileImport       // Thêm mới } from "@fortawesome/free-solid-svg-icons";
+    faSpinner,
+    faCircleInfo,
+    faTriangleExclamation,
+    faCheckCircle,
+    faTimesCircle,
+    faFileImport,
+    faFileArrowDown,
+    faUserXmark
 } from "@fortawesome/free-solid-svg-icons";
 import TextArea from "@/components/form/input/TextArea";
 import { DropdownItem } from "@/components/ui/dropdown/DropdownItem";
@@ -934,6 +936,7 @@ const ThongKeLHPDeXuatModal: React.FC<ThongKeLHPDeXuatModalProps> = ({
                 handleClose();
             } else {
                 const err = await res.json();
+                handleClose();
                 showAlert("error", "Lỗi", err.message || "Không thể xuất thống kê");
             }
         } catch (err) {
@@ -1487,6 +1490,439 @@ const ImportLHPExcelModal: React.FC<ImportLHPExcelModalProps> = ({
     );
 };
 
+// ==================== MODAL TẢI XUỐNG EXCEL BẢNG ĐIỂM ====================
+interface DownloadBangDiemModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    lopHocPhan: LopHocPhan | null;
+    showAlert: (variant: "success" | "error" | "warning" | "info", title: string, message: string) => void;
+}
+
+const DownloadBangDiemModal: React.FC<DownloadBangDiemModalProps> = ({
+    isOpen,
+    onClose,
+    lopHocPhan,
+    showAlert,
+}) => {
+    const [isDownloading, setIsDownloading] = useState(false);
+
+    const handleDownload = async () => {
+        if (!lopHocPhan) return;
+
+        setIsDownloading(true);
+
+        try {
+            const accessToken = getCookie("access_token");
+            const res = await fetch(
+                `http://localhost:3000/bao-cao/bang-diem-lop-hoc-phan/${lopHocPhan.id}`,
+                {
+                    method: "GET",
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                    },
+                }
+            );
+
+            if (res.ok) {
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                // Tên file theo định dạng yêu cầu
+                link.download = `Danh sach sinh vien LHP ${lopHocPhan.maLopHocPhan}.xlsx`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+
+                showAlert("success", "Thành công", `Đã tải xuống bảng điểm lớp ${lopHocPhan.maLopHocPhan}`);
+                onClose();
+            } else {
+                const err = await res.json();
+                showAlert("error", "Lỗi", err.message || "Không thể tải xuống file Excel");
+            }
+        } catch (err) {
+            console.error("Lỗi tải xuống bảng điểm:", err);
+            showAlert("error", "Lỗi", "Có lỗi xảy ra khi tải xuống file");
+        } finally {
+            setIsDownloading(false);
+        }
+    };
+
+    if (!isOpen || !lopHocPhan) return null;
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} className="max-w-3xl">
+            <div className="p-6 sm:p-8">
+                {/* Header */}
+                <div className="flex items-center gap-4 mb-6">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-brand-100 text-brand-600 dark:bg-brand-900/30 dark:text-brand-400">
+                        <FontAwesomeIcon icon={faFileArrowDown} className="text-2xl" />
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-semibold text-gray-800 dark:text-white/90">
+                            Tải xuống bảng điểm
+                        </h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                            Xuất danh sách sinh viên và điểm số
+                        </p>
+                    </div>
+                </div>
+
+                {/* Thông tin lớp học phần */}
+                <div className="mb-6 p-4 rounded-xl border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/50">
+                    <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                        Thông tin lớp học phần
+                    </h4>
+                    <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-500 dark:text-gray-400">Mã LHP:</span>
+                            <span className="font-semibold text-gray-800 dark:text-white">
+                                {lopHocPhan.maLopHocPhan}
+                            </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-500 dark:text-gray-400">Môn học:</span>
+                            <span className="font-medium text-gray-700 dark:text-gray-300">
+                                {lopHocPhan.monHoc.tenMonHoc}
+                            </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-500 dark:text-gray-400">Giảng viên:</span>
+                            <span className="font-medium text-gray-700 dark:text-gray-300">
+                                {lopHocPhan.giangVien.hoTen}
+                            </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-500 dark:text-gray-400">Sĩ số:</span>
+                            <Badge variant="solid" color="info">
+                                {lopHocPhan.siSo} sinh viên
+                            </Badge>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Thông tin hướng dẫn */}
+                <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark: border-blue-800">
+                    <div className="flex gap-3">
+                        <FontAwesomeIcon
+                            icon={faCircleInfo}
+                            className="text-blue-500 dark:text-blue-400 mt-0.5 flex-shrink-0"
+                        />
+                        <div className="text-sm text-blue-700 dark:text-blue-300">
+                            <p className="font-medium mb-1">File Excel sẽ bao gồm:</p>
+                            <ul className="list-disc list-inside space-y-1 text-blue-600 dark:text-blue-400">
+                                <li>Danh sách sinh viên đăng ký lớp học phần</li>
+                                <li>Điểm quá trình, điểm thành phần, điểm thi</li>
+                                <li>Điểm tổng kết và điểm chữ</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Tên file sẽ tải */}
+                <div className="mb-6 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                    <div className="flex items-center gap-2">
+                        <FontAwesomeIcon icon={faFileExcel} className="text-green-600 dark:text-green-400" />
+                        <span className="text-sm text-gray-600 dark:text-gray-400">Tên file:</span>
+                        <span className="text-sm font-medium text-gray-800 dark:text-white">
+                            Danh sach sinh vien LHP {lopHocPhan.maLopHocPhan}. xlsx
+                        </span>
+                    </div>
+                </div>
+
+                {/* Loading state */}
+                {isDownloading && (
+                    <div className="mb-6 p-4 bg-brand-50 dark:bg-brand-900/20 rounded-lg flex items-center justify-center gap-3">
+                        <FontAwesomeIcon
+                            icon={faSpinner}
+                            className="text-xl text-brand-500 animate-spin"
+                        />
+                        <span className="text-brand-700 dark:text-brand-300 font-medium">
+                            Đang tạo file Excel...
+                        </span>
+                    </div>
+                )}
+
+                {/* Buttons */}
+                <div className="flex justify-end gap-3">
+                    <Button variant="outline" onClick={onClose} disabled={isDownloading}>
+                        Hủy
+                    </Button>
+                    <Button
+                        onClick={handleDownload}
+                        disabled={isDownloading}
+                        startIcon={
+                            isDownloading ? (
+                                <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
+                            ) : (
+                                <FontAwesomeIcon icon={faDownload} />
+                            )
+                        }
+                    >
+                        {isDownloading ? "Đang tải..." : "Tải xuống"}
+                    </Button>
+                </div>
+            </div>
+        </Modal>
+    );
+};
+
+// ==================== MODAL THỐNG KÊ SINH VIÊN TRƯỢT MÔN ====================
+interface ThongKeSVTruotMonModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    namHocOptions: NamHocOption[];
+    showAlert: (variant: "success" | "error" | "warning" | "info", title: string, message: string) => void;
+}
+
+const ThongKeSVTruotMonModal: React.FC<ThongKeSVTruotMonModalProps> = ({
+    isOpen,
+    onClose,
+    namHocOptions,
+    showAlert,
+}) => {
+    const [selectedNamHocId, setSelectedNamHocId] = useState("");
+    const [selectedHocKy, setSelectedHocKy] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
+    const [errors, setErrors] = useState({ namHoc: false, hocKy: false });
+
+    // Lấy danh sách học kỳ từ năm học đã chọn
+    const selectedNamHoc = namHocOptions.find(nh => nh.id.toString() === selectedNamHocId);
+    const hocKyOptions = selectedNamHoc?.hocKys || [];
+
+    const handleClose = () => {
+        setSelectedNamHocId("");
+        setSelectedHocKy("");
+        setErrors({ namHoc: false, hocKy: false });
+        onClose();
+    };
+
+    const validateForm = () => {
+        const newErrors = {
+            namHoc: !selectedNamHocId,
+            hocKy: !selectedHocKy,
+        };
+        setErrors(newErrors);
+        return !newErrors.namHoc && !newErrors.hocKy;
+    };
+
+    const handleSubmit = async () => {
+        if (!validateForm()) return;
+
+        setIsLoading(true);
+
+        try {
+            const accessToken = getCookie("access_token");
+            const selectedNamHocData = namHocOptions.find(nh => nh.id.toString() === selectedNamHocId);
+            const selectedHocKyData = hocKyOptions.find(hk => hk.id.toString() === selectedHocKy);
+
+            if (!selectedNamHocData || !selectedHocKyData) {
+                showAlert("error", "Lỗi", "Không tìm thấy thông tin năm học hoặc học kỳ");
+                setIsLoading(false);
+                return;
+            }
+
+            const res = await fetch("http://localhost:3000/bao-cao/de-xuat-hoc-lai", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${accessToken}`,
+                },
+                body: JSON.stringify({
+                    maNamHoc: selectedNamHocData.maNamHoc,
+                    hocKy: selectedHocKyData.hocKy,
+                }),
+            });
+
+            if (res.ok) {
+                // Xử lý tải file Excel
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = `thong-ke-sv-truot-mon-${selectedNamHocData.maNamHoc}-HK${selectedHocKyData.hocKy}.xlsx`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+
+                showAlert("success", "Thành công", "Đã xuất file thống kê sinh viên trượt môn và đề xuất học lại");
+                handleClose();
+            } else {
+                const err = await res.json();
+                handleClose();
+                showAlert("error", "Lỗi", err.message || "Không thể xuất thống kê");
+            }
+        } catch (err) {
+            console.error("Lỗi xuất thống kê SV trượt môn:", err);
+            showAlert("error", "Lỗi", "Có lỗi xảy ra khi xuất thống kê");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <Modal isOpen={isOpen} onClose={handleClose} className="max-w-2xl">
+            <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
+                {/* Header */}
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">
+                        <FontAwesomeIcon icon={faUserXmark} className="text-xl" />
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-semibold text-gray-800 dark:text-white/90">
+                            Thống kê SV trượt môn
+                        </h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                            Xuất danh sách sinh viên trượt và đề xuất học lại
+                        </p>
+                    </div>
+                </div>
+
+                {/* Thông tin hướng dẫn */}
+                <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <div className="flex gap-3">
+                        <FontAwesomeIcon
+                            icon={faCircleInfo}
+                            className="text-blue-500 dark:text-blue-400 mt-0.5 flex-shrink-0"
+                        />
+                        <div className="text-sm text-blue-700 dark:text-blue-300">
+                            <p className="font-medium mb-1">Hướng dẫn sử dụng:</p>
+                            <ul className="list-disc list-inside space-y-1 text-blue-600 dark:text-blue-400">
+                                <li>Chọn năm học và học kỳ cần xuất thống kê</li>
+                                <li>Hệ thống sẽ tạo danh sách SV có điểm không đạt</li>
+                                <li>File Excel bao gồm đề xuất môn học cần học lại</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Form chọn năm học và học kỳ */}
+                <div className="space-y-4 mb-6">
+                    {/* Năm h��c */}
+                    <div>
+                        <Label className="block mb-2">
+                            Năm học <span className="text-red-500">*</span>
+                        </Label>
+                        <SearchableSelect
+                            options={namHocOptions.map((nh) => ({
+                                value: nh.id.toString(),
+                                label: nh.maNamHoc,
+                                secondary: nh.tenNamHoc,
+                            }))}
+                            placeholder="Chọn năm học"
+                            onChange={(value) => {
+                                setSelectedNamHocId(value);
+                                setSelectedHocKy(""); // Reset học kỳ khi đổi năm học
+                                setErrors(prev => ({ ...prev, namHoc: false }));
+                            }}
+                            defaultValue={selectedNamHocId}
+                            showSecondary={true}
+                            maxDisplayOptions={10}
+                            searchPlaceholder="Tìm năm học..."
+                        />
+                        {errors.namHoc && (
+                            <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
+                                <FontAwesomeIcon icon={faTriangleExclamation} className="text-xs" />
+                                Vui lòng chọn năm học
+                            </p>
+                        )}
+                    </div>
+
+                    {/* Học kỳ */}
+                    <div>
+                        <Label className="block mb-2">
+                            Học kỳ <span className="text-red-500">*</span>
+                        </Label>
+                        <SearchableSelect
+                            options={hocKyOptions.map((hk) => ({
+                                value: hk.id.toString(),
+                                label: `Học kỳ ${hk.hocKy}`,
+                                secondary: `${new Date(hk.ngayBatDau).toLocaleDateString("vi-VN")} - ${new Date(hk.ngayKetThuc).toLocaleDateString("vi-VN")}`,
+                            }))}
+                            placeholder={selectedNamHocId ? "Chọn học kỳ" : "Vui lòng chọn năm học trước"}
+                            onChange={(value) => {
+                                setSelectedHocKy(value);
+                                setErrors(prev => ({ ...prev, hocKy: false }));
+                            }}
+                            defaultValue={selectedHocKy}
+                            showSecondary={true}
+                            maxDisplayOptions={10}
+                            searchPlaceholder="Tìm học kỳ..."
+                            disabled={!selectedNamHocId}
+                        />
+                        {errors.hocKy && (
+                            <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
+                                <FontAwesomeIcon icon={faTriangleExclamation} className="text-xs" />
+                                Vui lòng chọn học kỳ
+                            </p>
+                        )}
+                    </div>
+                </div>
+
+                {/* Thông tin về nội dung file */}
+                <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <div className="flex gap-3">
+                        <FontAwesomeIcon
+                            icon={faFileExcel}
+                            className="text-green-500 dark:text-green-400 mt-0.5 flex-shrink-0"
+                        />
+                        <div className="text-sm text-gray-700 dark:text-gray-300">
+                            <p className="font-medium mb-1">File Excel sẽ bao gồm:</p>
+                            <ul className="list-disc list-inside space-y-1 text-gray-600 dark:text-gray-400">
+                                <li>Danh sách sinh viên có điểm F hoặc không đạt</li>
+                                <li>Thông tin môn học trượt của từng sinh viên</li>
+                                <li>Đề xuất lớp học phần để đăng ký học lại</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Cảnh báo */}
+                <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                    <div className="flex gap-3">
+                        <FontAwesomeIcon
+                            icon={faTriangleExclamation}
+                            className="text-amber-500 dark:text-amber-400 mt-0.5 flex-shrink-0"
+                        />
+                        <div className="text-sm text-amber-700 dark:text-amber-300">
+                            <p className="font-medium">Lưu ý quan trọng:</p>
+                            <ul className="list-disc list-inside text-amber-600 dark:text-amber-400 mt-1 space-y-1">
+                                <li>Chỉ thống kê các lớp học phần đã kết thúc và có điểm</li>
+                                <li>Sinh viên có điểm dưới 4.0 hoặc điểm chữ F được xem là trượt</li>
+                                <li>Dữ liệu dựa trên kết quả học tập chính thức</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Buttons */}
+                <div className="flex justify-end gap-3">
+                    <Button variant="outline" onClick={handleClose} disabled={isLoading}>
+                        Hủy
+                    </Button>
+                    <Button
+                        onClick={handleSubmit}
+                        disabled={isLoading}
+                        startIcon={
+                            isLoading ? (
+                                <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
+                            ) : (
+                                <FontAwesomeIcon icon={faDownload} />
+                            )
+                        }
+                    >
+                        {isLoading ? "Đang xuất..." : "Xuất thống kê"}
+                    </Button>
+                </div>
+            </div>
+        </Modal>
+    );
+};
+
 // ==================== ITEMS COUNT INFO COMPONENT ====================
 interface ItemsCountInfoProps {
     pagination: PaginationData;
@@ -1571,6 +2007,11 @@ export default function QuanLyLopHocPhanPage() {
     // Thêm vào phần khai báo state
     const [isThongKeLHPModalOpen, setIsThongKeLHPModalOpen] = useState(false);
     const [isImportLHPExcelModalOpen, setIsImportLHPExcelModalOpen] = useState(false);
+
+    // Thêm sau dòng:  const [isImportLHPExcelModalOpen, setIsImportLHPExcelModalOpen] = useState(false);
+    const [isDownloadBangDiemModalOpen, setIsDownloadBangDiemModalOpen] = useState(false);
+    const [downloadingLopHocPhan, setDownloadingLopHocPhan] = useState<LopHocPhan | null>(null);
+    const [isThongKeSVTruotMonModalOpen, setIsThongKeSVTruotMonModalOpen] = useState(false);
 
     // State để theo dõi dropdown ĐANG MỞ
     const [activeDropdownId, setActiveDropdownId] = useState<number | null>(null);
@@ -1931,6 +2372,11 @@ export default function QuanLyLopHocPhanPage() {
         setIsViewModalOpen(true);
     };
 
+    const openDownloadModal = (lopHocPhan: LopHocPhan) => {
+        setDownloadingLopHocPhan(lopHocPhan);
+        setIsDownloadBangDiemModalOpen(true);
+    };
+
     // Lọc học kỳ theo năm học đã chọn cho filter
     const selectedFilterNamHoc = namHocOptions.find(nh => nh.id.toString() === filterNamHocId);
     const filterHocKyOptions = selectedFilterNamHoc?.hocKys || [];
@@ -2011,6 +2457,13 @@ export default function QuanLyLopHocPhanPage() {
                             startIcon={<FontAwesomeIcon icon={faChartBar} />}
                         >
                             TK LHP đề xuất
+                        </Button>
+                        <Button
+                            variant="primary"
+                            onClick={() => setIsThongKeSVTruotMonModalOpen(true)}
+                            startIcon={<FontAwesomeIcon icon={faUserXmark} />}
+                        >
+                            TK SV Trượt môn
                         </Button>
                         <Button
                             variant="primary"
@@ -2278,6 +2731,15 @@ export default function QuanLyLopHocPhanPage() {
                                                                     Chi tiết lớp
                                                                 </DropdownItem>
 
+                                                                <DropdownItem
+                                                                    tag="button"
+                                                                    onItemClick={closeDropdown}
+                                                                    onClick={() => openDownloadModal(lhp)}
+                                                                >
+                                                                    <FontAwesomeIcon icon={faFileArrowDown} className="mr-2 w-4" />
+                                                                    Tải xuống Excel
+                                                                </DropdownItem>
+
                                                                 <div className="my-1 border-t border-gray-100 dark:border-gray-700" />
 
                                                                 <DropdownItem
@@ -2393,6 +2855,25 @@ export default function QuanLyLopHocPhanPage() {
                 isOpen={isImportLHPExcelModalOpen}
                 onClose={() => setIsImportLHPExcelModalOpen(false)}
                 onSuccess={() => fetchLopHocPhans(currentPage, searchKeyword, filterMonHocId, filterGiangVienId, filterHocKyId, filterNienKhoaId, filterNganhId)}
+                showAlert={showAlert}
+            />
+
+            {/* Modal Tải xuống bảng điểm */}
+            <DownloadBangDiemModal
+                isOpen={isDownloadBangDiemModalOpen}
+                onClose={() => {
+                    setIsDownloadBangDiemModalOpen(false);
+                    setDownloadingLopHocPhan(null);
+                }}
+                lopHocPhan={downloadingLopHocPhan}
+                showAlert={showAlert}
+            />
+
+            {/* Modal Thống kê SV Trượt môn */}
+            <ThongKeSVTruotMonModal
+                isOpen={isThongKeSVTruotMonModalOpen}
+                onClose={() => setIsThongKeSVTruotMonModalOpen(false)}
+                namHocOptions={namHocOptions}
                 showAlert={showAlert}
             />
         </div>

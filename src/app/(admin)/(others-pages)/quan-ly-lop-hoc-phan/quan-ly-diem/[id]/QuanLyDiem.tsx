@@ -18,12 +18,10 @@ import Input from "@/components/form/input/InputField";
 import Label from "@/components/form/Label";
 import Badge from "@/components/ui/badge/Badge";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faMagnifyingGlass, faEye, faEdit } from "@fortawesome/free-solid-svg-icons";
 import { DropdownItem } from "@/components/ui/dropdown/DropdownItem";
 import { Dropdown } from "@/components/ui/dropdown/Dropdown";
 import { FaAngleDown } from "react-icons/fa6";
-import { useDropzone } from "react-dropzone";
-import { faCloudArrowUp, faDownload, faFileExcel, faUserMinus, faTriangleExclamation, faCircleInfo, } from "@fortawesome/free-solid-svg-icons";
+import { faMagnifyingGlass, faEye, faUserMinus, faTriangleExclamation, faCircleInfo } from "@fortawesome/free-solid-svg-icons";
 
 type LoaiThamGia = "CHINH_QUY" | "HOC_LAI" | "HOC_CAI_THIEN" | "HOC_BO_SUNG";
 
@@ -270,367 +268,6 @@ const ViewSinhVienModal: React.FC<ViewSinhVienModalProps> = ({
     );
 };
 
-// ==================== MODAL SỬA ĐIỂM ====================
-interface EditDiemModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-    sinhVienDiem: SinhVienDiem | null;
-    diemQuaTrinh: string;
-    diemThanhPhan: string;
-    diemThi: string;
-    onDiemQuaTrinhChange: (value: string) => void;
-    onDiemThanhPhanChange: (value: string) => void;
-    onDiemThiChange: (value: string) => void;
-    onSubmit: () => void;
-    errors: {
-        diemQuaTrinh: string;
-        diemThanhPhan: string;
-        diemThi: string;
-    };
-}
-
-const EditDiemModal: React.FC<EditDiemModalProps> = ({
-    isOpen,
-    onClose,
-    sinhVienDiem,
-    diemQuaTrinh,
-    diemThanhPhan,
-    diemThi,
-    onDiemQuaTrinhChange,
-    onDiemThanhPhanChange,
-    onDiemThiChange,
-    onSubmit,
-    errors,
-}) => {
-    if (!isOpen || !sinhVienDiem) return null;
-
-    const { sinhVien } = sinhVienDiem;
-
-    return (
-        <Modal isOpen={isOpen} onClose={onClose} className="max-w-lg">
-            <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
-                <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
-                    Sửa điểm sinh viên
-                </h3>
-
-                {/* Thông tin sinh viên */}
-                <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <p className="text-sm text-gray-500 dark: text-gray-400">Mã sinh viên</p>
-                            <p className="font-medium text-gray-800 dark:text-white">{sinhVien.maSinhVien}</p>
-                        </div>
-                        <div>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Họ tên</p>
-                            <p className="font-medium text-gray-800 dark:text-white">{sinhVien.hoTen}</p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Form nhập điểm */}
-                <div className="space-y-4">
-                    <div>
-                        <Label>Điểm quá trình</Label>
-                        <Input
-                            type="number"
-                            step={0.01}
-                            min="0"
-                            max="10"
-                            defaultValue={diemQuaTrinh}
-                            onChange={(e) => onDiemQuaTrinhChange(e.target.value)}
-                            error={!!errors.diemQuaTrinh}
-                            hint={errors.diemQuaTrinh}
-                            placeholder="Nhập điểm từ 0 đến 10"
-                        />
-                    </div>
-                    <div>
-                        <Label>Điểm thành phần</Label>
-                        <Input
-                            type="number"
-                            step={0.01}
-                            min="0"
-                            max="10"
-                            defaultValue={diemThanhPhan}
-                            onChange={(e) => onDiemThanhPhanChange(e.target.value)}
-                            error={!!errors.diemThanhPhan}
-                            hint={errors.diemThanhPhan}
-                            placeholder="Nhập điểm từ 0 đến 10"
-                        />
-                    </div>
-                    <div>
-                        <Label>Điểm thi</Label>
-                        <Input
-                            type="number"
-                            step={0.01}
-                            min="0"
-                            max="10"
-                            defaultValue={diemThi}
-                            onChange={(e) => onDiemThiChange(e.target.value)}
-                            error={!!errors.diemThi}
-                            hint={errors.diemThi}
-                            placeholder="Nhập điểm từ 0 đến 10"
-                        />
-                    </div>
-                </div>
-
-                <div className="mt-8 flex justify-end gap-3">
-                    <Button variant="outline" onClick={onClose}>
-                        Hủy
-                    </Button>
-                    <Button onClick={onSubmit}>
-                        Cập nhật
-                    </Button>
-                </div>
-            </div>
-        </Modal>
-    );
-};
-
-// ==================== MODAL NHẬP ĐIỂM EXCEL ====================
-interface ImportExcelModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-    lopHocPhanId: string;
-    onSuccess: () => void;
-    showAlert: (variant: "success" | "error" | "warning" | "info", title: string, message: string) => void;
-}
-
-const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
-    isOpen,
-    onClose,
-    lopHocPhanId,
-    onSuccess,
-    showAlert,
-}) => {
-    const [selectedFile, setSelectedFile] = useState<File | null>(null);
-    const [fileError, setFileError] = useState<string>("");
-    const [isUploading, setIsUploading] = useState(false);
-
-    const onDrop = (acceptedFiles: File[], rejectedFiles: any[]) => {
-        setFileError("");
-
-        if (rejectedFiles.length > 0) {
-            setFileError("Chỉ chấp nhận file Excel (.xlsx)");
-            return;
-        }
-
-        if (acceptedFiles.length > 0) {
-            const file = acceptedFiles[0];
-            // Kiểm tra thêm extension
-            if (!file.name.endsWith('.xlsx')) {
-                setFileError("Chỉ chấp nhận file Excel (.xlsx)");
-                return;
-            }
-            setSelectedFile(file);
-        }
-    };
-
-    const { getRootProps, getInputProps, isDragActive } = useDropzone({
-        onDrop,
-        accept: {
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
-        },
-        maxFiles: 1,
-        multiple: false,
-    });
-
-    const handleDownloadTemplate = () => {
-        // Đường dẫn file mẫu - bạn có thể sửa lại sau
-        const templateUrl = "/templates/mau-nhap-diem.xlsx";
-        const link = document.createElement("a");
-        link.href = templateUrl;
-        link.download = "mau-nhap-diem.xlsx";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    };
-
-    const handleUpload = async () => {
-        if (!selectedFile) {
-            setFileError("Vui lòng chọn file Excel");
-            return;
-        }
-
-        setIsUploading(true);
-
-        try {
-            const accessToken = getCookie("access_token");
-            const formData = new FormData();
-            formData.append("file", selectedFile);
-
-            const res = await fetch(
-                `http://localhost:3000/ket-qua/nhap-diem-excel/${lopHocPhanId}`,
-                {
-                    method: "POST",
-                    headers: {
-                        Authorization: `Bearer ${accessToken}`,
-                    },
-                    body: formData,
-                }
-            );
-
-            const data = await res.json();
-            console.log("Response nhập điểm Excel:", data); // Log response
-
-            handleClose();
-
-            if (res.ok) {
-                // Kiểm tra nếu có lỗi trong response
-                if (data.errors && data.errors.length > 0) {
-                    const errorMessages = data.errors.map(
-                        (err: { row: number; maSinhVien: string; error: string }) =>
-                            `Dòng ${err.row} (${err.maSinhVien}): ${err.error}`
-                    ).join("\n");
-
-                    showAlert(
-                        "warning",
-                        "Nhập điểm hoàn tất với một số lỗi",
-                        `Thành công: ${data.success}, Thất bại: ${data.failed}\n${errorMessages}`
-                    );
-                } else {
-                    showAlert("success", "Thành công", `Nhập điểm từ Excel thành công. Đã nhập:  ${data.success} sinh viên`);
-                }
-                onSuccess();
-            } else {
-                handleClose();
-                showAlert("error", "Lỗi", data.message || "Nhập điểm thất bại");
-            }
-        } catch (err) {
-            console.error("Lỗi nhập điểm Excel:", err);
-            handleClose();
-            showAlert("error", "Lỗi", "Có lỗi xảy ra khi nhập điểm");
-        } finally {
-            setIsUploading(false);
-        }
-    };
-
-    const handleClose = () => {
-        setSelectedFile(null);
-        setFileError("");
-        onClose();
-    };
-
-    const removeFile = () => {
-        setSelectedFile(null);
-        setFileError("");
-    };
-
-    if (!isOpen) return null;
-
-    return (
-        <Modal isOpen={isOpen} onClose={handleClose} className="max-w-lg">
-            <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
-                <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
-                    Nhập điểm bằng Excel
-                </h3>
-
-                {/* Button tải file mẫu */}
-                <div className="mb-6">
-                    <Button
-                        variant="outline"
-                        onClick={handleDownloadTemplate}
-                        startIcon={<FontAwesomeIcon icon={faDownload} />}
-                        className="w-full"
-                    >
-                        Tải file Excel mẫu
-                    </Button>
-                </div>
-
-                {/* Dropzone */}
-                <div className="mb-6">
-                    <Label className="mb-2 block">Chọn file Excel nhập điểm</Label>
-                    <div
-                        className={`transition border-2 border-dashed cursor-pointer rounded-xl 
-                            ${fileError ? 'border-red-500' : 'border-gray-300 dark:border-gray-700'}
-                            ${isDragActive ? 'border-brand-500 bg-gray-100 dark:bg-gray-800' : 'hover:border-brand-500 dark:hover:border-brand-500'}
-                        `}
-                    >
-                        <div
-                            {...getRootProps()}
-                            className={`rounded-xl p-7 lg:p-10
-                                ${isDragActive
-                                    ? "bg-gray-100 dark:bg-gray-800"
-                                    : "bg-gray-50 dark:bg-gray-900"
-                                }
-                            `}
-                        >
-                            <input {...getInputProps()} />
-
-                            <div className="flex flex-col items-center">
-                                {/* Icon */}
-                                <div className="mb-4 flex justify-center">
-                                    <div className={`flex h-16 w-16 items-center justify-center rounded-full 
-                                        ${selectedFile
-                                            ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
-                                            : 'bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-400'
-                                        }`}
-                                    >
-                                        <FontAwesomeIcon
-                                            icon={selectedFile ? faFileExcel : faCloudArrowUp}
-                                            className="text-2xl"
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Text Content */}
-                                {selectedFile ? (
-                                    <>
-                                        <p className="mb-2 font-medium text-gray-800 dark:text-white/90">
-                                            {selectedFile.name}
-                                        </p>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                                            {(selectedFile.size / 1024).toFixed(2)} KB
-                                        </p>
-                                        <button
-                                            type="button"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                removeFile();
-                                            }}
-                                            className="mt-3 text-sm text-red-500 hover:text-red-600 underline"
-                                        >
-                                            Xóa file
-                                        </button>
-                                    </>
-                                ) : (
-                                    <>
-                                        <h4 className="mb-2 font-semibold text-gray-800 dark:text-white/90">
-                                            {isDragActive ? "Thả file vào đây" : "Kéo & thả file vào đây"}
-                                        </h4>
-                                        <p className="text-center text-sm text-gray-500 dark:text-gray-400 mb-3">
-                                            Chỉ chấp nhận file Excel (.xlsx)
-                                        </p>
-                                        <span className="font-medium underline text-sm text-brand-500">
-                                            Chọn file
-                                        </span>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                    {fileError && (
-                        <p className="mt-2 text-sm text-red-500">{fileError}</p>
-                    )}
-                </div>
-
-                {/* Buttons */}
-                <div className="flex justify-end gap-3">
-                    <Button variant="outline" onClick={handleClose} disabled={isUploading}>
-                        Hủy
-                    </Button>
-                    <Button
-                        onClick={handleUpload}
-                        disabled={!selectedFile || isUploading}
-                        startIcon={isUploading ? undefined : <FontAwesomeIcon icon={faFileExcel} />}
-                    >
-                        {isUploading ? "Đang xử lý..." : "Nhập điểm"}
-                    </Button>
-                </div>
-            </div>
-        </Modal>
-    );
-};
-
 // ==================== ITEMS COUNT INFO COMPONENT ====================
 interface ItemsCountInfoProps {
     pagination: PaginationData;
@@ -682,24 +319,11 @@ export default function ChiTietLopHocPhanPage() {
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [viewingSinhVien, setViewingSinhVien] = useState<SinhVienDiem | null>(null);
-    const [editingSinhVien, setEditingSinhVien] = useState<SinhVienDiem | null>(null);
-
-    // State cho form sửa điểm
-    const [diemQuaTrinh, setDiemQuaTrinh] = useState("");
-    const [diemThanhPhan, setDiemThanhPhan] = useState("");
-    const [diemThi, setDiemThi] = useState("");
-    const [isImportExcelModalOpen, setIsImportExcelModalOpen] = useState(false);
 
     // State cho modal xóa sinh viên
     const [isDeleteSinhVienModalOpen, setIsDeleteSinhVienModalOpen] = useState(false);
     const [deletingSinhVien, setDeletingSinhVien] = useState<SinhVienDiem | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
-
-    const [errors, setErrors] = useState({
-        diemQuaTrinh: "",
-        diemThanhPhan: "",
-        diemThi: "",
-    });
 
     // State để theo dõi dropdown đang mở
     const [activeDropdownId, setActiveDropdownId] = useState<number | null>(null);
@@ -768,75 +392,6 @@ export default function ChiTietLopHocPhanPage() {
         setTimeout(() => setAlert(null), 5000);
     };
 
-    // Validate điểm
-    const validateDiem = (value: string): string => {
-        if (value === "") return "";
-        const num = parseFloat(value);
-        if (isNaN(num)) return "Điểm phải là số";
-        if (num < 0 || num > 10) return "Điểm phải từ 0 đến 10";
-        return "";
-    };
-
-    const validateForm = (): boolean => {
-        const newErrors = {
-            diemQuaTrinh: validateDiem(diemQuaTrinh),
-            diemThanhPhan: validateDiem(diemThanhPhan),
-            diemThi: validateDiem(diemThi),
-        };
-        setErrors(newErrors);
-        return !Object.values(newErrors).some((e) => e !== "");
-    };
-
-    const resetForm = () => {
-        setDiemQuaTrinh("");
-        setDiemThanhPhan("");
-        setDiemThi("");
-        setErrors({
-            diemQuaTrinh: "",
-            diemThanhPhan: "",
-            diemThi: "",
-        });
-    };
-
-    const handleUpdateDiem = async () => {
-        if (!editingSinhVien || !validateForm()) return;
-
-        // Kiểm tra xem sinh viên có điểm chưa
-        if (!editingSinhVien.diem) {
-            showAlert("error", "Lỗi", "Sinh viên chưa có bản ghi điểm để cập nhật");
-            return;
-        }
-
-        try {
-            const accessToken = getCookie("access_token");
-            const res = await fetch(`http://localhost:3000/ket-qua/${editingSinhVien.diem.id}`, {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${accessToken}`,
-                },
-                body: JSON.stringify({
-                    diemQuaTrinh: diemQuaTrinh ? parseFloat(diemQuaTrinh) : null,
-                    diemThanhPhan: diemThanhPhan ? parseFloat(diemThanhPhan) : null,
-                    diemThi: diemThi ? parseFloat(diemThi) : null,
-                }),
-            });
-
-            setIsEditModalOpen(false);
-            if (res.ok) {
-                showAlert("success", "Thành công", "Cập nhật điểm thành công");
-                resetForm();
-                fetchDanhSachSinhVien(currentPage, searchKeyword);
-            } else {
-                const err = await res.json();
-                showAlert("error", "Lỗi", err.message || "Cập nhật điểm thất bại");
-            }
-        } catch (err) {
-            setIsEditModalOpen(false);
-            showAlert("error", "Lỗi", "Có lỗi xảy ra khi cập nhật điểm");
-        }
-    };
-
     // Mở modal xóa sinh viên
     const openDeleteSinhVienModal = (sinhVienDiem: SinhVienDiem) => {
         setDeletingSinhVien(sinhVienDiem);
@@ -886,18 +441,6 @@ export default function ChiTietLopHocPhanPage() {
     const openViewModal = (sinhVienDiem: SinhVienDiem) => {
         setViewingSinhVien(sinhVienDiem);
         setIsViewModalOpen(true);
-    };
-
-    const openEditModal = (sinhVienDiem: SinhVienDiem) => {
-        setEditingSinhVien(sinhVienDiem);
-        if (sinhVienDiem.diem) {
-            setDiemQuaTrinh(sinhVienDiem.diem.diemQuaTrinh || "");
-            setDiemThanhPhan(sinhVienDiem.diem.diemThanhPhan || "");
-            setDiemThi(sinhVienDiem.diem.diemThi || "");
-        } else {
-            resetForm();
-        }
-        setIsEditModalOpen(true);
     };
 
     return (
@@ -1002,19 +545,6 @@ export default function ChiTietLopHocPhanPage() {
                             />
                         </div>
                     </div>
-
-                    {/* Button nhập điểm & sinh viên vào LHP bằng Excel */}
-                    <div className="flex-shrink-0">
-                        <Button
-                            variant="primary"
-                            className="ml-3"
-                            onClick={() => setIsImportExcelModalOpen(true)}
-                            startIcon={<FontAwesomeIcon icon={faFileExcel} />}
-                            disabled={lopHocPhanInfo?.khoaDiem}
-                        >
-                            Nhập điểm bằng Excel
-                        </Button>
-                    </div>
                 </div>
 
                 {/* Table */}
@@ -1097,16 +627,6 @@ export default function ChiTietLopHocPhanPage() {
                                                                     Xem chi tiết
                                                                 </DropdownItem>
 
-                                                                <DropdownItem
-                                                                    tag="button"
-                                                                    onItemClick={closeDropdown}
-                                                                    onClick={() => openEditModal(item)}
-                                                                    disabled={lopHocPhanInfo?.khoaDiem || item.chuaCoDiem}
-                                                                >
-                                                                    <FontAwesomeIcon icon={faEdit} className="mr-2 w-4" />
-                                                                    Sửa điểm
-                                                                </DropdownItem>
-
                                                                 {/* THÊM MỚI - Divider và DropdownItem Xóa sinh viên */}
                                                                 <div className="my-1 border-t border-gray-100 dark:border-gray-700" />
 
@@ -1160,34 +680,6 @@ export default function ChiTietLopHocPhanPage() {
                     setViewingSinhVien(null);
                 }}
                 sinhVienDiem={viewingSinhVien}
-            />
-
-            {/* Modal Sửa điểm */}
-            <EditDiemModal
-                isOpen={isEditModalOpen}
-                onClose={() => {
-                    setIsEditModalOpen(false);
-                    resetForm();
-                    setEditingSinhVien(null);
-                }}
-                sinhVienDiem={editingSinhVien}
-                diemQuaTrinh={diemQuaTrinh}
-                diemThanhPhan={diemThanhPhan}
-                diemThi={diemThi}
-                onDiemQuaTrinhChange={setDiemQuaTrinh}
-                onDiemThanhPhanChange={setDiemThanhPhan}
-                onDiemThiChange={setDiemThi}
-                onSubmit={handleUpdateDiem}
-                errors={errors}
-            />
-
-            {/* Modal Nhập điểm từ Excel */}
-            <ImportExcelModal
-                isOpen={isImportExcelModalOpen}
-                onClose={() => setIsImportExcelModalOpen(false)}
-                lopHocPhanId={lopHocPhanId}
-                onSuccess={() => fetchDanhSachSinhVien(currentPage, searchKeyword)}
-                showAlert={showAlert}
             />
 
             {/* Modal Xóa sinh viên khỏi lớp học phần */}
