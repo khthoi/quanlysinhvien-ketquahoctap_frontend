@@ -26,10 +26,11 @@ import { FaAngleDown } from "react-icons/fa6";
 import { useDropzone } from "react-dropzone";
 import {
     faCloudArrowUp, faDownload, faFileExcel,
-    faUsersGear,        // Thêm mới
-    faCircleCheck,      // Thêm mới
-    faCircleExclamation, // Thêm mới
-    faSpinner           // Thêm mới
+    faUsersGear,
+    faCircleCheck,
+    faCircleExclamation,
+    faSpinner,
+    faFileInvoice  // THÊM MỚI - icon cho xuất phiếu điểm
 } from "@fortawesome/free-solid-svg-icons";
 
 type TinhTrang = "DANG_HOC" | "THOI_HOC" | "DA_TOT_NGHIEP" | "BAO_LUU";
@@ -1067,6 +1068,11 @@ export default function QuanLySinhVienPage() {
     // State để theo dõi dropdown ĐANG MỞ (chỉ 1 cái duy nhất)
     const [activeDropdownId, setActiveDropdownId] = useState<number | null>(null);
 
+    // State cho modal xuất phiếu điểm
+    const [isExportPhieuDiemModalOpen, setIsExportPhieuDiemModalOpen] = useState(false);
+    const [exportingPhieuDiemSinhVien, setExportingPhieuDiemSinhVien] = useState<SinhVien | null>(null);
+    const [isExportingPhieuDiem, setIsExportingPhieuDiem] = useState(false);
+
     // State cho modal cấp tài khoản hàng loạt
     const [isBulkCreateAccountModalOpen, setIsBulkCreateAccountModalOpen] = useState(false);
     const [isBulkCreatingAccounts, setIsBulkCreatingAccounts] = useState(false);
@@ -1515,6 +1521,62 @@ export default function QuanLySinhVienPage() {
     const closeBulkCreateModal = () => {
         setIsBulkCreateAccountModalOpen(false);
         setBulkCreateResult(null);
+    };
+
+    // Mở modal xuất phiếu điểm
+    const openExportPhieuDiemModal = (sinhVien: SinhVien) => {
+        setExportingPhieuDiemSinhVien(sinhVien);
+        setIsExportPhieuDiemModalOpen(true);
+    };
+
+    // Đóng modal xuất phiếu điểm
+    const closeExportPhieuDiemModal = () => {
+        setIsExportPhieuDiemModalOpen(false);
+        setExportingPhieuDiemSinhVien(null);
+    };
+
+    // Xử lý xuất phiếu điểm
+    const handleExportPhieuDiem = async () => {
+        if (!exportingPhieuDiemSinhVien) return;
+
+        setIsExportingPhieuDiem(true);
+
+        try {
+            const accessToken = getCookie("access_token");
+            const res = await fetch(
+                `http://localhost:3000/bao-cao/phieu-diem/${exportingPhieuDiemSinhVien.id}`,
+                {
+                    method: "GET",
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                    },
+                }
+            );
+
+            if (res.ok) {
+                // Xử lý tải file Excel
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = `Bảng điểm cá nhân của SV ${exportingPhieuDiemSinhVien.maSinhVien}.xlsx`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+
+                showAlert("success", "Thành công", `Đã xuất phiếu điểm cho sinh viên ${exportingPhieuDiemSinhVien.hoTen}`);
+                closeExportPhieuDiemModal();
+            } else {
+                const err = await res.json();
+                showAlert("error", "Lỗi", err.message || "Không thể xuất phiếu điểm");
+            }
+        } catch (err) {
+            console.error("Lỗi xuất phiếu điểm:", err);
+            showAlert("error", "Lỗi", "Có lỗi xảy ra khi xuất phiếu điểm");
+        } finally {
+            setIsExportingPhieuDiem(false);
+        }
     };
 
     const openEditModal = (sinhVien: SinhVien) => {
@@ -2046,6 +2108,16 @@ export default function QuanLySinhVienPage() {
                                                                 >
                                                                     <FontAwesomeIcon icon={faMagnifyingGlass} className="mr-2 w-4" />
                                                                     Xem thành tích
+                                                                </DropdownItem>
+
+                                                                {/* THÊM MỚI - Xuất phiếu điểm */}
+                                                                <DropdownItem
+                                                                    tag="button"
+                                                                    onItemClick={closeDropdown}
+                                                                    onClick={() => openExportPhieuDiemModal(sv)}
+                                                                >
+                                                                    <FontAwesomeIcon icon={faFileInvoice} className="mr-2 w-4" />
+                                                                    Xuất phiếu điểm
                                                                 </DropdownItem>
 
                                                                 <div className="my-1 border-t border-gray-100 dark:border-gray-700" />
@@ -2674,6 +2746,176 @@ export default function QuanLySinhVienPage() {
                                 Đóng
                             </Button>
                         )}
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Modal Xuất phiếu điểm cá nhân */}
+            <Modal
+                isOpen={isExportPhieuDiemModalOpen}
+                onClose={() => {
+                    if (!isExportingPhieuDiem) {
+                        closeExportPhieuDiemModal();
+                    }
+                }}
+                className="max-w-lg"
+            >
+                <div className="p-6 sm:p-8">
+                    {/* Header */}
+                    <div className="flex items-center gap-4 mb-6">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-brand-100 dark:bg-brand-900/30">
+                            <FontAwesomeIcon
+                                icon={faFileInvoice}
+                                className="text-2xl text-brand-600 dark:text-brand-400"
+                            />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-semibold text-gray-800 dark:text-white/90">
+                                Xuất phiếu điểm cá nhân
+                            </h3>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                                Tải xuống bảng điểm chi tiết của sinh viên
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Thông tin sinh viên */}
+                    {exportingPhieuDiemSinhVien && (
+                        <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700">
+                            <h4 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-3">
+                                Thông tin sinh viên
+                            </h4>
+                            <div className="space-y-3">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm text-gray-500 dark: text-gray-400">Mã sinh viên:</span>
+                                    <span className="font-semibold text-gray-800 dark:text-white">
+                                        {exportingPhieuDiemSinhVien.maSinhVien}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm text-gray-500 dark:text-gray-400">Họ tên:</span>
+                                    <span className="font-semibold text-gray-800 dark:text-white">
+                                        {exportingPhieuDiemSinhVien.hoTen}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm text-gray-500 dark: text-gray-400">Lớp:</span>
+                                    <span className="font-medium text-gray-700 dark:text-gray-300">
+                                        {exportingPhieuDiemSinhVien.lop.maLop}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm text-gray-500 dark:text-gray-400">Ngành:</span>
+                                    <span className="font-medium text-gray-700 dark:text-gray-300">
+                                        {exportingPhieuDiemSinhVien.lop.nganh.tenNganh}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm text-gray-500 dark:text-gray-400">Niên khóa:</span>
+                                    <span className="font-medium text-gray-700 dark:text-gray-300">
+                                        {exportingPhieuDiemSinhVien.lop.nienKhoa.tenNienKhoa}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm text-gray-500 dark:text-gray-400">Tình trạng:</span>
+                                    <Badge variant="solid" color={getTinhTrangColor(exportingPhieuDiemSinhVien.tinhTrang)}>
+                                        {getTinhTrangLabel(exportingPhieuDiemSinhVien.tinhTrang)}
+                                    </Badge>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Thông tin file sẽ xuất */}
+                    <div className="mb-6 rounded-xl border border-blue-200 bg-blue-50 dark:border-blue-800/50 dark:bg-blue-900/20">
+                        <div className="p-4">
+                            <div className="flex items-start gap-3">
+                                <div className="flex-shrink-0">
+                                    <FontAwesomeIcon
+                                        icon={faFileExcel}
+                                        className="text-lg text-blue-600 dark: text-blue-400 mt-0.5"
+                                    />
+                                </div>
+                                <div className="flex-1">
+                                    <h4 className="font-semibold text-blue-800 dark:text-blue-300 mb-2">
+                                        Thông tin file xuất
+                                    </h4>
+                                    <ul className="text-sm text-blue-700/80 dark:text-blue-300/70 space-y-1.5">
+                                        <li className="flex items-center gap-2">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                                            <span>Định dạng: <strong>Excel (.xlsx)</strong></span>
+                                        </li>
+                                        <li className="flex items-center gap-2">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                                            <span>Tên file: <strong>Bảng điểm cá nhân của SV {exportingPhieuDiemSinhVien?.maSinhVien}</strong></span>
+                                        </li>
+                                        <li className="flex items-center gap-2">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                                            <span>Nội dung:  Điểm tất cả môn học đã đăng ký</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Hướng dẫn */}
+                    <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 dark:border-emerald-800/50 dark:bg-emerald-900/20">
+                        <div className="p-4">
+                            <div className="flex items-start gap-3">
+                                <div className="flex-shrink-0">
+                                    <FontAwesomeIcon
+                                        icon={faCircleCheck}
+                                        className="text-lg text-emerald-600 dark:text-emerald-400 mt-0.5"
+                                    />
+                                </div>
+                                <div className="flex-1">
+                                    <h4 className="font-semibold text-emerald-800 dark:text-emerald-300 mb-1">
+                                        Hướng dẫn sử dụng
+                                    </h4>
+                                    <p className="text-sm text-emerald-700/80 dark:text-emerald-300/70">
+                                        Phiếu điểm sẽ bao gồm thông tin cá nhân sinh viên và bảng điểm chi tiết
+                                        tất cả các môn học đã đăng ký theo từng học kỳ. Có thể in ấn hoặc lưu trữ.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Loading state */}
+                    {isExportingPhieuDiem && (
+                        <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg flex items-center justify-center gap-3">
+                            <FontAwesomeIcon
+                                icon={faSpinner}
+                                className="text-xl text-brand-500 animate-spin"
+                            />
+                            <span className="text-gray-700 dark:text-gray-300">
+                                Đang tạo phiếu điểm...
+                            </span>
+                        </div>
+                    )}
+
+                    {/* Buttons */}
+                    <div className="flex justify-end gap-3">
+                        <Button
+                            variant="outline"
+                            onClick={closeExportPhieuDiemModal}
+                            disabled={isExportingPhieuDiem}
+                        >
+                            Hủy
+                        </Button>
+                        <Button
+                            variant="primary"
+                            onClick={handleExportPhieuDiem}
+                            disabled={isExportingPhieuDiem}
+                            startIcon={
+                                isExportingPhieuDiem
+                                    ? <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
+                                    : <FontAwesomeIcon icon={faDownload} />
+                            }
+                        >
+                            {isExportingPhieuDiem ? "Đang xuất..." : "Xuất phiếu điểm"}
+                        </Button>
                     </div>
                 </div>
             </Modal>
