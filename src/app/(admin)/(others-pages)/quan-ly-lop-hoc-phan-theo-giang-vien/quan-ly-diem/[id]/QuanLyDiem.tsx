@@ -410,7 +410,7 @@ const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
         setFileError("");
 
         if (rejectedFiles.length > 0) {
-            setFileError("Chỉ chấp nhận file Excel (. xlsx)");
+            setFileError("Chỉ chấp nhận file Excel (.xlsx)");
             return;
         }
 
@@ -595,7 +595,7 @@ const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
                                             {isDragActive ? "Thả file vào đây" : "Kéo & thả file vào đây"}
                                         </h4>
                                         <p className="text-center text-sm text-gray-500 dark:text-gray-400 mb-3">
-                                            Chỉ chấp nhận file Excel (. xlsx)
+                                            Chỉ chấp nhận file Excel (.xlsx)
                                         </p>
                                         <span className="font-medium underline text-sm text-brand-500">
                                             Chọn file
