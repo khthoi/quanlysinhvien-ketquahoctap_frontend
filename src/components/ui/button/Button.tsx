@@ -41,19 +41,17 @@ const Button: React.FC<ButtonProps> = ({
     outline:
       "bg-white text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-400 dark:ring-gray-700 dark:hover:bg-white/[0.03] dark:hover:text-gray-300",
     warning:
-      "bg-yellow-500 text-white shadow-theme-xs hover:bg-yellow-600 disabled:bg-yellow-300",
+      "bg-yellow-400 text-gray-900 shadow-theme-xs hover:bg-yellow-500 disabled:bg-yellow-200",
     danger:
-      "bg-red-500 text-white shadow-theme-xs hover:bg-red-600 disabled:bg-red-300",
+      "bg-red-400 text-white shadow-theme-xs hover:bg-red-500 disabled:bg-red-200",
     info:
-      "bg-blue-500 text-white shadow-theme-xs hover:bg-blue-600 disabled:bg-blue-300",
+      "bg-blue-400 text-white shadow-theme-xs hover:bg-blue-500 disabled:bg-blue-200",
   };
 
   // Combined classes
-  const combinedClasses = `inline-flex items-center justify-center font-medium gap-2 rounded-lg transition ${className} ${
-    sizeClasses[size]
-  } ${variantClasses[variant]} ${
-    disabled ? "cursor-not-allowed opacity-50 pointer-events-none" : ""
-  }`;
+  const combinedClasses = `inline-flex items-center justify-center font-medium gap-2 rounded-lg transition ${className} ${sizeClasses[size]
+    } ${variantClasses[variant]} ${disabled ? "cursor-not-allowed opacity-50 pointer-events-none" : ""
+    }`;
 
   // Content to render
   const content = (

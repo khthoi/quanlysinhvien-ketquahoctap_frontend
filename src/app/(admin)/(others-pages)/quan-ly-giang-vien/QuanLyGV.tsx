@@ -29,10 +29,12 @@ import {
     faUnlink,
     faPlus,
     faUserPlus,
-    faUsersGear,        // Thêm mới
-    faCircleCheck,      // Thêm mới
-    faCircleExclamation, // Thêm mới
-    faSpinner           // Thêm mới
+    faUsersGear,
+    faCircleCheck,
+    faCircleExclamation,
+    faSpinner,
+    faTrashCan,
+    faTriangleExclamation
 } from "@fortawesome/free-solid-svg-icons";
 import { ChevronDownIcon } from "@/icons";
 import Select from "@/components/form/Select";
@@ -42,6 +44,7 @@ import { DropdownItem } from "@/components/ui/dropdown/DropdownItem";
 import { FaAngleDown } from "react-icons/fa6";
 import { useDropzone } from "react-dropzone";
 import { faCloudArrowUp, faDownload, faFileExcel } from "@fortawesome/free-solid-svg-icons";
+import Checkbox from "@/components/form/input/Checkbox";
 
 // ==================== INTERFACES ====================
 enum VaiTro {
@@ -772,6 +775,18 @@ export default function QuanLyGiangVienPage() {
         }>;
     } | null>(null);
 
+    // State cho checkbox và xóa hàng loạt
+    const [selectedGiangVienIds, setSelectedGiangVienIds] = useState<number[]>([]);
+    const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
+    const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+    const [bulkDeleteResults, setBulkDeleteResults] = useState<Array<{
+        id: number;
+        maGiangVien: string;
+        hoTen: string;
+        status: "success" | "failed";
+        message: string;
+    }> | null>(null);
+
     // State cho form
     const [formData, setFormData] = useState({
         maGiangVien: "",
@@ -1175,6 +1190,131 @@ export default function QuanLyGiangVienPage() {
         setBulkCreateResult(null);
     };
 
+    // ==================== CHECKBOX & BULK DELETE HANDLERS ====================
+
+    // Kiểm tra xem tất cả giảng viên hiện tại có được chọn không
+    const isAllSelected = giangViens.length > 0 && selectedGiangVienIds.length === giangViens.length;
+
+    // Kiểm tra xem có một số (không phải tất cả) được chọn không - cho trạng thái indeterminate
+    const isIndeterminate = selectedGiangVienIds.length > 0 && selectedGiangVienIds.length < giangViens.length;
+
+    // Toggle chọn tất cả
+    const handleSelectAll = (checked: boolean) => {
+        if (checked) {
+            setSelectedGiangVienIds(giangViens.map(gv => gv.id));
+        } else {
+            setSelectedGiangVienIds([]);
+        }
+    };
+
+    // Toggle chọn một giảng viên
+    const handleSelectOne = (giangVienId: number, checked: boolean) => {
+        if (checked) {
+            setSelectedGiangVienIds(prev => [...prev, giangVienId]);
+        } else {
+            setSelectedGiangVienIds(prev => prev.filter(id => id !== giangVienId));
+        }
+    };
+
+    // Kiểm tra một giảng viên có được chọn không
+    const isSelected = (giangVienId: number) => selectedGiangVienIds.includes(giangVienId);
+
+    // Reset selection khi chuyển trang hoặc filter
+    useEffect(() => {
+        setSelectedGiangVienIds([]);
+    }, [currentPage, searchKeyword, selectedFilterMonHocId]);
+
+    // Mở modal xóa hàng loạt
+    const openBulkDeleteModal = () => {
+        if (selectedGiangVienIds.length === 0) {
+            showAlert("warning", "Cảnh báo", "Vui lòng chọn ít nhất một giảng viên để xóa");
+            return;
+        }
+        setBulkDeleteResults(null);
+        setIsBulkDeleteModalOpen(true);
+    };
+
+    // Đóng modal xóa hàng loạt
+    const closeBulkDeleteModal = () => {
+        setIsBulkDeleteModalOpen(false);
+        setBulkDeleteResults(null);
+        // Nếu đã xóa xong, reset selection và refresh data
+        if (bulkDeleteResults) {
+            setSelectedGiangVienIds([]);
+            fetchGiangViens(currentPage, searchKeyword.trim(), selectedFilterMonHocId);
+        }
+    };
+
+    // Xử lý xóa hàng loạt
+    const handleBulkDelete = async () => {
+        setIsBulkDeleting(true);
+        const results: Array<{
+            id: number;
+            maGiangVien: string;
+            hoTen: string;
+            status: "success" | "failed";
+            message: string;
+        }> = [];
+
+        const accessToken = getCookie("access_token");
+
+        // Lấy thông tin các giảng viên được chọn
+        const selectedGiangViens = giangViens.filter(gv => selectedGiangVienIds.includes(gv.id));
+
+        for (const gv of selectedGiangViens) {
+            try {
+                const res = await fetch(
+                    `http://localhost:3000/danh-muc/giang-vien/${gv.id}`,
+                    {
+                        method: "DELETE",
+                        headers: {
+                            Authorization: `Bearer ${accessToken}`,
+                        },
+                    }
+                );
+
+                if (res.ok) {
+                    results.push({
+                        id: gv.id,
+                        maGiangVien: gv.maGiangVien,
+                        hoTen: gv.hoTen,
+                        status: "success",
+                        message: "Xóa thành công",
+                    });
+                } else {
+                    const err = await res.json();
+                    results.push({
+                        id: gv.id,
+                        maGiangVien: gv.maGiangVien,
+                        hoTen: gv.hoTen,
+                        status: "failed",
+                        message: err.message || "Xóa thất bại",
+                    });
+                }
+            } catch (err) {
+                results.push({
+                    id: gv.id,
+                    maGiangVien: gv.maGiangVien,
+                    hoTen: gv.hoTen,
+                    status: "failed",
+                    message: "Lỗi kết nối",
+                });
+            }
+        }
+
+        setBulkDeleteResults(results);
+        setIsBulkDeleting(false);
+    };
+
+    // Đếm số thành công/thất bại
+    const getDeleteSummary = () => {
+        if (!bulkDeleteResults) return { success: 0, failed: 0 };
+        return {
+            success: bulkDeleteResults.filter(r => r.status === "success").length,
+            failed: bulkDeleteResults.filter(r => r.status === "failed").length,
+        };
+    };
+
     // Open modals
     const openEditModal = (giangVien: GiangVien) => {
         setEditingGiangVien(giangVien);
@@ -1274,6 +1414,15 @@ export default function QuanLyGiangVienPage() {
 
                     <div className="flex gap-3">
                         {/* Button Cấp tài khoản hàng loạt - THÊM MỚI */}
+                        {selectedGiangVienIds.length > 0 && (
+                            <Button
+                                variant="danger"
+                                onClick={openBulkDeleteModal}
+                                startIcon={<FontAwesomeIcon icon={faTrashCan} />}
+                            >
+                                Xóa ({selectedGiangVienIds.length})
+                            </Button>
+                        )}
                         <Button
                             variant="primary"
                             onClick={() => setIsBulkCreateAccountModalOpen(true)}
@@ -1336,7 +1485,18 @@ export default function QuanLyGiangVienPage() {
                             <Table>
                                 {/* Table Header */}
                                 <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
-                                    <TableRow className="grid grid-cols-[8%_15%_22%_12%_18%_25%]">
+                                    <TableRow className="grid grid-cols-[5%_5%_12%_20%_10%_15%_33%]">
+                                        <TableCell
+                                            isHeader
+                                            className="px-3 py-3 font-medium text-gray-500 text-theme-xs dark:text-gray-400 flex items-center justify-center"
+                                        >
+                                            <Checkbox
+                                                checked={isAllSelected}
+                                                indeterminate={isIndeterminate}
+                                                onChange={handleSelectAll}
+                                                disabled={giangViens.length === 0}
+                                            />
+                                        </TableCell>
                                         <TableCell
                                             isHeader
                                             className="px-3 py-3 font-medium text-gray-500 text-theme-xs dark:text-gray-400 flex items-center justify-center"
@@ -1382,11 +1542,16 @@ export default function QuanLyGiangVienPage() {
                                         <React.Fragment key={gv.id}>
                                             {/* Main Row */}
                                             <TableRow
-                                                className={`grid grid-cols-[8%_15%_22%_12%_18%_25%] items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors ${isRowExpanded(gv.id)
-                                                    ? "bg-gray-50 dark:bg-white/[0.02]"
-                                                    : ""
-                                                    }`}
+                                                className={`grid grid-cols-[5%_5%_12%_20%_10%_15%_33%] items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors ${isRowExpanded(gv.id) ? "bg-gray-50 dark:bg-white/[0.02]" : ""
+                                                    } ${isSelected(gv.id) ? "bg-brand-50 dark:bg-brand-900/10" : ""}`}
                                             >
+                                                {/* Checkbox */}
+                                                <TableCell className="px-3 py-4 flex items-center justify-center">
+                                                    <Checkbox
+                                                        checked={isSelected(gv.id)}
+                                                        onChange={(checked) => handleSelectOne(gv.id, checked)}
+                                                    />
+                                                </TableCell>
                                                 <TableCell className="px-3 py-4 flex items-center justify-center">
                                                     <button
                                                         onClick={() => toggleRow(gv.id)}
@@ -2045,6 +2210,276 @@ export default function QuanLyGiangVienPage() {
                             <Button
                                 variant="primary"
                                 onClick={closeBulkCreateModal}
+                            >
+                                Đóng
+                            </Button>
+                        )}
+                    </div>
+                </div>
+            </Modal>
+            {/* Modal Xóa hàng loạt */}
+            <Modal
+                isOpen={isBulkDeleteModalOpen}
+                onClose={() => {
+                    if (!isBulkDeleting) {
+                        closeBulkDeleteModal();
+                    }
+                }}
+                className="max-w-4xl"
+            >
+                <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
+                    {/* Header */}
+                    <div className="flex items-center gap-4 mb-6">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-100 dark: bg-red-900/30">
+                            <FontAwesomeIcon
+                                icon={faTrashCan}
+                                className="text-2xl text-red-600 dark:text-red-400"
+                            />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-semibold text-gray-800 dark:text-white/90">
+                                Xóa hàng loạt giảng viên
+                            </h3>
+                            <p className="text-sm text-gray-500 dark: text-gray-400">
+                                {bulkDeleteResults
+                                    ? "Kết quả xóa giảng viên"
+                                    : `Đã chọn ${selectedGiangVienIds.length} giảng viên`
+                                }
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Nội dung trước khi xóa */}
+                    {!bulkDeleteResults && !isBulkDeleting && (
+                        <>
+                            {/* Danh sách giảng viên sẽ xóa */}
+                            <div className="mb-6">
+                                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                                    Danh sách giảng viên sẽ bị xóa:
+                                </h4>
+                                <div className="max-h-48 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700">
+                                    <table className="w-full text-sm">
+                                        <thead className="sticky top-0 bg-gray-50 dark:bg-gray-800">
+                                            <tr>
+                                                <th className="px-4 py-2 text-left text-gray-600 dark:text-gray-400 font-medium">STT</th>
+                                                <th className="px-4 py-2 text-left text-gray-600 dark:text-gray-400 font-medium">Mã GV</th>
+                                                <th className="px-4 py-2 text-left text-gray-600 dark:text-gray-400 font-medium">Họ tên</th>
+                                                <th className="px-4 py-2 text-left text-gray-600 dark:text-gray-400 font-medium">Email</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                                            {giangViens
+                                                .filter(gv => selectedGiangVienIds.includes(gv.id))
+                                                .map((gv, index) => (
+                                                    <tr key={gv.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                                                        <td className="px-4 py-2 text-gray-600 dark:text-gray-400">{index + 1}</td>
+                                                        <td className="px-4 py-2 text-gray-800 dark:text-white font-medium">{gv.maGiangVien}</td>
+                                                        <td className="px-4 py-2 text-gray-800 dark:text-white">{gv.hoTen}</td>
+                                                        <td className="px-4 py-2 text-gray-600 dark:text-gray-400">{gv.email}</td>
+                                                    </tr>
+                                                ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            {/* Cảnh báo */}
+                            <div className="mb-6 rounded-xl border border-red-200 bg-red-50 dark:border-red-800/50 dark:bg-red-900/20">
+                                <div className="p-4">
+                                    <div className="flex items-start gap-3">
+                                        <div className="flex-shrink-0">
+                                            <FontAwesomeIcon
+                                                icon={faTriangleExclamation}
+                                                className="text-lg text-red-600 dark: text-red-400 mt-0.5"
+                                            />
+                                        </div>
+                                        <div className="flex-1">
+                                            <h4 className="font-semibold text-red-800 dark:text-red-300 mb-1">
+                                                Cảnh báo quan trọng
+                                            </h4>
+                                            <ul className="text-sm text-red-700/80 dark:text-red-300/70 space-y-1 list-disc list-inside">
+                                                <li>Hành động này <strong>không thể hoàn tác</strong></li>
+                                                <li>Tất cả dữ liệu liên quan đến giảng viên sẽ bị xóa</li>
+                                                <li>Bao gồm:  phân công môn học, tài khoản người dùng (nếu có)</li>
+                                                <li>Giảng viên đang có lớp học phần sẽ không thể xóa</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Thông tin bổ sung */}
+                            <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800/50 dark:bg-amber-900/20">
+                                <div className="p-4">
+                                    <div className="flex items-start gap-3">
+                                        <div className="flex-shrink-0">
+                                            <FontAwesomeIcon
+                                                icon={faCircleExclamation}
+                                                className="text-lg text-amber-600 dark:text-amber-400 mt-0.5"
+                                            />
+                                        </div>
+                                        <div className="flex-1">
+                                            <h4 className="font-semibold text-amber-800 dark:text-amber-300 mb-1">
+                                                Lưu ý
+                                            </h4>
+                                            <p className="text-sm text-amber-700/80 dark:text-amber-300/70">
+                                                Hệ thống sẽ xóa lần lượt từng giảng viên.  Nếu có giảng viên không thể xóa
+                                                (do ràng buộc dữ liệu), hệ thống sẽ bỏ qua và tiếp tục với giảng viên khác.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6 text-center">
+                                Bạn có chắc chắn muốn xóa <strong>{selectedGiangVienIds.length}</strong> giảng viên đã chọn?
+                            </p>
+                        </>
+                    )}
+
+                    {/* Loading state */}
+                    {isBulkDeleting && (
+                        <div className="py-12 flex flex-col items-center justify-center">
+                            <div className="relative">
+                                <div className="h-20 w-20 rounded-full border-4 border-red-100 dark:border-red-900/50"></div>
+                                <div className="absolute top-0 left-0 h-20 w-20 rounded-full border-4 border-red-500 border-t-transparent animate-spin"></div>
+                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+                                    <FontAwesomeIcon
+                                        icon={faTrashCan}
+                                        className="text-2xl text-red-500"
+                                    />
+                                </div>
+                            </div>
+                            <p className="mt-6 text-lg font-medium text-gray-700 dark:text-gray-300">
+                                Đang xóa giảng viên...
+                            </p>
+                            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                                Vui lòng đợi trong giây lát
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Kết quả sau khi xóa */}
+                    {bulkDeleteResults && (
+                        <>
+                            {/* Summary */}
+                            <div className="mb-6 grid grid-cols-3 gap-4">
+                                <div className="rounded-xl bg-gray-50 dark:bg-gray-800/50 p-4 text-center border border-gray-200 dark: border-gray-700">
+                                    <p className="text-2xl font-bold text-gray-800 dark:text-white">
+                                        {bulkDeleteResults.length}
+                                    </p>
+                                    <p className="text-sm text-gray-500 dark: text-gray-400">Tổng xử lý</p>
+                                </div>
+                                <div className="rounded-xl bg-emerald-50 dark:bg-emerald-900/20 p-4 text-center border border-emerald-200 dark:border-emerald-800">
+                                    <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                                        {getDeleteSummary().success}
+                                    </p>
+                                    <p className="text-sm text-emerald-600/70 dark:text-emerald-400/70">Thành công</p>
+                                </div>
+                                <div className="rounded-xl bg-red-50 dark:bg-red-900/20 p-4 text-center border border-red-200 dark:border-red-800">
+                                    <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+                                        {getDeleteSummary().failed}
+                                    </p>
+                                    <p className="text-sm text-red-600/70 dark:text-red-400/70">Thất bại</p>
+                                </div>
+                            </div>
+
+                            {/* Success message */}
+                            {getDeleteSummary().success > 0 && (
+                                <div className="mb-4 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 p-4 border border-emerald-200 dark:border-emerald-800">
+                                    <div className="flex items-center gap-2">
+                                        <FontAwesomeIcon
+                                            icon={faCircleCheck}
+                                            className="text-emerald-500"
+                                        />
+                                        <p className="text-sm text-emerald-700 dark:text-emerald-300">
+                                            Đã xóa thành công <strong>{getDeleteSummary().success}</strong> giảng viên
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Chi tiết kết quả */}
+                            <div className="mb-4">
+                                <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Chi tiết kết quả
+                                </h4>
+                                <div className="max-h-60 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700">
+                                    <table className="w-full text-sm">
+                                        <thead className="sticky top-0 bg-gray-50 dark:bg-gray-800">
+                                            <tr>
+                                                <th className="px-3 py-2 text-left text-gray-600 dark: text-gray-400 font-medium">Mã GV</th>
+                                                <th className="px-3 py-2 text-left text-gray-600 dark:text-gray-400 font-medium">Họ tên</th>
+                                                <th className="px-3 py-2 text-center text-gray-600 dark: text-gray-400 font-medium">Trạng thái</th>
+                                                <th className="px-3 py-2 text-left text-gray-600 dark: text-gray-400 font-medium">Chi tiết</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                                            {bulkDeleteResults.map((result) => (
+                                                <tr
+                                                    key={result.id}
+                                                    className={result.status === 'failed' ? 'bg-red-50 dark:bg-red-900/10' : ''}
+                                                >
+                                                    <td className="px-3 py-2 text-gray-800 dark:text-white font-medium">
+                                                        {result.maGiangVien}
+                                                    </td>
+                                                    <td className="px-3 py-2 text-gray-800 dark: text-white">
+                                                        {result.hoTen}
+                                                    </td>
+                                                    <td className="px-3 py-2 text-center">
+                                                        {result.status === 'success' ? (
+                                                            <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                                                                <FontAwesomeIcon icon={faCircleCheck} className="text-xs" />
+                                                                Thành công
+                                                            </span>
+                                                        ) : (
+                                                            <span className="inline-flex items-center gap-1 text-red-600 dark:text-red-400">
+                                                                <FontAwesomeIcon icon={faCircleExclamation} className="text-xs" />
+                                                                Thất bại
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-3 py-2 text-gray-600 dark:text-gray-400 text-xs">
+                                                        {result.message}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </>
+                    )}
+
+                    {/* Buttons */}
+                    <div className="flex justify-end gap-3 pt-2">
+                        {!bulkDeleteResults ? (
+                            <>
+                                <Button
+                                    variant="outline"
+                                    onClick={closeBulkDeleteModal}
+                                    disabled={isBulkDeleting}
+                                >
+                                    Hủy
+                                </Button>
+                                <Button
+                                    variant="primary"
+                                    onClick={handleBulkDelete}
+                                    disabled={isBulkDeleting}
+                                    className="bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
+                                    startIcon={
+                                        isBulkDeleting
+                                            ? <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
+                                            : <FontAwesomeIcon icon={faTrashCan} />
+                                    }
+                                >
+                                    {isBulkDeleting ? "Đang xóa..." : `Xác nhận xóa ${selectedGiangVienIds.length} giảng viên`}
+                                </Button>
+                            </>
+                        ) : (
+                            <Button
+                                variant="primary"
+                                onClick={closeBulkDeleteModal}
                             >
                                 Đóng
                             </Button>

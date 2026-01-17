@@ -21,7 +21,18 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { DropdownItem } from "@/components/ui/dropdown/DropdownItem";
 import { Dropdown } from "@/components/ui/dropdown/Dropdown";
 import { FaAngleDown } from "react-icons/fa6";
-import { faMagnifyingGlass, faEye, faUserMinus, faTriangleExclamation, faCircleInfo } from "@fortawesome/free-solid-svg-icons";
+import {
+    faMagnifyingGlass,
+    faEye,
+    faUserMinus,
+    faTriangleExclamation,
+    faCircleInfo,
+    faTrashCan,           // THÊM MỚI
+    faSpinner,            // THÊM MỚI
+    faCircleCheck,        // THÊM MỚI
+    faCircleExclamation   // THÊM MỚI
+} from "@fortawesome/free-solid-svg-icons";
+import Checkbox from "@/components/form/input/Checkbox"; // THÊM MỚI
 
 type LoaiThamGia = "CHINH_QUY" | "HOC_LAI" | "HOC_CAI_THIEN" | "HOC_BO_SUNG";
 
@@ -325,6 +336,18 @@ export default function ChiTietLopHocPhanPage() {
     const [deletingSinhVien, setDeletingSinhVien] = useState<SinhVienDiem | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
+    // State cho checkbox và xóa hàng loạt
+    const [selectedSinhVienIds, setSelectedSinhVienIds] = useState<number[]>([]);
+    const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
+    const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+    const [bulkDeleteResults, setBulkDeleteResults] = useState<Array<{
+        id: number;
+        maSinhVien: string;
+        hoTen: string;
+        status: "success" | "failed";
+        message: string;
+    }> | null>(null);
+
     // State để theo dõi dropdown đang mở
     const [activeDropdownId, setActiveDropdownId] = useState<number | null>(null);
 
@@ -443,6 +466,140 @@ export default function ChiTietLopHocPhanPage() {
         setIsViewModalOpen(true);
     };
 
+    // ==================== CHECKBOX & BULK DELETE HANDLERS ====================
+
+    // Lấy danh sách sinh viên có thể xóa (chưa có điểm)
+    const deletableSinhViens = danhSachSinhVien.filter(item => item.chuaCoDiem);
+
+    // Kiểm tra xem tất cả sinh viên có thể xóa đã được chọn chưa
+    const isAllSelected = deletableSinhViens.length > 0 &&
+        deletableSinhViens.every(item => selectedSinhVienIds.includes(item.sinhVien.id));
+
+    // Kiểm tra trạng thái indeterminate
+    const isIndeterminate = selectedSinhVienIds.length > 0 &&
+        selectedSinhVienIds.length < deletableSinhViens.length;
+
+    // Toggle chọn tất cả (chỉ chọn những sinh viên chưa có điểm)
+    const handleSelectAll = (checked: boolean) => {
+        if (checked) {
+            setSelectedSinhVienIds(deletableSinhViens.map(item => item.sinhVien.id));
+        } else {
+            setSelectedSinhVienIds([]);
+        }
+    };
+
+    // Toggle chọn một sinh viên
+    const handleSelectOne = (sinhVienId: number, checked: boolean) => {
+        if (checked) {
+            setSelectedSinhVienIds(prev => [...prev, sinhVienId]);
+        } else {
+            setSelectedSinhVienIds(prev => prev.filter(id => id !== sinhVienId));
+        }
+    };
+
+    // Kiểm tra một sinh viên có được chọn không
+    const isSelected = (sinhVienId: number) => selectedSinhVienIds.includes(sinhVienId);
+
+    // Reset selection khi chuyển trang hoặc search
+    useEffect(() => {
+        setSelectedSinhVienIds([]);
+    }, [currentPage, searchKeyword]);
+
+    // Mở modal xóa hàng loạt
+    const openBulkDeleteModal = () => {
+        if (selectedSinhVienIds.length === 0) {
+            showAlert("warning", "Cảnh báo", "Vui lòng chọn ít nhất một sinh viên để xóa");
+            return;
+        }
+        setBulkDeleteResults(null);
+        setIsBulkDeleteModalOpen(true);
+    };
+
+    // Đóng modal xóa hàng loạt
+    const closeBulkDeleteModal = () => {
+        setIsBulkDeleteModalOpen(false);
+        setBulkDeleteResults(null);
+        // Nếu đã xóa xong, reset selection và refresh data
+        if (bulkDeleteResults) {
+            setSelectedSinhVienIds([]);
+            fetchDanhSachSinhVien(currentPage, searchKeyword);
+        }
+    };
+
+    // Xử lý xóa hàng loạt
+    const handleBulkDelete = async () => {
+        if (!lopHocPhanId) return;
+
+        setIsBulkDeleting(true);
+        const results: Array<{
+            id: number;
+            maSinhVien: string;
+            hoTen: string;
+            status: "success" | "failed";
+            message: string;
+        }> = [];
+
+        const accessToken = getCookie("access_token");
+
+        // Lấy thông tin các sinh viên được chọn
+        const selectedSinhViens = danhSachSinhVien.filter(
+            item => selectedSinhVienIds.includes(item.sinhVien.id)
+        );
+
+        for (const item of selectedSinhViens) {
+            try {
+                const res = await fetch(
+                    `http://localhost:3000/giang-day/lop-hoc-phan/${lopHocPhanId}/sinh-vien-dang-ky/${item.sinhVien.id}`,
+                    {
+                        method: "DELETE",
+                        headers: {
+                            Authorization: `Bearer ${accessToken}`,
+                        },
+                    }
+                );
+
+                if (res.ok) {
+                    results.push({
+                        id: item.sinhVien.id,
+                        maSinhVien: item.sinhVien.maSinhVien,
+                        hoTen: item.sinhVien.hoTen,
+                        status: "success",
+                        message: "Xóa thành công",
+                    });
+                } else {
+                    const err = await res.json();
+                    results.push({
+                        id: item.sinhVien.id,
+                        maSinhVien: item.sinhVien.maSinhVien,
+                        hoTen: item.sinhVien.hoTen,
+                        status: "failed",
+                        message: err.message || "Xóa thất bại",
+                    });
+                }
+            } catch (err) {
+                results.push({
+                    id: item.sinhVien.id,
+                    maSinhVien: item.sinhVien.maSinhVien,
+                    hoTen: item.sinhVien.hoTen,
+                    status: "failed",
+                    message: "Lỗi kết nối",
+                });
+            }
+        }
+
+        setBulkDeleteResults(results);
+        setIsBulkDeleting(false);
+    };
+
+    // Đếm số thành công/thất bại
+    const getDeleteSummary = () => {
+        if (!bulkDeleteResults) return { success: 0, failed: 0 };
+        return {
+            success: bulkDeleteResults.filter(r => r.status === "success").length,
+            failed: bulkDeleteResults.filter(r => r.status === "failed").length,
+        };
+    };
+
     return (
         <div>
             <PageBreadcrumb pageTitle="Chi tiết Lớp Học Phần" />
@@ -522,7 +679,7 @@ export default function ChiTietLopHocPhanPage() {
                     </div>
                 )}
 
-                {/* Tìm kiếm và Button nhập Excel */}
+                {/* Tìm kiếm và Button xóa hàng loạt */}
                 <div className="flex flex-col gap-4 mb-6 lg:flex-row lg:items-center lg:justify-between">
                     <div className="w-full lg:max-w-md">
                         <div className="relative">
@@ -541,9 +698,22 @@ export default function ChiTietLopHocPhanPage() {
                                 value={searchKeyword}
                                 onChange={(e) => setSearchKeyword(e.target.value)}
                                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                                className="h-11 w-full rounded-lg border border-gray-200 bg-transparent py-2.5 pl-12 pr-4 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-800 dark:bg-gray-900 dark: text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
+                                className="h-11 w-full rounded-lg border border-gray-200 bg-transparent py-2. 5 pl-12 pr-4 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-800 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
                             />
                         </div>
+                    </div>
+
+                    {/* Button Xóa hàng loạt - THÊM MỚI */}
+                    <div className="flex gap-3">
+                        {selectedSinhVienIds.length > 0 && (
+                            <Button
+                                variant="danger"
+                                onClick={openBulkDeleteModal}
+                                startIcon={<FontAwesomeIcon icon={faTrashCan} />}
+                            >
+                                Xóa khỏi lớp ({selectedSinhVienIds.length})
+                            </Button>
+                        )}
                     </div>
                 </div>
 
@@ -553,7 +723,16 @@ export default function ChiTietLopHocPhanPage() {
                         <div className="min-w-[800px]">
                             <Table>
                                 <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
-                                    <TableRow className="grid grid-cols-[20%_20%_20%_20%_20%]">
+                                    <TableRow className="grid grid-cols-[5%_18%_18%_18%_18%_23%]">
+                                        {/* Checkbox chọn tất cả */}
+                                        <TableCell isHeader className="px-3 py-3 font-medium text-gray-500 text-theme-xs flex items-center justify-center">
+                                            <Checkbox
+                                                checked={isAllSelected}
+                                                indeterminate={isIndeterminate}
+                                                onChange={handleSelectAll}
+                                                disabled={deletableSinhViens.length === 0}
+                                            />
+                                        </TableCell>
                                         <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-theme-xs">
                                             Mã sinh viên
                                         </TableCell>
@@ -574,13 +753,25 @@ export default function ChiTietLopHocPhanPage() {
                                 <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05] text-theme-sm text-center">
                                     {danhSachSinhVien.length === 0 ? (
                                         <TableRow>
-                                            <TableCell className="px-5 py-8 text-center text-gray-500 dark:text-gray-400 col-span-5">
+                                            <TableCell className="px-5 py-8 text-center text-gray-500 dark: text-gray-400 col-span-6">
                                                 Không có dữ liệu sinh viên
                                             </TableCell>
                                         </TableRow>
                                     ) : (
                                         danhSachSinhVien.map((item) => (
-                                            <TableRow key={item.sinhVien.id} className="grid grid-cols-[20%_20%_20%_20%_20%] items-center">
+                                            <TableRow
+                                                key={item.sinhVien.id}
+                                                className={`grid grid-cols-[5%_18%_18%_18%_18%_23%] items-center ${isSelected(item.sinhVien.id) ? "bg-brand-50 dark: bg-brand-900/10" : ""
+                                                    }`}
+                                            >
+                                                {/* Checkbox - disabled nếu đã có điểm */}
+                                                <TableCell className="px-3 py-4 flex items-center justify-center">
+                                                    <Checkbox
+                                                        checked={isSelected(item.sinhVien.id)}
+                                                        onChange={(checked) => handleSelectOne(item.sinhVien.id, checked)}
+                                                        disabled={!item.chuaCoDiem}
+                                                    />
+                                                </TableCell>
                                                 <TableCell className="px-5 py-4 text-gray-800 dark:text-white/90">
                                                     {item.sinhVien.maSinhVien}
                                                 </TableCell>
@@ -820,6 +1011,283 @@ export default function ChiTietLopHocPhanPage() {
                                 </>
                             )}
                         </Button>
+                    </div>
+                </div>
+            </Modal>
+            {/* Modal Xóa hàng loạt sinh viên */}
+            <Modal
+                isOpen={isBulkDeleteModalOpen}
+                onClose={() => {
+                    if (!isBulkDeleting) {
+                        closeBulkDeleteModal();
+                    }
+                }}
+                className="max-w-2xl"
+            >
+                <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
+                    {/* Header */}
+                    <div className="flex items-center gap-4 mb-6">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
+                            <FontAwesomeIcon
+                                icon={faTrashCan}
+                                className="text-2xl text-red-600 dark:text-red-400"
+                            />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-semibold text-gray-800 dark:text-white/90">
+                                Xóa hàng loạt sinh viên khỏi lớp
+                            </h3>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                                {bulkDeleteResults
+                                    ? "Kết quả xóa sinh viên"
+                                    : `Đã chọn ${selectedSinhVienIds.length} sinh viên`
+                                }
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Nội dung trước khi xóa */}
+                    {!bulkDeleteResults && !isBulkDeleting && (
+                        <>
+                            {/* Thông tin lớp học phần */}
+                            {lopHocPhanInfo && (
+                                <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark: border-gray-700">
+                                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                                        Lớp học phần: <strong className="text-gray-800 dark:text-white">{lopHocPhanInfo.maLopHocPhan}</strong>
+                                        {" - "}
+                                        <span>{lopHocPhanInfo.monHoc}</span>
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Danh sách sinh viên sẽ xóa */}
+                            <div className="mb-6">
+                                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                                    Danh sách sinh viên sẽ bị xóa khỏi lớp:
+                                </h4>
+                                <div className="max-h-48 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700">
+                                    <table className="w-full text-sm">
+                                        <thead className="sticky top-0 bg-gray-50 dark:bg-gray-800">
+                                            <tr>
+                                                <th className="px-4 py-2 text-left text-gray-600 dark:text-gray-400 font-medium">STT</th>
+                                                <th className="px-4 py-2 text-left text-gray-600 dark:text-gray-400 font-medium">Mã SV</th>
+                                                <th className="px-4 py-2 text-left text-gray-600 dark:text-gray-400 font-medium">Họ tên</th>
+                                                <th className="px-4 py-2 text-left text-gray-600 dark:text-gray-400 font-medium">Lớp</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                                            {danhSachSinhVien
+                                                .filter(item => selectedSinhVienIds.includes(item.sinhVien.id))
+                                                .map((item, index) => (
+                                                    <tr key={item.sinhVien.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                                                        <td className="px-4 py-2 text-gray-600 dark:text-gray-400">{index + 1}</td>
+                                                        <td className="px-4 py-2 text-gray-800 dark:text-white font-medium">{item.sinhVien.maSinhVien}</td>
+                                                        <td className="px-4 py-2 text-gray-800 dark:text-white">{item.sinhVien.hoTen}</td>
+                                                        <td className="px-4 py-2 text-gray-600 dark:text-gray-400">{item.sinhVien.malop}</td>
+                                                    </tr>
+                                                ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            {/* Cảnh báo */}
+                            <div className="mb-6 rounded-xl border border-red-200 bg-red-50 dark:border-red-800/50 dark:bg-red-900/20">
+                                <div className="p-4">
+                                    <div className="flex items-start gap-3">
+                                        <div className="flex-shrink-0">
+                                            <FontAwesomeIcon
+                                                icon={faTriangleExclamation}
+                                                className="text-lg text-red-600 dark: text-red-400 mt-0.5"
+                                            />
+                                        </div>
+                                        <div className="flex-1">
+                                            <h4 className="font-semibold text-red-800 dark:text-red-300 mb-1">
+                                                Cảnh báo quan trọng
+                                            </h4>
+                                            <ul className="text-sm text-red-700/80 dark:text-red-300/70 space-y-1 list-disc list-inside">
+                                                <li>Hành động này <strong>không thể hoàn tác</strong></li>
+                                                <li>Sinh viên sẽ bị xóa hoàn toàn khỏi lớp học phần</li>
+                                                <li>Sinh viên cần đăng ký lại nếu muốn tham gia lớp</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Thông tin bổ sung */}
+                            <div className="mb-6 rounded-xl border border-blue-200 bg-blue-50 dark:border-blue-800/50 dark:bg-blue-900/20">
+                                <div className="p-4">
+                                    <div className="flex items-start gap-3">
+                                        <div className="flex-shrink-0">
+                                            <FontAwesomeIcon
+                                                icon={faCircleInfo}
+                                                className="text-lg text-blue-600 dark:text-blue-400 mt-0.5"
+                                            />
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className="text-sm text-blue-700/80 dark:text-blue-300/70">
+                                                <strong>Lưu ý:</strong> Chỉ có thể xóa sinh viên chưa có điểm.
+                                                Sinh viên đã có điểm không thể chọn và không nằm trong danh sách này.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6 text-center">
+                                Bạn có chắc chắn muốn xóa <strong>{selectedSinhVienIds.length}</strong> sinh viên đã chọn khỏi lớp học phần?
+                            </p>
+                        </>
+                    )}
+
+                    {/* Loading state */}
+                    {isBulkDeleting && (
+                        <div className="py-12 flex flex-col items-center justify-center">
+                            <div className="relative">
+                                <div className="h-20 w-20 rounded-full border-4 border-red-100 dark:border-red-900/50"></div>
+                                <div className="absolute top-0 left-0 h-20 w-20 rounded-full border-4 border-red-500 border-t-transparent animate-spin"></div>
+                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+                                    <FontAwesomeIcon
+                                        icon={faUserMinus}
+                                        className="text-2xl text-red-500"
+                                    />
+                                </div>
+                            </div>
+                            <p className="mt-6 text-lg font-medium text-gray-700 dark:text-gray-300">
+                                Đang xóa sinh viên...
+                            </p>
+                            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                                Vui lòng đợi trong giây lát
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Kết quả sau khi xóa */}
+                    {bulkDeleteResults && (
+                        <>
+                            {/* Summary */}
+                            <div className="mb-6 grid grid-cols-3 gap-4">
+                                <div className="rounded-xl bg-gray-50 dark:bg-gray-800/50 p-4 text-center border border-gray-200 dark: border-gray-700">
+                                    <p className="text-2xl font-bold text-gray-800 dark:text-white">
+                                        {bulkDeleteResults.length}
+                                    </p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">Tổng xử lý</p>
+                                </div>
+                                <div className="rounded-xl bg-emerald-50 dark:bg-emerald-900/20 p-4 text-center border border-emerald-200 dark:border-emerald-800">
+                                    <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                                        {getDeleteSummary().success}
+                                    </p>
+                                    <p className="text-sm text-emerald-600/70 dark:text-emerald-400/70">Thành công</p>
+                                </div>
+                                <div className="rounded-xl bg-red-50 dark:bg-red-900/20 p-4 text-center border border-red-200 dark:border-red-800">
+                                    <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+                                        {getDeleteSummary().failed}
+                                    </p>
+                                    <p className="text-sm text-red-600/70 dark:text-red-400/70">Thất bại</p>
+                                </div>
+                            </div>
+
+                            {/* Success message */}
+                            {getDeleteSummary().success > 0 && (
+                                <div className="mb-4 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 p-4 border border-emerald-200 dark:border-emerald-800">
+                                    <div className="flex items-center gap-2">
+                                        <FontAwesomeIcon
+                                            icon={faCircleCheck}
+                                            className="text-emerald-500"
+                                        />
+                                        <p className="text-sm text-emerald-700 dark:text-emerald-300">
+                                            Đã xóa thành công <strong>{getDeleteSummary().success}</strong> sinh viên khỏi lớp học phần
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Chi tiết kết quả */}
+                            <div className="mb-4">
+                                <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Chi tiết kết quả
+                                </h4>
+                                <div className="max-h-60 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700">
+                                    <table className="w-full text-sm">
+                                        <thead className="sticky top-0 bg-gray-50 dark:bg-gray-800">
+                                            <tr>
+                                                <th className="px-3 py-2 text-left text-gray-600 dark: text-gray-400 font-medium">Mã SV</th>
+                                                <th className="px-3 py-2 text-left text-gray-600 dark:text-gray-400 font-medium">Họ tên</th>
+                                                <th className="px-3 py-2 text-center text-gray-600 dark: text-gray-400 font-medium">Trạng thái</th>
+                                                <th className="px-3 py-2 text-left text-gray-600 dark: text-gray-400 font-medium">Chi tiết</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                                            {bulkDeleteResults.map((result) => (
+                                                <tr
+                                                    key={result.id}
+                                                    className={result.status === 'failed' ? 'bg-red-50 dark:bg-red-900/10' : ''}
+                                                >
+                                                    <td className="px-3 py-2 text-gray-800 dark:text-white font-medium">
+                                                        {result.maSinhVien}
+                                                    </td>
+                                                    <td className="px-3 py-2 text-gray-800 dark:text-white">
+                                                        {result.hoTen}
+                                                    </td>
+                                                    <td className="px-3 py-2 text-center">
+                                                        {result.status === 'success' ? (
+                                                            <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                                                                <FontAwesomeIcon icon={faCircleCheck} className="text-xs" />
+                                                                Thành công
+                                                            </span>
+                                                        ) : (
+                                                            <span className="inline-flex items-center gap-1 text-red-600 dark:text-red-400">
+                                                                <FontAwesomeIcon icon={faCircleExclamation} className="text-xs" />
+                                                                Thất bại
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-3 py-2 text-gray-600 dark:text-gray-400 text-xs">
+                                                        {result.message}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </>
+                    )}
+
+                    {/* Buttons */}
+                    <div className="flex justify-end gap-3 pt-2">
+                        {!bulkDeleteResults ? (
+                            <>
+                                <Button
+                                    variant="outline"
+                                    onClick={closeBulkDeleteModal}
+                                    disabled={isBulkDeleting}
+                                >
+                                    Hủy
+                                </Button>
+                                <Button
+                                    variant="primary"
+                                    onClick={handleBulkDelete}
+                                    disabled={isBulkDeleting}
+                                    className="bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
+                                    startIcon={
+                                        isBulkDeleting
+                                            ? <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
+                                            : <FontAwesomeIcon icon={faUserMinus} />
+                                    }
+                                >
+                                    {isBulkDeleting ? "Đang xóa..." : `Xác nhận xóa ${selectedSinhVienIds.length} sinh viên`}
+                                </Button>
+                            </>
+                        ) : (
+                            <Button
+                                variant="primary"
+                                onClick={closeBulkDeleteModal}
+                            >
+                                Đóng
+                            </Button>
+                        )}
                     </div>
                 </div>
             </Modal>
