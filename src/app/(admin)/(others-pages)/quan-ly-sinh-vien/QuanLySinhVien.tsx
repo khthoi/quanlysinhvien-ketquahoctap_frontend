@@ -412,8 +412,11 @@ const ViewSinhVienModal: React.FC<ViewSinhVienModalProps> = ({
                 <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
                     Chi tiết Sinh viên
                 </h3>
+
                 <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
+
+                        {/* Hàng 1 */}
                         <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Mã sinh viên</p>
                             <p className="font-medium text-gray-800 dark:text-white">{sinhVien.maSinhVien}</p>
@@ -422,6 +425,8 @@ const ViewSinhVienModal: React.FC<ViewSinhVienModalProps> = ({
                             <p className="text-sm text-gray-500 dark:text-gray-400">Họ và tên</p>
                             <p className="font-medium text-gray-800 dark:text-white">{sinhVien.hoTen}</p>
                         </div>
+
+                        {/* Hàng 2 */}
                         <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Ngày sinh</p>
                             <p className="font-medium text-gray-800 dark:text-white">
@@ -434,18 +439,18 @@ const ViewSinhVienModal: React.FC<ViewSinhVienModalProps> = ({
                                 {getGioiTinhLabel(sinhVien.gioiTinh)}
                             </p>
                         </div>
-                        <div className="col-span-2">
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Địa chỉ</p>
-                            <p className="font-medium text-gray-800 dark:text-white">{sinhVien.diaChi}</p>
-                        </div>
+
+                        {/* Hàng 3 */}
                         <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Email</p>
-                            <p className="font-medium text-gray-800 dark: text-white">{sinhVien.email}</p>
+                            <p className="font-medium text-gray-800 dark:text-white">{sinhVien.email}</p>
                         </div>
                         <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Số điện thoại</p>
                             <p className="font-medium text-gray-800 dark:text-white">{sinhVien.sdt}</p>
                         </div>
+
+                        {/* Hàng 4 */}
                         <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Ngày nhập học</p>
                             <p className="font-medium text-gray-800 dark:text-white">
@@ -458,6 +463,8 @@ const ViewSinhVienModal: React.FC<ViewSinhVienModalProps> = ({
                                 {getTinhTrangLabel(sinhVien.tinhTrang)}
                             </Badge>
                         </div>
+
+                        {/* Hàng 5 */}
                         <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Lớp</p>
                             <p className="font-medium text-gray-800 dark:text-white">
@@ -466,18 +473,28 @@ const ViewSinhVienModal: React.FC<ViewSinhVienModalProps> = ({
                         </div>
                         <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Ngành</p>
-                            <p className="font-medium text-gray-800 dark: text-white">
+                            <p className="font-medium text-gray-800 dark:text-white">
                                 {sinhVien.lop.nganh.maNganh} - {sinhVien.lop.nganh.tenNganh}
                             </p>
                         </div>
+
+                        {/* Hàng 6 – Niên khóa */}
                         <div className="col-span-2">
-                            <p className="text-sm text-gray-500 dark: text-gray-400">Niên khóa</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Niên khóa</p>
                             <p className="font-medium text-gray-800 dark:text-white">
                                 {sinhVien.lop.nienKhoa.maNienKhoa} - {sinhVien.lop.nienKhoa.tenNienKhoa}
                             </p>
                         </div>
+
+                        {/* Hàng 7 – Địa chỉ */}
+                        <div className="col-span-2">
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Địa chỉ</p>
+                            <p className="font-medium text-gray-800 dark:text-white">{sinhVien.diaChi}</p>
+                        </div>
+
                     </div>
                 </div>
+
                 <div className="mt-8 flex justify-end">
                     <Button variant="outline" onClick={onClose}>
                         Đóng
@@ -485,6 +502,7 @@ const ViewSinhVienModal: React.FC<ViewSinhVienModalProps> = ({
                 </div>
             </div>
         </Modal>
+
     );
 };
 
