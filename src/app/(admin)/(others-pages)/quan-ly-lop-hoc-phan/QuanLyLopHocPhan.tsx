@@ -2668,7 +2668,7 @@ export default function QuanLyLopHocPhanPage() {
                                                     {lhp.maLopHocPhan}
                                                 </TableCell>
                                                 <TableCell className="px-5 py-4 text-gray-800 dark:text-white/90">
-                                                    {lhp.giangVien.hoTen}
+                                                    {lhp.giangVien?.hoTen ?? "Chưa có giảng viên"}
                                                 </TableCell>
                                                 <TableCell className="px-5 py-4 text-gray-800 dark:text-white/90">
                                                     {lhp.nganh.maNganh}
