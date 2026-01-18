@@ -18,7 +18,18 @@ import Label from "@/components/form/Label";
 import Badge from "@/components/ui/badge/Badge";
 import SearchableSelect from "@/components/form/SelectCustom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faMagnifyingGlass, faEye, faTrash, faEdit, faFileExcel, faLock } from "@fortawesome/free-solid-svg-icons";
+import {
+    faMagnifyingGlass,
+    faEye,
+    faTrash,
+    faEdit,
+    faFileExcel,
+    faLock,
+    faDownload,           // THÊM MỚI
+    faSpinner,            // THÊM MỚI
+    faCircleInfo,         // THÊM MỚI
+    faTriangleExclamation // THÊM MỚI
+} from "@fortawesome/free-solid-svg-icons";
 import TextArea from "@/components/form/input/TextArea";
 import { DropdownItem } from "@/components/ui/dropdown/DropdownItem";
 import { Dropdown } from "@/components/ui/dropdown/Dropdown";
@@ -358,6 +369,11 @@ export default function QuanLyLopHocPhanPage() {
     const [ghiChu, setGhiChu] = useState("");
     const [khoaDiem, setKhoaDiem] = useState(false);
 
+    // State cho modal tải xuống Excel
+    const [isDownloadExcelModalOpen, setIsDownloadExcelModalOpen] = useState(false);
+    const [downloadingExcelLopHocPhan, setDownloadingExcelLopHocPhan] = useState<LopHocPhan | null>(null);
+    const [isDownloadingExcel, setIsDownloadingExcel] = useState(false);
+
     // State cho options
     const [monHocOptions, setMonHocOptions] = useState<MonHocOption[]>([]);
     const [namHocOptions, setNamHocOptions] = useState<NamHocOption[]>([]);
@@ -575,6 +591,62 @@ export default function QuanLyLopHocPhanPage() {
             showAlert("error", "Lỗi", "Có lỗi xảy ra khi khóa điểm");
         } finally {
             setIsKhoaDiemLoading(false);
+        }
+    };
+
+    // Mở modal tải xuống Excel
+    const openDownloadExcelModal = (lopHocPhan: LopHocPhan) => {
+        setDownloadingExcelLopHocPhan(lopHocPhan);
+        setIsDownloadExcelModalOpen(true);
+    };
+
+    // Đóng modal tải xuống Excel
+    const closeDownloadExcelModal = () => {
+        setIsDownloadExcelModalOpen(false);
+        setDownloadingExcelLopHocPhan(null);
+    };
+
+    // Xử lý tải xuống Excel
+    const handleDownloadExcel = async () => {
+        if (!downloadingExcelLopHocPhan) return;
+
+        setIsDownloadingExcel(true);
+
+        try {
+            const accessToken = getCookie("access_token");
+            const res = await fetch(
+                `http://localhost:3000/bao-cao/bang-diem-lop-hoc-phan/${downloadingExcelLopHocPhan.id}`,
+                {
+                    method: "GET",
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                    },
+                }
+            );
+
+            if (res.ok) {
+                // Xử lý tải file Excel
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = `Bang diem lop hoc phan ${downloadingExcelLopHocPhan.maLopHocPhan}.xlsx`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+
+                showAlert("success", "Thành công", `Đã tải xuống bảng điểm lớp học phần ${downloadingExcelLopHocPhan.maLopHocPhan}`);
+                closeDownloadExcelModal();
+            } else {
+                const err = await res.json();
+                showAlert("error", "Lỗi", err.message || "Không thể tải xuống bảng điểm");
+            }
+        } catch (err) {
+            console.error("Lỗi tải xuống Excel:", err);
+            showAlert("error", "Lỗi", "Có lỗi xảy ra khi tải xuống bảng điểm");
+        } finally {
+            setIsDownloadingExcel(false);
         }
     };
 
@@ -965,6 +1037,16 @@ export default function QuanLyLopHocPhanPage() {
                                                                     Nhập điểm
                                                                 </DropdownItem>
 
+                                                                {/* THÊM MỚI - Tải xuống Excel */}
+                                                                <DropdownItem
+                                                                    tag="button"
+                                                                    onItemClick={closeDropdown}
+                                                                    onClick={() => openDownloadExcelModal(lhp)}
+                                                                >
+                                                                    <FontAwesomeIcon icon={faDownload} className="mr-2 w-4" />
+                                                                    Tải xuống Excel
+                                                                </DropdownItem>
+
                                                                 <div className="my-1 border-t border-gray-100 dark:border-gray-700" />
 
                                                                 <DropdownItem
@@ -1108,6 +1190,194 @@ export default function QuanLyLopHocPhanPage() {
                             startIcon={!isKhoaDiemLoading ? <FontAwesomeIcon icon={faLock} /> : undefined}
                         >
                             {isKhoaDiemLoading ? "Đang xử lý..." : "Xác nhận Khóa điểm"}
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
+            {/* Modal Tải xuống Excel bảng điểm */}
+            <Modal
+                isOpen={isDownloadExcelModalOpen}
+                onClose={() => {
+                    if (!isDownloadingExcel) {
+                        closeDownloadExcelModal();
+                    }
+                }}
+                className="max-w-2xl"
+            >
+                <div className="p-6 sm:p-8">
+                    {/* Header */}
+                    <div className="flex items-center gap-4 mb-6">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
+                            <FontAwesomeIcon
+                                icon={faFileExcel}
+                                className="text-2xl text-green-600 dark:text-green-400"
+                            />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-semibold text-gray-800 dark:text-white/90">
+                                Tải xuống bảng điểm
+                            </h3>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                                Xuất file Excel danh sách điểm sinh viên
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Thông tin lớp học phần */}
+                    {downloadingExcelLopHocPhan && (
+                        <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700">
+                            <h4 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-3">
+                                Thông tin lớp học phần
+                            </h4>
+                            <div className="space-y-3">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm text-gray-500 dark:text-gray-400">Mã LHP:</span>
+                                    <span className="font-semibold text-gray-800 dark:text-white">
+                                        {downloadingExcelLopHocPhan.maLopHocPhan}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm text-gray-500 dark:text-gray-400">Môn học:</span>
+                                    <span className="font-medium text-gray-700 dark:text-gray-300">
+                                        {downloadingExcelLopHocPhan.monHoc.tenMonHoc}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm text-gray-500 dark:text-gray-400">Mã môn:</span>
+                                    <span className="font-medium text-gray-700 dark:text-gray-300">
+                                        {downloadingExcelLopHocPhan.monHoc.maMonHoc}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm text-gray-500 dark:text-gray-400">Sĩ số:</span>
+                                    <Badge variant="solid" color="info">
+                                        {downloadingExcelLopHocPhan.siSo} sinh viên
+                                    </Badge>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm text-gray-500 dark:text-gray-400">Học kỳ: </span>
+                                    <span className="font-medium text-gray-700 dark:text-gray-300">
+                                        HK{downloadingExcelLopHocPhan.hocKy.hocKy} - {downloadingExcelLopHocPhan.hocKy.namHoc.tenNamHoc}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm text-gray-500 dark:text-gray-400">Trạng thái:</span>
+                                    <Badge variant="solid" color={getTrangThaiColor(downloadingExcelLopHocPhan.trangThai)}>
+                                        {getTrangThaiLabel(downloadingExcelLopHocPhan.trangThai)}
+                                    </Badge>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Thông tin file sẽ xuất */}
+                    <div className="mb-6 rounded-xl border border-green-200 bg-green-50 dark:border-green-800/50 dark:bg-green-900/20">
+                        <div className="p-4">
+                            <div className="flex items-start gap-3">
+                                <div className="flex-shrink-0">
+                                    <FontAwesomeIcon
+                                        icon={faFileExcel}
+                                        className="text-lg text-green-600 dark: text-green-400 mt-0.5"
+                                    />
+                                </div>
+                                <div className="flex-1">
+                                    <h4 className="font-semibold text-green-800 dark:text-green-300 mb-2">
+                                        Thông tin file xuất
+                                    </h4>
+                                    <ul className="text-sm text-green-700/80 dark:text-green-300/70 space-y-1.5">
+                                        <li className="flex items-center gap-2">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                                            <span>Tên file: <strong className="break-all">Bang diem lop hoc phan {downloadingExcelLopHocPhan?.maLopHocPhan}. xlsx</strong></span>
+                                        </li>
+                                        <li className="flex items-center gap-2">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                                            <span>Nội dung: Danh sách điểm tất cả sinh viên trong lớp</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Thông tin hướng dẫn */}
+                    <div className="mb-6 rounded-xl border border-blue-200 bg-blue-50 dark:border-blue-800/50 dark:bg-blue-900/20">
+                        <div className="p-4">
+                            <div className="flex items-start gap-3">
+                                <div className="flex-shrink-0">
+                                    <FontAwesomeIcon
+                                        icon={faCircleInfo}
+                                        className="text-lg text-blue-600 dark:text-blue-400 mt-0.5"
+                                    />
+                                </div>
+                                <div className="flex-1">
+                                    <h4 className="font-semibold text-blue-800 dark:text-blue-300 mb-1">
+                                        Hướng dẫn sử dụng
+                                    </h4>
+                                    <p className="text-sm text-blue-700/80 dark:text-blue-300/70">
+                                        File Excel sẽ chứa danh sách sinh viên cùng với điểm quá trình, điểm thành phần,
+                                        điểm thi và điểm tổng kết. Có thể sử dụng để in ấn hoặc báo cáo.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Cảnh báo */}
+                    <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800/50 dark:bg-amber-900/20">
+                        <div className="p-4">
+                            <div className="flex items-start gap-3">
+                                <div className="flex-shrink-0">
+                                    <FontAwesomeIcon
+                                        icon={faTriangleExclamation}
+                                        className="text-lg text-amber-600 dark:text-amber-400 mt-0.5"
+                                    />
+                                </div>
+                                <div className="flex-1">
+                                    <h4 className="font-semibold text-amber-800 dark:text-amber-300 mb-1">
+                                        Lưu ý quan trọng
+                                    </h4>
+                                    <ul className="text-xs text-amber-700/80 dark:text-amber-300/70 space-y-1 list-disc list-inside">
+                                        <li>Bạn chỉ có thể xuất bảng điểm của lớp học phần mình phụ trách</li>
+                                        <li>Dữ liệu điểm được xuất tại thời điểm hiện tại</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Loading state */}
+                    {isDownloadingExcel && (
+                        <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg flex items-center justify-center gap-3">
+                            <FontAwesomeIcon
+                                icon={faSpinner}
+                                className="text-xl text-green-500 animate-spin"
+                            />
+                            <span className="text-gray-700 dark:text-gray-300">
+                                Đang tạo file Excel...
+                            </span>
+                        </div>
+                    )}
+
+                    {/* Buttons */}
+                    <div className="flex justify-end gap-3">
+                        <Button
+                            variant="outline"
+                            onClick={closeDownloadExcelModal}
+                            disabled={isDownloadingExcel}
+                        >
+                            Hủy
+                        </Button>
+                        <Button
+                            variant="primary"
+                            onClick={handleDownloadExcel}
+                            disabled={isDownloadingExcel}
+                            startIcon={
+                                isDownloadingExcel
+                                    ? <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
+                                    : <FontAwesomeIcon icon={faDownload} />
+                            }
+                        >
+                            {isDownloadingExcel ? "Đang tải..." : "Tải xuống Excel"}
                         </Button>
                     </div>
                 </div>
