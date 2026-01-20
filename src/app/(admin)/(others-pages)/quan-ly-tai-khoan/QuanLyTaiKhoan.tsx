@@ -18,7 +18,19 @@ import Label from "@/components/form/Label";
 import Badge from "@/components/ui/badge/Badge";
 import SearchableSelect from "@/components/form/SelectCustom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faMagnifyingGlass, faEye, faTrash, faEdit, faUserPlus } from "@fortawesome/free-solid-svg-icons";
+import {
+    faMagnifyingGlass,
+    faEye,
+    faTrash,
+    faEdit,
+    faUserPlus,
+    faKey,
+    faEnvelope,
+    faPhone,
+    faTriangleExclamation,
+    faCircleInfo,
+    faShieldHalved
+} from "@fortawesome/free-solid-svg-icons";
 import { DropdownItem } from "@/components/ui/dropdown/DropdownItem";
 import { Dropdown } from "@/components/ui/dropdown/Dropdown";
 import { FaAngleDown } from "react-icons/fa6";
@@ -30,17 +42,15 @@ interface Profile {
     type: "giangvien" | "sinhvien";
     id: number;
     hoTen: string;
-    email: string;
-    sdt: string;
     ngaySinh: string;
     gioiTinh: GioiTinh;
     diaChi: string;
-    maSinhVien?:  string; // Chỉ có ở sinh viên
+    maSinhVien?: string; // Chỉ có ở sinh viên
 }
 
 interface NguoiDung {
     id: number;
-    tenDangNhap:  string;
+    tenDangNhap: string;
     vaiTro: VAI_TRO;
     ngayTao: string;
     profile: Profile | null;
@@ -65,13 +75,13 @@ const getVaiTroLabel = (vaiTro: VAI_TRO): string => {
     switch (vaiTro) {
         case "ADMIN":
             return "Quản Trị Viên";
-        case "CAN_BO_PHONG_DAO_TAO": 
+        case "CAN_BO_PHONG_DAO_TAO":
             return "Cán bộ";
         case "SINH_VIEN":
             return "Sinh viên";
         case "GIANG_VIEN":
             return "Giảng viên";
-        default: 
+        default:
             return vaiTro;
     }
 };
@@ -86,14 +96,14 @@ const getVaiTroColor = (vaiTro: VAI_TRO): "success" | "error" | "primary" | "war
             return "success";
         case "GIANG_VIEN":
             return "primary";
-        default: 
+        default:
             return "primary";
     }
 };
 
 const getGioiTinhLabel = (gioiTinh: GioiTinh): string => {
     switch (gioiTinh) {
-        case "NAM": 
+        case "NAM":
             return "Nam";
         case "NU":
             return "Nữ";
@@ -148,7 +158,7 @@ const ViewNguoiDungModal: React.FC<ViewNguoiDungModalProps> = ({
                         <>
                             <hr className="my-4 border-gray-200 dark:border-gray-700" />
                             <h4 className="text-lg font-medium text-gray-800 dark:text-white/90 mb-4">
-                                Thông tin {nguoiDung.profile. type === "giangvien" ? "Giảng viên" : "Sinh viên"}
+                                Thông tin {nguoiDung.profile.type === "giangvien" ? "Giảng viên" : "Sinh viên"}
                             </h4>
                             <div className="grid grid-cols-2 gap-4">
                                 {nguoiDung.profile.type === "sinhvien" && nguoiDung.profile.maSinhVien && (
@@ -162,17 +172,9 @@ const ViewNguoiDungModal: React.FC<ViewNguoiDungModalProps> = ({
                                     <p className="font-medium text-gray-800 dark: text-white">{nguoiDung.profile.hoTen}</p>
                                 </div>
                                 <div>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">Email</p>
-                                    <p className="font-medium text-gray-800 dark:text-white">{nguoiDung.profile.email}</p>
-                                </div>
-                                <div>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">Số điện thoại</p>
-                                    <p className="font-medium text-gray-800 dark:text-white">{nguoiDung.profile. sdt}</p>
-                                </div>
-                                <div>
                                     <p className="text-sm text-gray-500 dark:text-gray-400">Ngày sinh</p>
                                     <p className="font-medium text-gray-800 dark:text-white">
-                                        {new Date(nguoiDung.profile. ngaySinh).toLocaleDateString("vi-VN")}
+                                        {new Date(nguoiDung.profile.ngaySinh).toLocaleDateString("vi-VN")}
                                     </p>
                                 </div>
                                 <div>
@@ -183,7 +185,7 @@ const ViewNguoiDungModal: React.FC<ViewNguoiDungModalProps> = ({
                                 </div>
                                 <div className="col-span-2">
                                     <p className="text-sm text-gray-500 dark:text-gray-400">Địa chỉ</p>
-                                    <p className="font-medium text-gray-800 dark:text-white">{nguoiDung. profile.diaChi}</p>
+                                    <p className="font-medium text-gray-800 dark:text-white">{nguoiDung.profile.diaChi}</p>
                                 </div>
                             </div>
                         </>
@@ -204,24 +206,19 @@ interface EditNguoiDungModalProps {
     isOpen: boolean;
     onClose: () => void;
     nguoiDung: NguoiDung | null;
-    tenDangNhap: string;
     vaiTro: VAI_TRO | "";
-    onTenDangNhapChange: (value: string) => void;
     onVaiTroChange: (value: VAI_TRO | "") => void;
     onSubmit: () => void;
     errors: {
-        tenDangNhap:  boolean;
-        vaiTro:  boolean;
+        vaiTro: boolean;
     };
 }
 
-const EditNguoiDungModal: React. FC<EditNguoiDungModalProps> = ({
+const EditNguoiDungModal: React.FC<EditNguoiDungModalProps> = ({
     isOpen,
     onClose,
     nguoiDung,
-    tenDangNhap,
     vaiTro,
-    onTenDangNhapChange,
     onVaiTroChange,
     onSubmit,
     errors,
@@ -231,20 +228,26 @@ const EditNguoiDungModal: React. FC<EditNguoiDungModalProps> = ({
     // Xác định options cho vai trò
     const isGiangVien = nguoiDung.profile?.type === "giangvien";
     const isSinhVien = nguoiDung.profile?.type === "sinhvien";
+    const isAdmin = nguoiDung.vaiTro === "ADMIN";
+
+    // Không cho đổi role nếu là ADMIN hoặc Sinh viên
+    const canChangeRole = !isAdmin && !isSinhVien;
 
     const vaiTroOptions = isGiangVien
-        ?  [
-            { value: "GIANG_VIEN", label:  "Giảng viên" },
+        ? [
+            { value: "GIANG_VIEN", label: "Giảng viên" },
             { value: "CAN_BO_PHONG_DAO_TAO", label: "Cán bộ" },
         ]
         : isSinhVien
             ? [{ value: "SINH_VIEN", label: "Sinh viên" }]
-            : [
-                { value: "ADMIN", label:  "Quản Trị Viên" },
-                { value: "GIANG_VIEN", label: "Giảng viên" },
-                { value: "CAN_BO_PHONG_DAO_TAO", label: "Cán bộ" },
-                { value: "SINH_VIEN", label: "Sinh viên" },
-            ];
+            : isAdmin
+                ? [{ value: "ADMIN", label: "Quản Trị Viên" }]
+                : [
+                    { value: "ADMIN", label: "Quản Trị Viên" },
+                    { value: "GIANG_VIEN", label: "Giảng viên" },
+                    { value: "CAN_BO_PHONG_DAO_TAO", label: "Cán bộ" },
+                    { value: "SINH_VIEN", label: "Sinh viên" },
+                ];
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} className="max-w-lg">
@@ -253,15 +256,21 @@ const EditNguoiDungModal: React. FC<EditNguoiDungModalProps> = ({
                     Sửa Người dùng
                 </h3>
                 <div className="space-y-5">
+                    {/* Tên đăng nhập - Chỉ hiển thị, không cho sửa */}
                     <div>
                         <Label>Tên đăng nhập</Label>
                         <Input
-                            defaultValue={tenDangNhap}
-                            onChange={(e) => onTenDangNhapChange(e.target.value)}
-                            error={errors.tenDangNhap}
-                            hint={errors.tenDangNhap ?  "Tên đăng nhập không được để trống" : ""}
+                            defaultValue={nguoiDung.tenDangNhap}
+                            disabled={true}
+                            className="bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
                         />
+                        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                            <FontAwesomeIcon icon={faCircleInfo} className="mr-1" />
+                            Không thể thay đổi tên đăng nhập
+                        </p>
                     </div>
+
+                    {/* Vai trò */}
                     <div>
                         <Label>Vai trò</Label>
                         <SearchableSelect
@@ -270,8 +279,14 @@ const EditNguoiDungModal: React. FC<EditNguoiDungModalProps> = ({
                             onChange={(value) => onVaiTroChange((value as VAI_TRO) || "")}
                             defaultValue={vaiTro || ""}
                             showSecondary={false}
-                            disabled={isSinhVien}
+                            disabled={!canChangeRole}
                         />
+                        {isAdmin && (
+                            <p className="mt-1 text-sm text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                                <FontAwesomeIcon icon={faShieldHalved} className="text-xs" />
+                                Không thể thay đổi vai trò của Quản trị viên
+                            </p>
+                        )}
                         {isSinhVien && (
                             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                                 Không thể thay đổi vai trò của sinh viên
@@ -286,7 +301,7 @@ const EditNguoiDungModal: React. FC<EditNguoiDungModalProps> = ({
                     <Button variant="outline" onClick={onClose}>
                         Hủy
                     </Button>
-                    <Button onClick={onSubmit}>
+                    <Button onClick={onSubmit} disabled={!canChangeRole}>
                         Cập nhật
                     </Button>
                 </div>
@@ -297,7 +312,7 @@ const EditNguoiDungModal: React. FC<EditNguoiDungModalProps> = ({
 
 // ==================== MODAL TẠO TÀI KHOẢN CÁN BỘ ====================
 interface CreateCanBoModalProps {
-    isOpen:  boolean;
+    isOpen: boolean;
     onClose: () => void;
     tenDangNhap: string;
     password: string;
@@ -357,7 +372,7 @@ const CreateCanBoModal: React.FC<CreateCanBoModalProps> = ({
                             defaultValue={password}
                             onChange={(e) => onPasswordChange(e.target.value)}
                             error={errors.password}
-                            hint={errors.password ?  "Mật khẩu không được để trống" : ""}
+                            hint={errors.password ? "Mật khẩu không được để trống" : ""}
                             placeholder="Nhập mật khẩu..."
                         />
                     </div>
@@ -383,7 +398,7 @@ interface ItemsCountInfoProps {
 const ItemsCountInfo: React.FC<ItemsCountInfoProps> = ({ pagination }) => {
     const { total, page, limit } = pagination;
 
-    const startItem = total === 0 ? 0 :  (page - 1) * limit + 1;
+    const startItem = total === 0 ? 0 : (page - 1) * limit + 1;
     const endItem = Math.min(page * limit, total);
 
     return (
@@ -413,8 +428,8 @@ export default function QuanLyNguoiDungPage() {
     const [pagination, setPagination] = useState<PaginationData>({
         total: 0,
         page: 1,
-        limit:  10,
-        totalPages:  1,
+        limit: 10,
+        totalPages: 1,
     });
     const [currentPage, setCurrentPage] = useState(1);
 
@@ -422,20 +437,30 @@ export default function QuanLyNguoiDungPage() {
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [isCreateCanBoModalOpen, setIsCreateCanBoModalOpen] = useState(false);
-    
+
     const [deletingNguoiDung, setDeletingNguoiDung] = useState<NguoiDung | null>(null);
     const [editingNguoiDung, setEditingNguoiDung] = useState<NguoiDung | null>(null);
     const [viewingNguoiDung, setViewingNguoiDung] = useState<NguoiDung | null>(null);
     const [searchKeyword, setSearchKeyword] = useState("");
 
     // State cho form sửa
-    const [editTenDangNhap, setEditTenDangNhap] = useState("");
     const [editVaiTro, setEditVaiTro] = useState<VAI_TRO | "">("");
 
     // State cho form tạo cán bộ
     const [createTenDangNhap, setCreateTenDangNhap] = useState("");
     const [createPassword, setCreatePassword] = useState("");
     const [isCreatingCanBo, setIsCreatingCanBo] = useState(false);
+
+    // State cho modal khôi phục mật khẩu
+    const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
+    const [resetPasswordNguoiDung, setResetPasswordNguoiDung] = useState<NguoiDung | null>(null);
+    const [resetEmail, setResetEmail] = useState("");
+    const [resetSdt, setResetSdt] = useState("");
+    const [isResettingPassword, setIsResettingPassword] = useState(false);
+    const [resetPasswordErrors, setResetPasswordErrors] = useState({
+        email: "",
+        sdt: "",
+    });
 
     // State để theo dõi dropdown ĐANG MỞ
     const [activeDropdownId, setActiveDropdownId] = useState<number | null>(null);
@@ -451,7 +476,6 @@ export default function QuanLyNguoiDungPage() {
     };
 
     const [editErrors, setEditErrors] = useState({
-        tenDangNhap: false,
         vaiTro: false,
     });
 
@@ -484,7 +508,7 @@ export default function QuanLyNguoiDungPage() {
             const json = await res.json();
             if (json.data) {
                 setNguoiDungs(json.data);
-                setPagination(json. pagination);
+                setPagination(json.pagination);
             }
         } catch (err) {
             showAlert("error", "Lỗi", "Không thể tải danh sách người dùng");
@@ -497,7 +521,7 @@ export default function QuanLyNguoiDungPage() {
 
     const handleSearch = () => {
         setCurrentPage(1);
-        fetchNguoiDungs(1, searchKeyword. trim());
+        fetchNguoiDungs(1, searchKeyword.trim());
     };
 
     const showAlert = (
@@ -511,27 +535,24 @@ export default function QuanLyNguoiDungPage() {
 
     const validateEditForm = () => {
         const newErrors = {
-            tenDangNhap: !editTenDangNhap.trim(),
-            vaiTro:  editVaiTro === "",
+            vaiTro: editVaiTro === "",
         };
         setEditErrors(newErrors);
-        return ! Object.values(newErrors).some((e) => e);
+        return !Object.values(newErrors).some((e) => e);
     };
 
     const validateCreateForm = () => {
         const newErrors = {
             tenDangNhap: !createTenDangNhap.trim(),
-            password: ! createPassword.trim(),
+            password: !createPassword.trim(),
         };
         setCreateErrors(newErrors);
         return !Object.values(newErrors).some((e) => e);
     };
 
     const resetEditForm = () => {
-        setEditTenDangNhap("");
         setEditVaiTro("");
         setEditErrors({
-            tenDangNhap: false,
             vaiTro: false,
         });
     };
@@ -546,18 +567,23 @@ export default function QuanLyNguoiDungPage() {
     };
 
     const handleUpdate = async () => {
-        if (!editingNguoiDung || ! validateEditForm()) return;
+        if (!editingNguoiDung || !validateEditForm()) return;
+
+        // Không cho sửa nếu là ADMIN
+        if (editingNguoiDung.vaiTro === "ADMIN") {
+            showAlert("error", "Lỗi", "Không thể thay đổi vai trò của Quản trị viên");
+            return;
+        }
 
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch(`http://localhost:3000/auth/users/${editingNguoiDung. id}`, {
+            const res = await fetch(`http://localhost:3000/auth/users/${editingNguoiDung.id}`, {
                 method: "PUT",
                 headers: {
-                    "Content-Type":  "application/json",
+                    "Content-Type": "application/json",
                     Authorization: `Bearer ${accessToken}`,
                 },
                 body: JSON.stringify({
-                    tenDangNhap: editTenDangNhap. trim(),
                     vaiTro: editVaiTro,
                 }),
             });
@@ -585,9 +611,9 @@ export default function QuanLyNguoiDungPage() {
         try {
             const accessToken = getCookie("access_token");
             const res = await fetch("http://localhost:3000/auth/new-users", {
-                method:  "POST",
+                method: "POST",
                 headers: {
-                    "Content-Type":  "application/json",
+                    "Content-Type": "application/json",
                     Authorization: `Bearer ${accessToken}`,
                 },
                 body: JSON.stringify({
@@ -598,7 +624,7 @@ export default function QuanLyNguoiDungPage() {
             });
 
             setIsCreateCanBoModalOpen(false);
-            if (res. ok) {
+            if (res.ok) {
                 showAlert("success", "Thành công", "Tạo tài khoản cán bộ thành công");
                 resetCreateForm();
                 fetchNguoiDungs(currentPage, searchKeyword);
@@ -611,6 +637,102 @@ export default function QuanLyNguoiDungPage() {
             showAlert("error", "Lỗi", "Có lỗi xảy ra khi tạo tài khoản");
         } finally {
             setIsCreatingCanBo(false);
+        }
+    };
+
+    // Validate email
+    const validateEmail = (email: string): string => {
+        if (!email.trim()) return "Email không được để trống";
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) return "Email không hợp lệ";
+        return "";
+    };
+
+    // Validate số điện thoại
+    const validateSdt = (sdt: string): string => {
+        if (!sdt.trim()) return "Số điện thoại không được để trống";
+        const sdtRegex = /^(0[3|5|7|8|9])+([0-9]{8})$/;
+        if (!sdtRegex.test(sdt)) return "Số điện thoại không hợp lệ (VD: 0912345678)";
+        return "";
+    };
+
+    // Validate form khôi phục mật khẩu
+    const validateResetPasswordForm = (): boolean => {
+        const emailError = validateEmail(resetEmail);
+        const sdtError = validateSdt(resetSdt);
+
+        setResetPasswordErrors({
+            email: emailError,
+            sdt: sdtError,
+        });
+
+        return !emailError && !sdtError;
+    };
+
+    // Reset form khôi phục mật khẩu
+    const resetResetPasswordForm = () => {
+        setResetEmail("");
+        setResetSdt("");
+        setResetPasswordErrors({
+            email: "",
+            sdt: "",
+        });
+    };
+
+    // Mở modal khôi phục mật khẩu
+    const openResetPasswordModal = (nguoiDung: NguoiDung) => {
+        setResetPasswordNguoiDung(nguoiDung);
+
+        setResetEmail("");
+        setResetSdt("");
+
+        setResetPasswordErrors({ email: "", sdt: "" });
+        setIsResetPasswordModalOpen(true);
+    };
+
+    // Đóng modal khôi phục mật khẩu
+    const closeResetPasswordModal = () => {
+        setIsResetPasswordModalOpen(false);
+        setResetPasswordNguoiDung(null);
+        resetResetPasswordForm();
+    };
+
+    // Xử lý khôi phục mật khẩu
+    const handleResetPassword = async () => {
+        if (!resetPasswordNguoiDung || !validateResetPasswordForm()) return;
+
+        setIsResettingPassword(true);
+
+        try {
+            const accessToken = getCookie("access_token");
+            const res = await fetch("http://localhost:3000/auth/reset-password", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${accessToken}`,
+                },
+                body: JSON.stringify({
+                    userId: resetPasswordNguoiDung.id,
+                    email: resetEmail.trim(),
+                    sdt: resetSdt.trim(),
+                }),
+            });
+
+            if (res.ok) {
+                closeResetPasswordModal();
+                showAlert(
+                    "success",
+                    "Thành công",
+                    `Đã khôi phục mật khẩu cho người dùng "${resetPasswordNguoiDung.tenDangNhap}".  Mật khẩu mới đã được gửi đến email ${resetEmail}.`
+                );
+            } else {
+                const err = await res.json();
+                showAlert("error", "Lỗi", err.message || "Khôi phục mật khẩu thất bại.  Vui lòng kiểm tra lại thông tin.");
+            }
+        } catch (err) {
+            showAlert("error", "Lỗi", "Có lỗi xảy ra khi khôi phục mật khẩu");
+        } finally {
+            setIsResettingPassword(false);
         }
     };
 
@@ -648,7 +770,6 @@ export default function QuanLyNguoiDungPage() {
 
     const openEditModal = (nguoiDung: NguoiDung) => {
         setEditingNguoiDung(nguoiDung);
-        setEditTenDangNhap(nguoiDung.tenDangNhap);
         setEditVaiTro(nguoiDung.vaiTro);
         setIsEditModalOpen(true);
     };
@@ -671,9 +792,9 @@ export default function QuanLyNguoiDungPage() {
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-8">
                 Bạn có chắc chắn muốn xóa người dùng{" "}
                 <span className="font-semibold text-gray-900 dark:text-white">
-                    {deletingNguoiDung?. tenDangNhap}
+                    {deletingNguoiDung?.tenDangNhap}
                 </span>
-                ? 
+                ?
                 Hành động này không thể hoàn tác.
             </p>
             <div className="flex justify-end gap-3">
@@ -703,7 +824,7 @@ export default function QuanLyNguoiDungPage() {
                         <Alert
                             variant={alert.variant}
                             title={alert.title}
-                            message={alert. message}
+                            message={alert.message}
                             autoDismiss
                         />
                     </div>
@@ -779,7 +900,7 @@ export default function QuanLyNguoiDungPage() {
                                                 </TableCell>
                                                 <TableCell className="px-5 py-4">
                                                     <Badge variant="solid" color={getVaiTroColor(nd.vaiTro)}>
-                                                        {getVaiTroLabel(nd. vaiTro)}
+                                                        {getVaiTroLabel(nd.vaiTro)}
                                                     </Badge>
                                                 </TableCell>
                                                 <TableCell className="px-5 py-4 text-gray-800 dark: text-white/90">
@@ -795,7 +916,7 @@ export default function QuanLyNguoiDungPage() {
                                                         >
                                                             Thao tác
                                                             <FaAngleDown
-                                                                className={`text-gray-500 transition-transform duration-300 ease-in-out ${activeDropdownId === nd.id ?  "rotate-180" : "rotate-0"
+                                                                className={`text-gray-500 transition-transform duration-300 ease-in-out ${activeDropdownId === nd.id ? "rotate-180" : "rotate-0"
                                                                     }`}
                                                             />
                                                         </Button>
@@ -828,6 +949,16 @@ export default function QuanLyNguoiDungPage() {
                                                                 >
                                                                     <FontAwesomeIcon icon={faEdit} className="mr-2 w-4" />
                                                                     Sửa
+                                                                </DropdownItem>
+
+                                                                {/* THÊM MỚI - Khôi phục mật khẩu */}
+                                                                <DropdownItem
+                                                                    tag="button"
+                                                                    onItemClick={closeDropdown}
+                                                                    onClick={() => openResetPasswordModal(nd)}
+                                                                >
+                                                                    <FontAwesomeIcon icon={faKey} className="mr-2 w-4" />
+                                                                    Reset mật khẩu
                                                                 </DropdownItem>
 
                                                                 <div className="my-1 border-t border-gray-100 dark:border-gray-700" />
@@ -889,9 +1020,7 @@ export default function QuanLyNguoiDungPage() {
                     setEditingNguoiDung(null);
                 }}
                 nguoiDung={editingNguoiDung}
-                tenDangNhap={editTenDangNhap}
                 vaiTro={editVaiTro}
-                onTenDangNhapChange={setEditTenDangNhap}
                 onVaiTroChange={setEditVaiTro}
                 onSubmit={handleUpdate}
                 errors={editErrors}
@@ -924,6 +1053,184 @@ export default function QuanLyNguoiDungPage() {
                 errors={createErrors}
                 isCreating={isCreatingCanBo}
             />
+
+            {/* Modal Khôi phục mật khẩu */}
+            <Modal
+                isOpen={isResetPasswordModalOpen}
+                onClose={() => {
+                    if (!isResettingPassword) {
+                        closeResetPasswordModal();
+                    }
+                }}
+                className="max-w-2xl"
+            >
+                <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
+                    {/* Header */}
+                    <div className="flex items-center gap-4 mb-6">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30">
+                            <FontAwesomeIcon
+                                icon={faKey}
+                                className="text-2xl text-amber-600 dark:text-amber-400"
+                            />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-semibold text-gray-800 dark:text-white/90">
+                                Khôi phục mật khẩu
+                            </h3>
+                            <p className="text-sm text-gray-500 dark: text-gray-400">
+                                Đặt lại mật khẩu cho người dùng
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Thông tin người dùng */}
+                    {resetPasswordNguoiDung && (
+                        <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark: border-gray-700">
+                            <h4 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-3">
+                                Thông tin người dùng
+                            </h4>
+                            <div className="space-y-2">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm text-gray-500 dark:text-gray-400">Tên đăng nhập: </span>
+                                    <span className="font-semibold text-gray-800 dark:text-white">
+                                        {resetPasswordNguoiDung.tenDangNhap}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm text-gray-500 dark:text-gray-400">Vai trò:</span>
+                                    <Badge variant="solid" color={getVaiTroColor(resetPasswordNguoiDung.vaiTro)}>
+                                        {getVaiTroLabel(resetPasswordNguoiDung.vaiTro)}
+                                    </Badge>
+                                </div>
+                                {resetPasswordNguoiDung.profile && (
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-sm text-gray-500 dark:text-gray-400">Họ tên:</span>
+                                        <span className="font-medium text-gray-700 dark:text-gray-300">
+                                            {resetPasswordNguoiDung.profile.hoTen}
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Hướng dẫn */}
+                    <div className="mb-6 rounded-xl border border-blue-200 bg-blue-50 dark:border-blue-800/50 dark:bg-blue-900/20">
+                        <div className="p-4">
+                            <div className="flex items-start gap-3">
+                                <div className="flex-shrink-0">
+                                    <FontAwesomeIcon
+                                        icon={faCircleInfo}
+                                        className="text-lg text-blue-600 dark: text-blue-400 mt-0.5"
+                                    />
+                                </div>
+                                <div className="flex-1">
+                                    <h4 className="font-semibold text-blue-800 dark:text-blue-300 mb-1">
+                                        Hướng dẫn
+                                    </h4>
+                                    <ul className="text-sm text-blue-700/80 dark:text-blue-300/70 space-y-1 list-disc list-inside">
+                                        <li>Nhập email và số điện thoại đã đăng ký của người dùng</li>
+                                        <li>Thông tin phải khớp với dữ liệu trong hệ thống</li>
+                                        <li>Mật khẩu mới sẽ được gửi đến email người dùng</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Form nhập thông tin */}
+                    <div className="space-y-5 mb-6">
+                        {/* Email */}
+                        <div>
+                            <Label className="flex items-center gap-2">
+                                <FontAwesomeIcon icon={faEnvelope} className="text-gray-500" />
+                                Email <span className="text-red-500">*</span>
+                            </Label>
+                            <Input
+                                type="email"
+                                defaultValue={resetEmail}
+                                onChange={(e) => {
+                                    setResetEmail(e.target.value);
+                                    if (resetPasswordErrors.email) {
+                                        setResetPasswordErrors(prev => ({ ...prev, email: "" }));
+                                    }
+                                }}
+                                error={!!resetPasswordErrors.email}
+                                hint={resetPasswordErrors.email}
+                                placeholder="Nhập email của người dùng..."
+                            />
+                        </div>
+
+                        {/* Số điện thoại */}
+                        <div>
+                            <Label className="flex items-center gap-2">
+                                <FontAwesomeIcon icon={faPhone} className="text-gray-500" />
+                                Số điện thoại <span className="text-red-500">*</span>
+                            </Label>
+                            <Input
+                                type="tel"
+                                defaultValue={resetSdt}
+                                onChange={(e) => {
+                                    setResetSdt(e.target.value);
+                                    if (resetPasswordErrors.sdt) {
+                                        setResetPasswordErrors(prev => ({ ...prev, sdt: "" }));
+                                    }
+                                }}
+                                error={!!resetPasswordErrors.sdt}
+                                hint={resetPasswordErrors.sdt}
+                                placeholder="Nhập số điện thoại (VD: 0912345678)..."
+                            />
+                        </div>
+                    </div>
+
+                    {/* Cảnh báo */}
+                    <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800/50 dark:bg-amber-900/20">
+                        <div className="p-4">
+                            <div className="flex items-start gap-3">
+                                <div className="flex-shrink-0">
+                                    <FontAwesomeIcon
+                                        icon={faTriangleExclamation}
+                                        className="text-lg text-amber-600 dark:text-amber-400 mt-0.5"
+                                    />
+                                </div>
+                                <div className="flex-1">
+                                    <h4 className="font-semibold text-amber-800 dark:text-amber-300 mb-1">
+                                        Lưu ý quan trọng
+                                    </h4>
+                                    <ul className="text-xs text-amber-700/80 dark:text-amber-300/70 space-y-1 list-disc list-inside">
+                                        <li>Mật khẩu cũ sẽ bị vô hiệu hóa ngay lập tức</li>
+                                        <li>Người dùng cần kiểm tra email để lấy mật khẩu mới</li>
+                                        <li>Khuyến nghị người dùng đổi mật khẩu sau khi đăng nhập</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Buttons */}
+                    <div className="flex justify-end gap-3">
+                        <Button
+                            variant="outline"
+                            onClick={closeResetPasswordModal}
+                            disabled={isResettingPassword}
+                        >
+                            Hủy
+                        </Button>
+                        <Button
+                            variant="primary"
+                            onClick={handleResetPassword}
+                            disabled={isResettingPassword}
+                            startIcon={
+                                isResettingPassword
+                                    ? undefined
+                                    : <FontAwesomeIcon icon={faKey} />
+                            }
+                        >
+                            {isResettingPassword ? "Đang xử lý..." : "Xác nhận khôi phục"}
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 }

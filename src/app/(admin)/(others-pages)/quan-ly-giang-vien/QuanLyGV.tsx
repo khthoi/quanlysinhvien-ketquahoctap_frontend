@@ -34,7 +34,8 @@ import {
     faCircleExclamation,
     faSpinner,
     faTrashCan,
-    faTriangleExclamation
+    faTriangleExclamation,
+    faInfoCircle
 } from "@fortawesome/free-solid-svg-icons";
 import { ChevronDownIcon } from "@/icons";
 import Select from "@/components/form/Select";
@@ -201,7 +202,7 @@ const ItemsCountInfo: React.FC<ItemsCountInfoProps> = ({ pagination }) => {
                     {endItem}
                 </span>
                 {" "}trên{" "}
-                <span className="font-medium text-gray-700 dark: text-gray-300">
+                <span className="font-medium text-gray-700 dark:text-gray-300">
                     {total}
                 </span>
                 {" "}kết quả
@@ -633,6 +634,41 @@ const ImportGiangVienExcelModal: React.FC<ImportGiangVienExcelModalProps> = ({
                     >
                         Tải file Excel mẫu
                     </Button>
+                </div>
+
+                {/* Hướng dẫn sử dụng */}
+                <div className="mb-6 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-4">
+                    <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 mt-0.5">
+                            <FontAwesomeIcon
+                                icon={faInfoCircle}
+                                className="text-blue-500 dark:text-blue-400"
+                            />
+                        </div>
+                        <div className="flex-1">
+                            <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">
+                                Hướng dẫn nhập giảng viên
+                            </h4>
+                            <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1.5">
+                                <li className="flex items-start gap-2">
+                                    <span className="text-blue-500 dark:text-blue-400 mt-0.5">•</span>
+                                    <span>Tải file Excel mẫu và điền thông tin giảng viên</span>
+                                </li>
+                                <li className="flex items-start gap-2">
+                                    <span className="text-blue-500 dark:text-blue-400 mt-0.5">•</span>
+                                    <span>Đảm bảo các cột bắt buộc được điền đầy đủ</span>
+                                </li>
+                                <li className="flex items-start gap-2">
+                                    <span className="text-blue-500 dark:text-blue-400 mt-0.5">•</span>
+                                    <span>Có thể phân công môn học ở cột "Mã Môn học"</span>
+                                </li>
+                                <li className="flex items-start gap-2">
+                                    <span className="text-blue-500 dark:text-blue-400 mt-0.5">•</span>
+                                    <span>Chỉ chấp nhận file định dạng .xlsx</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Dropzone */}

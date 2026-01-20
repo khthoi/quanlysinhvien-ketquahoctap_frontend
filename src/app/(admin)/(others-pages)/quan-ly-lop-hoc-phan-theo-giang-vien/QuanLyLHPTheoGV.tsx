@@ -320,7 +320,7 @@ const ItemsCountInfo: React.FC<ItemsCountInfoProps> = ({ pagination }) => {
                     {endItem}
                 </span>
                 {" "}trên{" "}
-                <span className="font-medium text-gray-700 dark: text-gray-300">
+                <span className="font-medium text-gray-700 dark:text-gray-300">
                     {total}
                 </span>
                 {" "}kết quả
@@ -1287,7 +1287,7 @@ export default function QuanLyLopHocPhanPage() {
                                     <ul className="text-sm text-green-700/80 dark:text-green-300/70 space-y-1.5">
                                         <li className="flex items-center gap-2">
                                             <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                                            <span>Tên file: <strong className="break-all">Bang diem lop hoc phan {downloadingExcelLopHocPhan?.maLopHocPhan}. xlsx</strong></span>
+                                            <span>Tên file: <strong className="break-all">Bang diem lop hoc phan {downloadingExcelLopHocPhan?.maLopHocPhan}.xlsx</strong></span>
                                         </li>
                                         <li className="flex items-center gap-2">
                                             <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
@@ -1336,9 +1336,8 @@ export default function QuanLyLopHocPhanPage() {
                                     <h4 className="font-semibold text-amber-800 dark:text-amber-300 mb-1">
                                         Lưu ý quan trọng
                                     </h4>
-                                    <ul className="text-xs text-amber-700/80 dark:text-amber-300/70 space-y-1 list-disc list-inside">
+                                    <ul className="text-sm text-amber-700/80 dark:text-amber-300/70 space-y-1 list-disc list-inside">
                                         <li>Bạn chỉ có thể xuất bảng điểm của lớp học phần mình phụ trách</li>
-                                        <li>Dữ liệu điểm được xuất tại thời điểm hiện tại</li>
                                     </ul>
                                 </div>
                             </div>

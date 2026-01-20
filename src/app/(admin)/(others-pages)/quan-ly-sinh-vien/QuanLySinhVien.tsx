@@ -999,11 +999,11 @@ const ItemsCountInfo: React.FC<ItemsCountInfoProps> = ({ pagination }) => {
                     {startItem}
                 </span>
                 {" - "}
-                <span className="font-medium text-gray-700 dark: text-gray-300">
+                <span className="font-medium text-gray-700 dark:text-gray-300">
                     {endItem}
                 </span>
                 {" "}trên{" "}
-                <span className="font-medium text-gray-700 dark: text-gray-300">
+                <span className="font-medium text-gray-700 dark:text-gray-300">
                     {total}
                 </span>
                 {" "}kết quả
@@ -2800,12 +2800,9 @@ export default function QuanLySinhVienPage() {
                     {/* Thông tin sinh viên */}
                     {exportingPhieuDiemSinhVien && (
                         <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700">
-                            <h4 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-3">
-                                Thông tin sinh viên
-                            </h4>
                             <div className="space-y-3">
                                 <div className="flex justify-between items-center">
-                                    <span className="text-sm text-gray-500 dark: text-gray-400">Mã sinh viên:</span>
+                                    <span className="text-sm text-gray-500 dark:text-gray-400">Mã sinh viên:</span>
                                     <span className="font-semibold text-gray-800 dark:text-white">
                                         {exportingPhieuDiemSinhVien.maSinhVien}
                                     </span>
@@ -2817,7 +2814,7 @@ export default function QuanLySinhVienPage() {
                                     </span>
                                 </div>
                                 <div className="flex justify-between items-center">
-                                    <span className="text-sm text-gray-500 dark: text-gray-400">Lớp:</span>
+                                    <span className="text-sm text-gray-500 dark:text-gray-400">Lớp:</span>
                                     <span className="font-medium text-gray-700 dark:text-gray-300">
                                         {exportingPhieuDiemSinhVien.lop.maLop}
                                     </span>
@@ -2869,7 +2866,7 @@ export default function QuanLySinhVienPage() {
                                         </li>
                                         <li className="flex items-center gap-2">
                                             <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                                            <span>Nội dung:  Điểm tất cả môn học đã đăng ký</span>
+                                            <span>Nội dung:  Điểm tất cả môn học đã được vào điểm</span>
                                         </li>
                                     </ul>
                                 </div>

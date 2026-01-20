@@ -110,11 +110,11 @@ const ItemsCountInfo: React.FC<ItemsCountInfoProps> = ({ pagination }) => {
                     {startItem}
                 </span>
                 {" - "}
-                <span className="font-medium text-gray-700 dark: text-gray-300">
+                <span className="font-medium text-gray-700 dark:text-gray-300">
                     {endItem}
                 </span>
                 {" "}trên{" "}
-                <span className="font-medium text-gray-700 dark: text-gray-300">
+                <span className="font-medium text-gray-700 dark:text-gray-300">
                     {total}
                 </span>
                 {" "}kết quả
@@ -986,22 +986,18 @@ export default function QuanLyNamHocHocKyPage() {
                                                         <div className="flex gap-2">
                                                             <Button
                                                                 size="sm"
-                                                                variant="outline"
+                                                                variant="primary"
                                                                 onClick={() => openEditNamHocModal(nh)}
                                                                 className="p-2"
                                                             >
-                                                                <FontAwesomeIcon
-                                                                    icon={faPenToSquare}
-                                                                    className="w-4 h-4"
-                                                                />
+                                                                Sửa
                                                             </Button>
                                                             <Button
                                                                 size="sm"
-                                                                variant="outline"
+                                                                variant="primary"
                                                                 onClick={() => openDeleteNamHocModal(nh)}
-                                                                className="p-2 text-error-500 border-error-300 hover:bg-error-50 dark:border-error-500/30 dark:hover: bg-error-500/10"
                                                             >
-                                                                <FontAwesomeIcon icon={faTrash} className="w-4 h-4" />
+                                                                Xóa
                                                             </Button>
                                                         </div>
                                                     </TableCell>

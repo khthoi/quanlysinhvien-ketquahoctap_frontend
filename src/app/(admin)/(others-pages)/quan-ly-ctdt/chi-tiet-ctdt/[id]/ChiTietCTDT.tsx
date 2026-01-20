@@ -88,6 +88,7 @@ interface LopHocPhan {
     nienKhoa: string;
     giangVien: string;
     siSo: number;
+    khoaDiem: boolean;
 }
 
 interface GiangVien {
@@ -439,7 +440,7 @@ const XemLopHocPhanModal: React.FC<XemLopHocPhanModalProps> = ({
     );
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} className="max-w-4xl">
+        <Modal isOpen={isOpen} onClose={onClose} className="max-w-5xl">
             <div className="p-6 sm:p-8">
                 <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
                     Danh sách Lớp học phần
@@ -528,6 +529,11 @@ const XemLopHocPhanModal: React.FC<XemLopHocPhanModalProps> = ({
                                             </TableCell>
                                             <TableCell className="px-4 py-3 text-center text-gray-800 dark:text-white/90">
                                                 {lhp.siSo}
+                                            </TableCell>
+                                            <TableCell className="px-4 py-3 text-center text-gray-800 dark:text-white/90">
+                                                <Badge variant="solid" color={lhp.khoaDiem ? "error" : "success"}>
+                                                    {lhp.khoaDiem ? "Khóa điểm" : "Mở điểm"}
+                                                </Badge>
                                             </TableCell>
                                         </TableRow>
                                     ))

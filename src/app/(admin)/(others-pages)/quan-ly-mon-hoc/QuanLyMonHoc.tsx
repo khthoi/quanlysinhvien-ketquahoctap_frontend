@@ -236,7 +236,7 @@ const ItemsCountInfo: React.FC<ItemsCountInfoProps> = ({ pagination }) => {
                     {endItem}
                 </span>
                 {" "}trên{" "}
-                <span className="font-medium text-gray-700 dark: text-gray-300">
+                <span className="font-medium text-gray-700 dark:text-gray-300">
                     {total}
                 </span>
                 {" "}kết quả
@@ -1029,7 +1029,7 @@ export default function QuanLyMonHocPage() {
                                             <TableCell className="px-5 py-4 text-gray-800 dark:text-white/90">
                                                 {mh.soTinChi}
                                             </TableCell>
-                                            <TableCell className="px-5 py-4 text-gray-500 dark:text-gray-400">
+                                            <TableCell className="px-5 py-4 text-gray-500 dark:text-gray-400 text-left">
                                                 <div
                                                     className="max-w-[200px] truncate overflow-hidden text-ellipsis whitespace-nowrap"
                                                     title={mh.moTa || ""}

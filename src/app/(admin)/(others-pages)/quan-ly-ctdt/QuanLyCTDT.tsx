@@ -35,6 +35,9 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import SearchableSelect from "@/components/form/SelectCustom";
 import { useDropzone } from "react-dropzone";
+import { Dropdown } from "@/components/ui/dropdown/Dropdown";
+import { DropdownItem } from "@/components/ui/dropdown/DropdownItem";
+import { FaAngleDown } from "react-icons/fa6";
 
 // ==================== INTERFACES ====================
 interface Khoa {
@@ -140,7 +143,7 @@ const ItemsCountInfo: React.FC<ItemsCountInfoProps> = ({ pagination }) => {
                     {endItem}
                 </span>
                 {" "}trên{" "}
-                <span className="font-medium text-gray-700 dark: text-gray-300">
+                <span className="font-medium text-gray-700 dark:text-gray-300">
                     {total}
                 </span>
                 {" "}kết quả
@@ -732,6 +735,8 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
     // State cho dropdown rows
     const [expandedRows, setExpandedRows] = useState<number[]>([]);
 
+    const [activeCtdtDropdownId, setActiveCtdtDropdownId] = useState<number | null>(null);
+
     // State cho options
     const [nganhOptions, setNganhOptions] = useState<Nganh[]>([]);
     const [nienKhoaOptions, setNienKhoaOptions] = useState<NienKhoa[]>([]);
@@ -1018,6 +1023,22 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
     };
 
     const isRowExpanded = (id: number) => expandedRows.includes(id);
+
+    // Toggle dropdown CTĐT:
+    // - Click vào dropdown đang mở → đóng
+    // - Click dropdown khác → mở dropdown mới và đóng cái cũ
+    const toggleCtdtDropdown = (ctdtId: number) => {
+        setActiveCtdtDropdownId(prev =>
+            prev === ctdtId ? null : ctdtId
+        );
+    };
+
+    // Đóng dropdown CTĐT (khi chọn item hoặc click ra ngoài)
+    const closeCtdtDropdown = () => {
+        setActiveCtdtDropdownId(null);
+    };
+
+
 
     // Validate chương trình form
     const validateChuongTrinhForm = (): boolean => {
@@ -1491,30 +1512,62 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
                                                         {ct.nganh.maNganh}
                                                     </TableCell>
                                                     <TableCell className="px-5 py-4 flex items-center justify-center">
-                                                        <div className="flex gap-2">
-                                                            <Button size="sm" variant="outline" href={`/quan-ly-ctdt/chi-tiet-ctdt/${ct.id}`}>
-                                                                <FontAwesomeIcon icon={faMagnifyingGlass} className="w-4 h-4" />
-                                                            </Button>
+                                                        <div className="relative inline-block">
                                                             <Button
-                                                                size="sm"
                                                                 variant="outline"
-                                                                onClick={() => openEditChuongTrinhModal(ct)}
-                                                                className="p-2"
+                                                                size="sm"
+                                                                onClick={() => toggleCtdtDropdown(ct.id)}
+                                                                className="dropdown-toggle flex items-center gap-1.5 min-w-[110px] justify-between px-3 py-2"
                                                             >
-                                                                <FontAwesomeIcon
-                                                                    icon={faPenToSquare}
-                                                                    className="w-4 h-4"
+                                                                Thao tác
+                                                                <FaAngleDown
+                                                                    className={`text-gray-500 transition-transform duration-300 ease-in-out ${activeCtdtDropdownId === ct.id ? "rotate-180" : "rotate-0"
+                                                                        }`}
                                                                 />
                                                             </Button>
-                                                            <Button
-                                                                size="sm"
-                                                                variant="outline"
-                                                                onClick={() => openDeleteChuongTrinhModal(ct)}
-                                                                className="p-2 text-error-500 border-error-300 hover:bg-error-50 dark:border-error-500/30 dark:hover:bg-error-500/10"
+
+                                                            <Dropdown
+                                                                isOpen={activeCtdtDropdownId === ct.id}
+                                                                onClose={closeCtdtDropdown}
+                                                                className="w-56 mt-2 right-0"
                                                             >
-                                                                <FontAwesomeIcon icon={faTrash} className="w-4 h-4" />
-                                                            </Button>
+                                                                <div className="py-1">
+                                                                    {/* Xem chi tiết */}
+                                                                    <DropdownItem
+                                                                        tag="a"
+                                                                        href={`/quan-ly-ctdt/chi-tiet-ctdt/${ct.id}`}
+                                                                        onItemClick={closeCtdtDropdown}
+                                                                    >
+                                                                        <FontAwesomeIcon icon={faMagnifyingGlass} className="mr-2 w-4" />
+                                                                        Xem chi tiết
+                                                                    </DropdownItem>
+
+                                                                    {/* Chỉnh sửa */}
+                                                                    <DropdownItem
+                                                                        tag="button"
+                                                                        onItemClick={closeCtdtDropdown}
+                                                                        onClick={() => openEditChuongTrinhModal(ct)}
+                                                                    >
+                                                                        <FontAwesomeIcon icon={faPenToSquare} className="mr-2 w-4" />
+                                                                        Chỉnh sửa
+                                                                    </DropdownItem>
+
+                                                                    <div className="my-1 border-t border-gray-100 dark:border-gray-700" />
+
+                                                                    {/* Xóa */}
+                                                                    <DropdownItem
+                                                                        tag="button"
+                                                                        className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/30"
+                                                                        onItemClick={closeCtdtDropdown}
+                                                                        onClick={() => openDeleteChuongTrinhModal(ct)}
+                                                                    >
+                                                                        <FontAwesomeIcon icon={faTrash} className="mr-2 w-4" />
+                                                                        Xóa
+                                                                    </DropdownItem>
+                                                                </div>
+                                                            </Dropdown>
                                                         </div>
+
                                                     </TableCell>
                                                 </TableRow>
 

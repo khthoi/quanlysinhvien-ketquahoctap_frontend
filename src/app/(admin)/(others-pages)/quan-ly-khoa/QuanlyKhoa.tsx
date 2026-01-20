@@ -66,7 +66,7 @@ const ItemsCountInfo: React.FC<ItemsCountInfoProps> = ({ pagination }) => {
           {endItem}
         </span>
         {" "}trên{" "}
-        <span className="font-medium text-gray-700 dark: text-gray-300">
+        <span className="font-medium text-gray-700 dark:text-gray-300">
           {total}
         </span>
         {" "}kết quả

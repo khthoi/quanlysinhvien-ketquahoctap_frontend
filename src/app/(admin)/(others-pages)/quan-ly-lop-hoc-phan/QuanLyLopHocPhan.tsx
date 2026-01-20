@@ -811,7 +811,7 @@ const ImportSinhVienExcelModal: React.FC<ImportSinhVienExcelModalProps> = ({
                                             }}
                                             className="mt-3 text-sm text-red-500 hover:text-red-600 underline"
                                         >
-                                            Xóa file
+                                            Hủy
                                         </button>
                                     </>
                                 ) : (
@@ -1048,23 +1048,6 @@ const ThongKeLHPDeXuatModal: React.FC<ThongKeLHPDeXuatModalProps> = ({
                     </div>
                 </div>
 
-                {/* Cảnh báo */}
-                <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
-                    <div className="flex gap-3">
-                        <FontAwesomeIcon
-                            icon={faTriangleExclamation}
-                            className="text-amber-500 dark:text-amber-400 mt-0.5 flex-shrink-0"
-                        />
-                        <div className="text-sm text-amber-700 dark:text-amber-300">
-                            <p className="font-medium">Lưu ý:</p>
-                            <p className="text-amber-600 dark:text-amber-400">
-                                Thống kê được tạo dựa trên chương trình đào tạo và số lượng sinh viên hiện tại.
-                                Vui lòng kiểm tra kỹ trước khi sử dụng.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
                 {/* Buttons */}
                 <div className="flex justify-end gap-3">
                     <Button variant="outline" onClick={handleClose} disabled={isLoading}>
@@ -1265,7 +1248,7 @@ const ImportLHPExcelModal: React.FC<ImportLHPExcelModalProps> = ({
                         <div className="text-sm text-blue-700 dark:text-blue-300">
                             <p className="font-medium mb-1">Hướng dẫn: </p>
                             <ul className="list-disc list-inside space-y-1 text-blue-600 dark:text-blue-400">
-                                <li>Tải file mẫu và điền đầy đủ thông tin</li>
+                                <li>Có thể sử dụng file Excel thống kê LHP đề xuất</li>
                                 <li>File phải có định dạng .xlsx</li>
                                 <li>Hệ thống sẽ tự động tạo LHP và thêm sinh viên</li>
                             </ul>
@@ -1334,9 +1317,9 @@ const ImportLHPExcelModal: React.FC<ImportLHPExcelModalProps> = ({
                                                 e.stopPropagation();
                                                 removeFile();
                                             }}
-                                            className="mt-3 text-sm text-red-500 hover: text-red-600 underline"
+                                            className="mt-3 text-sm text-red-500 hover:text-red-600 underline"
                                         >
-                                            Xóa file
+                                            Hủy
                                         </button>
                                     </>
                                 ) : (
@@ -1373,9 +1356,8 @@ const ImportLHPExcelModal: React.FC<ImportLHPExcelModalProps> = ({
                         <div className="text-sm text-amber-700 dark:text-amber-300">
                             <p className="font-medium">Lưu ý quan trọng:</p>
                             <ul className="list-disc list-inside text-amber-600 dark:text-amber-400 mt-1 space-y-1">
-                                <li>Đảm bảo mã môn học, giảng viên, ngành, niên khóa đã tồn tại</li>
+                                <li>Đảm bảo mã môn học, giảng viên, ngành, niên khóa đã tồn tại trong hệ thống</li>
                                 <li>Hệ thống sẽ bỏ qua các dòng có lỗi và tiếp tục xử lý</li>
-                                <li>Kiểm tra kỹ dữ liệu trước khi import</li>
                             </ul>
                         </div>
                     </div>
@@ -1626,7 +1608,7 @@ const DownloadBangDiemModal: React.FC<DownloadBangDiemModalProps> = ({
                         <FontAwesomeIcon icon={faFileExcel} className="text-green-600 dark:text-green-400" />
                         <span className="text-sm text-gray-600 dark:text-gray-400">Tên file:</span>
                         <span className="text-sm font-medium text-gray-800 dark:text-white">
-                            Danh sach sinh vien LHP {lopHocPhan.maLopHocPhan}. xlsx
+                            Danh sach sinh vien LHP {lopHocPhan.maLopHocPhan}.xlsx
                         </span>
                     </div>
                 </div>
@@ -1873,7 +1855,7 @@ const ThongKeSVTruotMonModal: React.FC<ThongKeSVTruotMonModalProps> = ({
                         <div className="text-sm text-gray-700 dark:text-gray-300">
                             <p className="font-medium mb-1">File Excel sẽ bao gồm:</p>
                             <ul className="list-disc list-inside space-y-1 text-gray-600 dark:text-gray-400">
-                                <li>Danh sách sinh viên có điểm F hoặc không đạt</li>
+                                <li>Danh sách sinh viên không đạt</li>
                                 <li>Thông tin môn học trượt của từng sinh viên</li>
                                 <li>Đề xuất lớp học phần để đăng ký học lại</li>
                             </ul>
@@ -1891,9 +1873,8 @@ const ThongKeSVTruotMonModal: React.FC<ThongKeSVTruotMonModalProps> = ({
                         <div className="text-sm text-amber-700 dark:text-amber-300">
                             <p className="font-medium">Lưu ý quan trọng:</p>
                             <ul className="list-disc list-inside text-amber-600 dark:text-amber-400 mt-1 space-y-1">
-                                <li>Chỉ thống kê các lớp học phần đã kết thúc và có điểm</li>
-                                <li>Sinh viên có điểm dưới 4.0 hoặc điểm chữ F được xem là trượt</li>
-                                <li>Dữ liệu dựa trên kết quả học tập chính thức</li>
+                                <li>Sinh viên có điểm dưới 4.0 được xem là trượt</li>
+                                <li>Dữ liệu dựa trên kết quả học tập</li>
                             </ul>
                         </div>
                     </div>
@@ -1946,7 +1927,7 @@ const ItemsCountInfo: React.FC<ItemsCountInfoProps> = ({ pagination }) => {
                     {endItem}
                 </span>
                 {" "}trên{" "}
-                <span className="font-medium text-gray-700 dark: text-gray-300">
+                <span className="font-medium text-gray-700 dark:text-gray-300">
                     {total}
                 </span>
                 {" "}kết quả
