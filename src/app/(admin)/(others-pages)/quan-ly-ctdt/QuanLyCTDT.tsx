@@ -666,7 +666,7 @@ const ImportMonHocExcelModal: React.FC<ImportMonHocExcelModalProps> = ({
                                             }}
                                             className="mt-3 text-xs text-red-500 hover:text-red-600 underline font-medium"
                                         >
-                                            Xóa file
+                                            Hủy
                                         </button>
                                     </>
                                 ) : (

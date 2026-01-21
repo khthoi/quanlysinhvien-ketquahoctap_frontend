@@ -471,7 +471,7 @@ const ImportLopExcelModal: React.FC<ImportLopExcelModalProps> = ({
                                             }}
                                             className="mt-3 text-sm text-red-500 hover:text-red-600 underline"
                                         >
-                                            Xóa file
+                                            Hủy
                                         </button>
                                     </>
                                 ) : (
