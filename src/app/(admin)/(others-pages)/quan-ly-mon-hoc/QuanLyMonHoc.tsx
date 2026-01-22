@@ -352,6 +352,11 @@ const ImportMonHocExcelModal: React.FC<ImportMonHocExcelModalProps> = ({
             showAlert("error", "Lỗi", "Có lỗi xảy ra khi nhập môn học từ Excel");
         } finally {
             setIsUploading(false);
+            // 👉 Cuộn lên đầu trang
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth",
+            });
         }
     };
 
@@ -559,6 +564,7 @@ export default function QuanLyMonHocPage() {
     });
 
     const [alert, setAlert] = useState<{
+        id: number;
         variant: "success" | "error" | "warning" | "info";
         title: string;
         message: string;
@@ -700,6 +706,11 @@ export default function QuanLyMonHocPage() {
             showAlert("error", "Lỗi", "Có lỗi xảy ra khi phân công môn học");
         } finally {
             setIsPhanCongLoading(false);
+            // 👉 Cuộn lên đầu trang
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth",
+            });
         }
     };
 
@@ -722,8 +733,12 @@ export default function QuanLyMonHocPage() {
         title: string,
         message: string
     ) => {
-        setAlert({ variant, title, message });
-        setTimeout(() => setAlert(null), 5000);
+        setAlert({
+            id: Date.now(),   // 🔥 ép remount
+            variant,
+            title,
+            message,
+        });
     };
 
     const validateForm = () => {
@@ -784,6 +799,12 @@ export default function QuanLyMonHocPage() {
             }
         } catch (err) {
             showAlert("error", "Lỗi", "Có lỗi xảy ra khi tạo môn học");
+        } finally {
+            // 👉 Cuộn lên đầu trang
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth",
+            });
         }
     };
 
@@ -819,6 +840,12 @@ export default function QuanLyMonHocPage() {
         } catch (err) {
             setIsEditModalOpen(false);
             showAlert("error", "Lỗi", "Có lỗi xảy ra khi cập nhật");
+        } finally {
+            // 👉 Cuộn lên đầu trang
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth",
+            });
         }
     };
 
@@ -851,6 +878,12 @@ export default function QuanLyMonHocPage() {
         } catch (err) {
             setIsDeleteModalOpen(false);
             showAlert("error", "Lỗi", "Có lỗi xảy ra khi xóa");
+        } finally {
+            // 👉 Cuộn lên đầu trang
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth",
+            });
         }
     };
 
@@ -902,10 +935,14 @@ export default function QuanLyMonHocPage() {
                 {alert && (
                     <div className="mb-6">
                         <Alert
+                            key={alert.id}        // 🔥 reset state mỗi lần show
                             variant={alert.variant}
                             title={alert.title}
                             message={alert.message}
+                            dismissible
                             autoDismiss
+                            duration={15000}
+                            onClose={() => setAlert(null)}   // 🔥 unmount thật
                         />
                     </div>
                 )}
@@ -1188,7 +1225,7 @@ export default function QuanLyMonHocPage() {
                                 <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                     Xác nhận phân công:
                                 </h4>
-                                <p className="text-sm text-gray-600 dark: text-gray-400">
+                                <p className="text-sm text-gray-600 dark:text-gray-400">
                                     Phân công giảng viên{" "}
                                     <span className="font-semibold text-gray-800 dark:text-white">
                                         {giangVienOptions.find(gv => gv.id.toString() === selectedGiangVienId)?.hoTen}

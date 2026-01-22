@@ -405,6 +405,14 @@ const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [fileError, setFileError] = useState<string>("");
     const [isUploading, setIsUploading] = useState(false);
+    const [uploadErrors, setUploadErrors] = useState<{
+        row: number;
+        maSinhVien: string;
+        error: string;
+    }[]>([]);
+    const [uploadSuccess, setUploadSuccess] = useState<number>(0);
+    const [uploadFailed, setUploadFailed] = useState<number>(0);
+
 
     const onDrop = (acceptedFiles: File[], rejectedFiles: any[]) => {
         setFileError("");
@@ -452,6 +460,9 @@ const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
         }
 
         setIsUploading(true);
+        setUploadErrors([]);
+        setUploadSuccess(0);
+        setUploadFailed(0);
 
         try {
             const accessToken = getCookie("access_token");
@@ -469,32 +480,29 @@ const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
                 }
             );
             const data = await res.json();
-            handleClose();
 
             if (res.ok) {
+                setUploadSuccess(data.success || 0);
+                setUploadFailed(data.failed || 0);
+
                 // Kiểm tra nếu có lỗi trong response
                 if (data.errors && data.errors.length > 0) {
-                    const errorMessages = data.errors.map(
-                        (err: { row: number; maSinhVien: string; error: string }) =>
-                            `Dòng ${err.row} (${err.maSinhVien}): ${err.error}`
-                    ).join("\n");
-
+                    setUploadErrors(data.errors);
                     showAlert(
                         "warning",
                         "Nhập điểm hoàn tất với một số lỗi",
-                        `Thành công: ${data.success}, Thất bại: ${data.failed}\n${errorMessages}`
+                        `Thành công: ${data.success}, Thất bại: ${data.failed}`
                     );
                 } else {
-                    showAlert("success", "Thành công", `Nhập điểm từ Excel thành công.  Đã nhập:  ${data.success} sinh viên`);
+                    showAlert("success", "Thành công", `Nhập điểm từ Excel thành công. Đã nhập: ${data.success} sinh viên`);
+                    handleClose();
                 }
                 onSuccess();
             } else {
-                handleClose();
                 showAlert("error", "Lỗi", data.message || "Nhập điểm thất bại");
             }
         } catch (err) {
             console.error("Lỗi nhập điểm Excel:", err);
-            handleClose();
             showAlert("error", "Lỗi", "Có lỗi xảy ra khi nhập điểm");
         } finally {
             setIsUploading(false);
@@ -504,6 +512,9 @@ const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
     const handleClose = () => {
         setSelectedFile(null);
         setFileError("");
+        setUploadErrors([]);
+        setUploadSuccess(0);
+        setUploadFailed(0);
         onClose();
     };
 
@@ -515,7 +526,7 @@ const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
     if (!isOpen) return null;
 
     return (
-        <Modal isOpen={isOpen} onClose={handleClose} className="max-w-lg">
+        <Modal isOpen={isOpen} onClose={handleClose} className="max-w-4xl">
             <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
                 <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
                     Nhập điểm bằng Excel
@@ -547,7 +558,7 @@ const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
                             className={`rounded-xl p-7 lg:p-10
                                 ${isDragActive
                                     ? "bg-gray-100 dark:bg-gray-800"
-                                    : "bg-gray-50 dark: bg-gray-900"
+                                    : "bg-gray-50 dark:bg-gray-900"
                                 }
                             `}
                         >
@@ -584,14 +595,14 @@ const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
                                                 e.stopPropagation();
                                                 removeFile();
                                             }}
-                                            className="mt-3 text-sm text-red-500 hover: text-red-600 underline"
+                                            className="mt-3 text-sm text-red-500 hover:text-red-600 underline"
                                         >
                                             Hủy
                                         </button>
                                     </>
                                 ) : (
                                     <>
-                                        <h4 className="mb-2 font-semibold text-gray-800 dark: text-white/90">
+                                        <h4 className="mb-2 font-semibold text-gray-800 dark:text-white/90">
                                             {isDragActive ? "Thả file vào đây" : "Kéo & thả file vào đây"}
                                         </h4>
                                         <p className="text-center text-sm text-gray-500 dark:text-gray-400 mb-3">
@@ -608,20 +619,86 @@ const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
                     {fileError && (
                         <p className="mt-2 text-sm text-red-500">{fileError}</p>
                     )}
+
+                    {/* Hiển thị kết quả upload */}
+                    {(uploadSuccess > 0 || uploadFailed > 0) && (
+                        <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+                            <div className="flex items-center justify-center gap-4 mb-2">
+                                <div className="flex items-center gap-2">
+                                    <FontAwesomeIcon icon={faFileExcel} className="text-green-500" />
+                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                        Thành công: <span className="text-green-600 dark:text-green-400">{uploadSuccess}</span>
+                                    </span>
+                                </div>
+                                {uploadFailed > 0 && (
+                                    <div className="flex items-center gap-2">
+                                        <FontAwesomeIcon icon={faFileExcel} className="text-red-500" />
+                                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                            Thất bại: <span className="text-red-600 dark:text-red-400">{uploadFailed}</span>
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Table hiển thị lỗi */}
+                    {uploadErrors.length > 0 && (
+                        <div className="mb-6">
+                            <h4 className="mb-3 text-base font-semibold text-gray-800 dark:text-white/90 flex items-center gap-2">
+                                <FontAwesomeIcon icon={faFileExcel} className="text-red-500" />
+                                Chi tiết lỗi ({uploadErrors.length})
+                            </h4>
+                            <div className="overflow-hidden rounded-xl border border-red-200 bg-white dark:border-red-900/30 dark:bg-white/[0.03] max-h-80 overflow-y-auto">
+                                <Table>
+                                    <TableHeader className="border-b border-red-100 dark:border-red-900/30 top-0 bg-red-50 dark:bg-red-900/10">
+                                        <TableRow>
+                                            <TableCell isHeader className="px-4 py-3 font-medium text-gray-700 dark:text-gray-300 text-xs text-center w-20">
+                                                Dòng
+                                            </TableCell>
+                                            <TableCell isHeader className="px-4 py-3 font-medium text-gray-700 dark:text-gray-300 text-xs text-center w-32">
+                                                Mã SV
+                                            </TableCell>
+                                            <TableCell isHeader className="px-4 py-3 font-medium text-gray-700 dark:text-gray-300 text-xs">
+                                                Lỗi
+                                            </TableCell>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody className="divide-y divide-red-100 dark:divide-red-900/30 text-theme-sm">
+                                        {uploadErrors.map((error, index) => (
+                                            <TableRow key={index} className="hover:bg-red-50/50 dark:hover:bg-red-900/5">
+                                                <TableCell className="px-4 py-3 text-gray-800 dark:text-white/90 text-sm text-center">
+                                                    {error.row}
+                                                </TableCell>
+                                                <TableCell className="px-4 py-3 text-gray-800 dark:text-white/90 text-sm text-center font-medium">
+                                                    {error.maSinhVien}
+                                                </TableCell>
+                                                <TableCell className="px-4 py-3 text-red-600 dark:text-red-400 text-sm">
+                                                    {error.error}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Buttons */}
                 <div className="flex justify-end gap-3">
                     <Button variant="outline" onClick={handleClose} disabled={isUploading}>
-                        Hủy
+                        {uploadErrors.length > 0 ? "Đóng" : "Hủy"}
                     </Button>
-                    <Button
-                        onClick={handleUpload}
-                        disabled={!selectedFile || isUploading}
-                        startIcon={isUploading ? undefined : <FontAwesomeIcon icon={faFileExcel} />}
-                    >
-                        {isUploading ? "Đang xử lý..." : "Nhập điểm"}
-                    </Button>
+                    {uploadErrors.length === 0 && (
+                        <Button
+                            onClick={handleUpload}
+                            disabled={!selectedFile || isUploading}
+                            startIcon={isUploading ? undefined : <FontAwesomeIcon icon={faFileExcel} />}
+                        >
+                            {isUploading ? "Đang xử lý..." : "Nhập điểm"}
+                        </Button>
+                    )}
                 </div>
             </div>
         </Modal>
@@ -693,6 +770,12 @@ export default function ChiTietLopHocPhanPage() {
         diemThi: "",
     });
 
+    const [importResult, setImportResult] = useState<{
+        success: number;
+        failed: number;
+        errors: { row: number; maSinhVien: string; error: string }[];
+    } | null>(null);
+
     // State để theo dõi dropdown đang mở
     const [activeDropdownId, setActiveDropdownId] = useState<number | null>(null);
 
@@ -707,6 +790,7 @@ export default function ChiTietLopHocPhanPage() {
     };
 
     const [alert, setAlert] = useState<{
+        id: number;
         variant: "success" | "error" | "warning" | "info";
         title: string;
         message: string;
@@ -756,8 +840,12 @@ export default function ChiTietLopHocPhanPage() {
         title: string,
         message: string
     ) => {
-        setAlert({ variant, title, message });
-        setTimeout(() => setAlert(null), 5000);
+        setAlert({
+            id: Date.now(),   // 🔥 ép remount
+            variant,
+            title,
+            message,
+        });
     };
 
     // Validate điểm
@@ -815,6 +903,11 @@ export default function ChiTietLopHocPhanPage() {
             });
 
             setIsEditModalOpen(false);
+            // 👉 Cuộn lên đầu trang
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth",
+            });
             if (res.ok) {
                 showAlert("success", "Thành công", "Cập nhật điểm thành công");
                 resetForm();
@@ -853,14 +946,19 @@ export default function ChiTietLopHocPhanPage() {
             <div className="rounded-2xl border border-gray-200 bg-white px-5 py-7 dark:border-gray-800 dark:bg-white/[0.03] xl:px-10 xl:py-12">
                 {alert && (
                     <div className="mb-6">
-                        <Alert
-                            variant={alert.variant}
-                            title={alert.title}
-                            message={alert.message}
-                            autoDismiss
-                        />
+                    <Alert
+                        key={alert.id}        // 🔥 reset state mỗi lần show
+                        variant={alert.variant}
+                        title={alert.title}
+                        message={alert.message}
+                        dismissible
+                        autoDismiss
+                        duration={5000}
+                        onClose={() => setAlert(null)}   // 🔥 unmount thật
+                    />
                     </div>
                 )}
+
 
                 {/* Thông tin lớp học phần */}
                 {lopHocPhanInfo && (

@@ -346,35 +346,19 @@ interface EditLopHocPhanModalProps {
     onClose: () => void;
     lopHocPhan: LopHocPhan | null;
     // Options
-    monHocOptions: MonHocOption[];
     giangVienOptions: GiangVienOption[];
-    nienKhoaOptions: NienKhoaOption[];
-    khoaOptions: KhoaOption[];
-    nganhOptions: NganhOption[];
     // Form values
     maLopHocPhan: string;
-    monHocId: string;
     giangVienId: string;
-    namHocId: string;
-    nienKhoaId: string;
-    khoaId: string;
-    nganhId: string;
     ghiChu: string;
     // Handlers
     onMaLopHocPhanChange: (value: string) => void;
-    onMonHocIdChange: (value: string) => void;
     onGiangVienIdChange: (value: string) => void;
-    onNienKhoaIdChange: (value: string) => void;
-    onKhoaIdChange: (value: string) => void;
-    onNganhIdChange: (value: string) => void;
     onGhiChuChange: (value: string) => void;
     onSubmit: () => void;
     errors: {
         maLopHocPhan: boolean;
-        monHocId: boolean;
         giangVienId: boolean;
-        nienKhoaId: boolean;
-        nganhId: boolean;
     };
 }
 
@@ -382,181 +366,146 @@ const EditLopHocPhanModal: React.FC<EditLopHocPhanModalProps> = ({
     isOpen,
     onClose,
     lopHocPhan,
-    monHocOptions,
     giangVienOptions,
-    nienKhoaOptions,
-    khoaOptions,
-    nganhOptions,
     maLopHocPhan,
-    monHocId,
     giangVienId,
-    nienKhoaId,
-    khoaId,
-    nganhId,
     ghiChu,
     onMaLopHocPhanChange,
-    onMonHocIdChange,
     onGiangVienIdChange,
-    onNienKhoaIdChange,
-    onKhoaIdChange,
-    onNganhIdChange,
     onGhiChuChange,
     onSubmit,
     errors,
 }) => {
-    if (!isOpen) return null;
+    if (!isOpen || !lopHocPhan) return null;
 
-    // Lọc ngành theo khoa đã chọn
-    const nganhFilteredOptions = nganhOptions.filter(n => n.khoa.id.toString() === khoaId);
-
-    // Lọc giảng viên theo môn học đã chọn
+    // Lọc giảng viên theo môn học của lớp học phần đang sửa
     const giangVienFilteredOptions = giangVienOptions.filter(gv =>
-        gv.monHocGiangViens.some(mhgv => mhgv.monHoc.id.toString() === monHocId)
+        gv.monHocGiangViens.some(mhgv => mhgv.monHoc.id === lopHocPhan.monHoc.id)
     );
 
-    const khoaDiemOptions = [
-        { value: "false", label: "Chưa khóa" },
-        { value: "true", label: "Đã khóa" },
-    ];
-
     return (
-        <Modal isOpen={isOpen} onClose={onClose} className="max-w-3xl">
+        <Modal isOpen={isOpen} onClose={onClose} className="max-w-2xl">
             <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
-                <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
-                    Sửa Lớp Học Phần
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <div className="md:col-span-2">
-                        <Label>Mã Lớp Học Phần</Label>
+                {/* Header */}
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-100 text-brand-600 dark:bg-brand-900/30 dark:text-brand-400">
+                        <FontAwesomeIcon icon={faEdit} className="text-xl" />
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-semibold text-gray-800 dark:text-white/90">
+                            Sửa Lớp Học Phần
+                        </h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                            Cập nhật thông tin lớp học phần
+                        </p>
+                    </div>
+                </div>
+
+                {/* Thông tin lớp học phần (chỉ hiển thị, không cho sửa) */}
+                <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700">
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                            <span className="text-gray-500 dark:text-gray-400">Mã Môn học:</span>
+                            <p className="font-medium text-gray-800 dark:text-white">
+                                {lopHocPhan.monHoc.maMonHoc}
+                            </p>
+                        </div>
+                        <div>
+                            <span className="text-gray-500 dark:text-gray-400">Tên Môn học:</span>
+                            <p className="font-medium text-gray-800 dark:text-white">
+                                {lopHocPhan.monHoc.tenMonHoc}
+                            </p>
+                        </div>
+                        <div>
+                            <span className="text-gray-500 dark:text-gray-400">Số tín chỉ:</span>
+                            <p className="font-medium text-gray-800 dark:text-white">
+                                {lopHocPhan.monHoc.soTinChi}
+                            </p>
+                        </div>
+                        <div>
+                            <span className="text-gray-500 dark:text-gray-400">Ngành:</span>
+                            <p className="font-medium text-gray-800 dark:text-white">
+                                {lopHocPhan.nganh.maNganh} - {lopHocPhan.nganh.tenNganh}
+                            </p>
+                        </div>
+                        <div>
+                            <span className="text-gray-500 dark:text-gray-400">Niên khóa:</span>
+                            <p className="font-medium text-gray-800 dark:text-white">
+                                {lopHocPhan.nienKhoa.maNienKhoa} - {lopHocPhan.nienKhoa.tenNienKhoa}
+                            </p>
+                        </div>
+                        <div>
+                            <span className="text-gray-500 dark:text-gray-400">Học kỳ:</span>
+                            <p className="font-medium text-gray-800 dark:text-white">
+                                Học kỳ {lopHocPhan.hocKy.hocKy} - {lopHocPhan.hocKy.namHoc.tenNamHoc}
+                            </p>
+                        </div>
+                        <div>
+                            <span className="text-gray-500 dark:text-gray-400">Sĩ số:</span>
+                            <p className="font-medium text-gray-800 dark:text-white">
+                                {lopHocPhan.siSo} sinh viên
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Form chỉnh sửa */}
+                <div className="space-y-5">
+                    {/* Mã Lớp Học Phần */}
+                    <div>
+                        <Label>
+                            Mã Lớp Học Phần <span className="text-red-500">*</span>
+                        </Label>
                         <Input
                             defaultValue={maLopHocPhan}
                             onChange={(e) => onMaLopHocPhanChange(e.target.value)}
                             error={errors.maLopHocPhan}
                             hint={errors.maLopHocPhan ? "Mã lớp học phần không được để trống" : ""}
+                            placeholder="Nhập mã lớp học phần..."
                         />
                     </div>
 
-                    {/* Môn học */}
+                    {/* Giảng viên */}
                     <div>
-                        <Label>Môn học</Label>
-                        <SearchableSelect
-                            options={monHocOptions.map((mh) => ({
-                                value: mh.id.toString(),
-                                label: mh.maMonHoc,
-                                secondary: mh.tenMonHoc,
-                            }))}
-                            placeholder="Chọn môn học"
-                            onChange={(value) => {
-                                onMonHocIdChange(value);
-                                onGiangVienIdChange(""); // Reset giảng viên khi đổi môn học
-                            }}
-                            defaultValue={monHocId}
-                            showSecondary={true}
-                            maxDisplayOptions={10}
-                            searchPlaceholder="Tìm môn học..."
-                        />
-                        {errors.monHocId && (
-                            <p className="mt-1 text-sm text-error-500">Vui lòng chọn môn học</p>
-                        )}
-                    </div>
-
-                    {/* Giảng viên - phụ thuộc vào môn học */}
-                    <div>
-                        <Label>Giảng viên</Label>
+                        <Label>
+                            Giảng viên <span className="text-red-500">*</span>
+                        </Label>
                         <SearchableSelect
                             options={giangVienFilteredOptions.map((gv) => ({
                                 value: gv.id.toString(),
                                 label: gv.maGiangVien,
                                 secondary: gv.hoTen,
                             }))}
-                            placeholder={monHocId ? "Chọn giảng viên" : "Vui lòng chọn môn học trước"}
+                            placeholder="Chọn giảng viên phụ trách"
                             onChange={(value) => onGiangVienIdChange(value)}
                             defaultValue={giangVienId}
                             showSecondary={true}
                             maxDisplayOptions={10}
                             searchPlaceholder="Tìm giảng viên..."
-                            disabled={!monHocId}
                         />
                         {errors.giangVienId && (
                             <p className="mt-1 text-sm text-error-500">Vui lòng chọn giảng viên</p>
                         )}
-                    </div>
-
-                    {/* Niên khóa */}
-                    <div>
-                        <Label>Niên khóa</Label>
-                        <SearchableSelect
-                            options={nienKhoaOptions.map((nk) => ({
-                                value: nk.id.toString(),
-                                label: nk.maNienKhoa,
-                                secondary: nk.tenNienKhoa,
-                            }))}
-                            placeholder="Chọn niên khóa"
-                            onChange={(value) => onNienKhoaIdChange(value)}
-                            defaultValue={nienKhoaId}
-                            showSecondary={true}
-                            maxDisplayOptions={10}
-                            searchPlaceholder="Tìm niên khóa..."
-                        />
-                        {errors.nienKhoaId && (
-                            <p className="mt-1 text-sm text-error-500">Vui lòng chọn niên khóa</p>
-                        )}
-                    </div>
-
-                    {/* Khoa */}
-                    <div>
-                        <Label>Khoa</Label>
-                        <SearchableSelect
-                            options={khoaOptions.map((k) => ({
-                                value: k.id.toString(),
-                                label: k.maKhoa,
-                                secondary: k.tenKhoa,
-                            }))}
-                            placeholder="Chọn khoa"
-                            onChange={(value) => {
-                                onKhoaIdChange(value);
-                                onNganhIdChange(""); // Reset ngành khi đổi khoa
-                            }}
-                            defaultValue={khoaId}
-                            showSecondary={true}
-                            maxDisplayOptions={10}
-                            searchPlaceholder="Tìm khoa..."
-                        />
-                    </div>
-
-                    {/* Ngành - phụ thuộc vào khoa */}
-                    <div>
-                        <Label>Ngành</Label>
-                        <SearchableSelect
-                            options={nganhFilteredOptions.map((n) => ({
-                                value: n.id.toString(),
-                                label: n.maNganh,
-                                secondary: n.tenNganh,
-                            }))}
-                            placeholder={khoaId ? "Chọn ngành" : "Vui lòng chọn khoa trước"}
-                            onChange={(value) => onNganhIdChange(value)}
-                            defaultValue={nganhId}
-                            showSecondary={true}
-                            maxDisplayOptions={10}
-                            searchPlaceholder="Tìm ngành..."
-                            disabled={!khoaId}
-                        />
-                        {errors.nganhId && (
-                            <p className="mt-1 text-sm text-error-500">Vui lòng chọn ngành</p>
+                        {giangVienFilteredOptions.length === 0 && (
+                            <p className="mt-1 text-sm text-amber-600 dark:text-amber-400">
+                                ⚠️ Không có giảng viên nào phụ trách môn học này
+                            </p>
                         )}
                     </div>
 
                     {/* Ghi chú */}
-                    <div className="md:col-span-2">
+                    <div>
                         <Label>Ghi chú</Label>
                         <TextArea
                             defaultValue={ghiChu}
                             rows={3}
                             onChange={(value) => onGhiChuChange(value)}
-                            placeholder="Nhập ghi chú..."
+                            placeholder="Nhập ghi chú (không bắt buộc)..."
                         />
                     </div>
                 </div>
+
+                {/* Buttons */}
                 <div className="mt-8 flex justify-end gap-3">
                     <Button variant="outline" onClick={onClose}>
                         Hủy
@@ -569,7 +518,6 @@ const EditLopHocPhanModal: React.FC<EditLopHocPhanModalProps> = ({
         </Modal>
     );
 };
-
 // ==================== MODAL NHẬP SINH VIÊN EXCEL ====================
 interface ImportSinhVienExcelModalProps {
     isOpen: boolean;
@@ -1776,7 +1724,6 @@ const ThongKeSVTruotMonModal: React.FC<ThongKeSVTruotMonModalProps> = ({
                             <ul className="list-disc list-inside space-y-1 text-blue-600 dark:text-blue-400">
                                 <li>Chọn năm học và học kỳ cần xuất thống kê</li>
                                 <li>Hệ thống sẽ tạo danh sách SV có điểm không đạt</li>
-                                <li>File Excel bao gồm đề xuất môn học cần học lại</li>
                             </ul>
                         </div>
                     </div>
@@ -1784,7 +1731,7 @@ const ThongKeSVTruotMonModal: React.FC<ThongKeSVTruotMonModalProps> = ({
 
                 {/* Form chọn năm học và học kỳ */}
                 <div className="space-y-4 mb-6">
-                    {/* Năm h��c */}
+                    {/* Năm học */}
                     <div>
                         <Label className="block mb-2">
                             Năm học <span className="text-red-500">*</span>
@@ -1873,7 +1820,7 @@ const ThongKeSVTruotMonModal: React.FC<ThongKeSVTruotMonModalProps> = ({
                         <div className="text-sm text-amber-700 dark:text-amber-300">
                             <p className="font-medium">Lưu ý quan trọng:</p>
                             <ul className="list-disc list-inside text-amber-600 dark:text-amber-400 mt-1 space-y-1">
-                                <li>Sinh viên có điểm dưới 4.0 được xem là trượt</li>
+                                <li>Sinh viên có điểm TBCHP dưới 4.0 được xem là trượt</li>
                                 <li>Dữ liệu dựa trên kết quả học tập</li>
                             </ul>
                         </div>
@@ -1968,15 +1915,8 @@ export default function QuanLyLopHocPhanPage() {
 
     // State cho form sửa
     const [maLopHocPhan, setMaLopHocPhan] = useState("");
-    const [monHocId, setMonHocId] = useState("");
     const [giangVienId, setGiangVienId] = useState("");
-    const [namHocId, setNamHocId] = useState("");
-    const [hocKyId, setHocKyId] = useState("");
-    const [nienKhoaId, setNienKhoaId] = useState("");
-    const [khoaId, setKhoaId] = useState("");
-    const [nganhId, setNganhId] = useState("");
     const [ghiChu, setGhiChu] = useState("");
-    const [khoaDiem, setKhoaDiem] = useState(false);
 
     // State cho options
     const [monHocOptions, setMonHocOptions] = useState<MonHocOption[]>([]);
@@ -2009,13 +1949,11 @@ export default function QuanLyLopHocPhanPage() {
 
     const [errors, setErrors] = useState({
         maLopHocPhan: false,
-        monHocId: false,
         giangVienId: false,
-        nienKhoaId: false,
-        nganhId: false,
     });
 
     const [alert, setAlert] = useState<{
+        id: number;
         variant: "success" | "error" | "warning" | "info";
         title: string;
         message: string;
@@ -2223,17 +2161,18 @@ export default function QuanLyLopHocPhanPage() {
         title: string,
         message: string
     ) => {
-        setAlert({ variant, title, message });
-        setTimeout(() => setAlert(null), 5000);
+        setAlert({
+            id: Date.now(),   // 🔥 ép remount
+            variant,
+            title,
+            message,
+        });
     };
 
     const validateForm = () => {
         const newErrors = {
             maLopHocPhan: !maLopHocPhan.trim(),
-            monHocId: !monHocId,
             giangVienId: !giangVienId,
-            nienKhoaId: !nienKhoaId,
-            nganhId: !nganhId,
         };
         setErrors(newErrors);
         return !Object.values(newErrors).some((e) => e);
@@ -2241,18 +2180,11 @@ export default function QuanLyLopHocPhanPage() {
 
     const resetForm = () => {
         setMaLopHocPhan("");
-        setMonHocId("");
         setGiangVienId("");
-        setNienKhoaId("");
-        setKhoaId("");
-        setNganhId("");
         setGhiChu("");
         setErrors({
             maLopHocPhan: false,
-            monHocId: false,
             giangVienId: false,
-            nienKhoaId: false,
-            nganhId: false,
         });
     };
 
@@ -2270,14 +2202,16 @@ export default function QuanLyLopHocPhanPage() {
                 body: JSON.stringify({
                     maLopHocPhan: maLopHocPhan.trim(),
                     giangVienId: Number(giangVienId),
-                    monHocId: Number(monHocId),
-                    nienKhoaId: Number(nienKhoaId),
-                    nganhId: Number(nganhId),
                     ghiChu: ghiChu.trim() || null,
                 }),
             });
 
             setIsEditModalOpen(false);
+            // 👉 Cuộn lên đầu trang
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth",
+            });
             if (res.ok) {
                 showAlert("success", "Thành công", "Cập nhật lớp học phần thành công");
                 resetForm();
@@ -2310,6 +2244,11 @@ export default function QuanLyLopHocPhanPage() {
             });
 
             setIsDeleteModalOpen(false);
+            // 👉 Cuộn lên đầu trang
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth",
+            });
             if (res.ok) {
                 showAlert("success", "Thành công", "Xóa lớp học phần thành công");
                 setDeletingLopHocPhan(null);
@@ -2327,24 +2266,8 @@ export default function QuanLyLopHocPhanPage() {
     const openEditModal = (lopHocPhan: LopHocPhan) => {
         setEditingLopHocPhan(lopHocPhan);
         setMaLopHocPhan(lopHocPhan.maLopHocPhan);
-        setMonHocId(lopHocPhan.monHoc.id.toString());
-        setGiangVienId(lopHocPhan.giangVien.id.toString());
-
-        // Tìm năm học từ học kỳ
-        const foundNamHoc = namHocOptions.find(nh =>
-            nh.hocKys.some(hk => hk.id === lopHocPhan.hocKy.id)
-        );
-        if (foundNamHoc) {
-            setNamHocId(foundNamHoc.id.toString());
-        }
-
-        setHocKyId(lopHocPhan.hocKy.id.toString());
-        setNienKhoaId(lopHocPhan.nienKhoa.id.toString());
-        setKhoaId(lopHocPhan.nganh.khoa.id.toString());
-        setNganhId(lopHocPhan.nganh.id.toString());
+        setGiangVienId(lopHocPhan.giangVien?.id?.toString() || "");
         setGhiChu(lopHocPhan.ghiChu || "");
-        setKhoaDiem(lopHocPhan.khoaDiem);
-
         setIsEditModalOpen(true);
     };
 
@@ -2399,10 +2322,14 @@ export default function QuanLyLopHocPhanPage() {
                 {alert && (
                     <div className="mb-6">
                         <Alert
+                            key={alert.id}        // 🔥 reset state mỗi lần show
                             variant={alert.variant}
                             title={alert.title}
                             message={alert.message}
+                            dismissible
                             autoDismiss
+                            duration={15000}
+                            onClose={() => setAlert(null)}   // 🔥 unmount thật
                         />
                     </div>
                 )}
@@ -2770,30 +2697,16 @@ export default function QuanLyLopHocPhanPage() {
                     setEditingLopHocPhan(null);
                 }}
                 lopHocPhan={editingLopHocPhan}
-                monHocOptions={monHocOptions}
                 giangVienOptions={giangVienOptions}
-                nienKhoaOptions={nienKhoaOptions}
-                khoaOptions={khoaOptions}
-                nganhOptions={nganhOptions}
                 maLopHocPhan={maLopHocPhan}
-                monHocId={monHocId}
                 giangVienId={giangVienId}
-                namHocId={namHocId}
-                nienKhoaId={nienKhoaId}
-                khoaId={khoaId}
-                nganhId={nganhId}
                 ghiChu={ghiChu}
                 onMaLopHocPhanChange={setMaLopHocPhan}
-                onMonHocIdChange={setMonHocId}
                 onGiangVienIdChange={setGiangVienId}
-                onNienKhoaIdChange={setNienKhoaId}
-                onKhoaIdChange={setKhoaId}
-                onNganhIdChange={setNganhId}
                 onGhiChuChange={setGhiChu}
                 onSubmit={handleUpdate}
                 errors={errors}
             />
-
             {/* Modal Xem chi tiết */}
             <ViewLopHocPhanModal
                 isOpen={isViewModalOpen}

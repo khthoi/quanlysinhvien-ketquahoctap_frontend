@@ -252,7 +252,7 @@ const ViewLopHocPhanModal: React.FC<ViewLopHocPhanModalProps> = ({
                         </div>
                         <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Học kỳ</p>
-                            <p className="font-medium text-gray-800 dark: text-white">
+                            <p className="font-medium text-gray-800 dark:text-white">
                                 Học kỳ {lopHocPhan.hocKy.hocKy} - {lopHocPhan.hocKy.namHoc.tenNamHoc}
                             </p>
                         </div>
@@ -409,6 +409,7 @@ export default function QuanLyLopHocPhanPage() {
     });
 
     const [alert, setAlert] = useState<{
+        id: number;
         variant: "success" | "error" | "warning" | "info";
         title: string;
         message: string;
@@ -577,6 +578,11 @@ export default function QuanLyLopHocPhanPage() {
 
             setIsKhoaDiemModalOpen(false);
             setKhoaDiemLopHocPhan(null);
+            // 👉 Cuộn lên đầu trang
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth",
+            });
 
             if (res.ok) {
                 showAlert("success", "Thành công", `Đã khóa điểm lớp học phần "${khoaDiemLopHocPhan.maLopHocPhan}" thành công`);
@@ -689,8 +695,12 @@ export default function QuanLyLopHocPhanPage() {
         title: string,
         message: string
     ) => {
-        setAlert({ variant, title, message });
-        setTimeout(() => setAlert(null), 5000);
+        setAlert({
+            id: Date.now(),   // 🔥 ép remount
+            variant,
+            title,
+            message,
+        });
     };
 
     const validateForm = () => {
@@ -781,12 +791,16 @@ export default function QuanLyLopHocPhanPage() {
             <div className="rounded-2xl border border-gray-200 bg-white px-5 py-7 dark:border-gray-800 dark:bg-white/[0.03] xl:px-10 xl:py-12">
                 {alert && (
                     <div className="mb-6">
-                        <Alert
-                            variant={alert.variant}
-                            title={alert.title}
-                            message={alert.message}
-                            autoDismiss
-                        />
+                    <Alert
+                        key={alert.id}        // 🔥 reset state mỗi lần show
+                        variant={alert.variant}
+                        title={alert.title}
+                        message={alert.message}
+                        dismissible
+                        autoDismiss
+                        duration={15000}
+                        onClose={() => setAlert(null)}   // 🔥 unmount thật
+                    />
                     </div>
                 )}
 
@@ -1149,7 +1163,7 @@ export default function QuanLyLopHocPhanPage() {
                                     </span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-gray-500 dark: text-gray-400">Học kỳ:</span>
+                                    <span className="text-gray-500 dark:text-gray-400">Học kỳ:</span>
                                     <span className="font-medium text-gray-800 dark:text-white">
                                         HK{khoaDiemLopHocPhan.hocKy.hocKy} - {khoaDiemLopHocPhan.hocKy.namHoc.tenNamHoc}
                                     </span>
@@ -1169,7 +1183,7 @@ export default function QuanLyLopHocPhanPage() {
                         Bạn có chắc chắn muốn <strong>khóa điểm</strong> lớp học phần{" "}
                         <span className="font-semibold text-gray-900 dark:text-white">
                             {khoaDiemLopHocPhan?.maLopHocPhan}
-                        </span>?
+                        </span> ?
                     </p>
 
                     <div className="flex justify-end gap-3">

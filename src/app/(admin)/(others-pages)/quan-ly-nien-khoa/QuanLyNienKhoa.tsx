@@ -226,6 +226,7 @@ export default function QuanLyNienKhoaPage() {
     });
 
     const [alert, setAlert] = useState<{
+        id: number;
         variant: "success" | "error" | "warning" | "info";
         title: string;
         message: string;
@@ -268,8 +269,12 @@ export default function QuanLyNienKhoaPage() {
         title: string,
         message: string
     ) => {
-        setAlert({ variant, title, message });
-        setTimeout(() => setAlert(null), 5000);
+        setAlert({
+            id: Date.now(),   // 🔥 ép remount
+            variant,
+            title,
+            message,
+        });
     };
 
     const validateForm = () => {
@@ -369,6 +374,12 @@ export default function QuanLyNienKhoaPage() {
         } catch (err) {
             setIsEditModalOpen(false);
             showAlert("error", "Lỗi", "Có lỗi xảy ra khi cập nhật");
+        } finally {
+            setIsEditModalOpen(false);
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth",
+            });
         }
     };
 
@@ -404,6 +415,12 @@ export default function QuanLyNienKhoaPage() {
         } catch (err) {
             setIsDeleteModalOpen(false);
             showAlert("error", "Lỗi", "Có lỗi xảy ra khi xóa");
+        } finally {
+            // 👉 Cuộn lên đầu trang
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth",
+            });
         }
     };
 
@@ -455,10 +472,14 @@ export default function QuanLyNienKhoaPage() {
                 {alert && (
                     <div className="mb-6">
                         <Alert
+                            key={alert.id}        // 🔥 reset state mỗi lần show
                             variant={alert.variant}
                             title={alert.title}
                             message={alert.message}
+                            dismissible
                             autoDismiss
+                            duration={15000}
+                            onClose={() => setAlert(null)}   // 🔥 unmount thật
                         />
                     </div>
                 )}

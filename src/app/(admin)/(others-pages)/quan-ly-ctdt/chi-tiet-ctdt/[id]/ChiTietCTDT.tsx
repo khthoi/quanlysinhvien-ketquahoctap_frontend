@@ -760,6 +760,7 @@ export default function QuanLyMonHocChuongTrinhPage() {
     });
 
     const [alert, setAlert] = useState<{
+        id: number;
         variant: "success" | "error" | "warning" | "info";
         title: string;
         message: string;
@@ -894,8 +895,12 @@ export default function QuanLyMonHocChuongTrinhPage() {
         title: string,
         message: string
     ) => {
-        setAlert({ variant, title, message });
-        setTimeout(() => setAlert(null), 5000);
+        setAlert({
+            id: Date.now(),   // 🔥 ép remount
+            variant,
+            title,
+            message,
+        });
     };
 
     const resetThemForm = () => {
@@ -1223,10 +1228,14 @@ export default function QuanLyMonHocChuongTrinhPage() {
                 {alert && (
                     <div className="mb-6">
                         <Alert
+                            key={alert.id}        // 🔥 reset state mỗi lần show
                             variant={alert.variant}
                             title={alert.title}
                             message={alert.message}
+                            dismissible
                             autoDismiss
+                            duration={15000}
+                            onClose={() => setAlert(null)}   // 🔥 unmount thật
                         />
                     </div>
                 )}

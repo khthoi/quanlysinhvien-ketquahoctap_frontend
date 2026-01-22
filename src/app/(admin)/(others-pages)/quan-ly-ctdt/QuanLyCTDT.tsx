@@ -796,6 +796,7 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
     });
 
     const [alert, setAlert] = useState<{
+        id: number;
         variant: "success" | "error" | "warning" | "info";
         title: string;
         message: string;
@@ -967,8 +968,12 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
         title: string,
         message: string
     ) => {
-        setAlert({ variant, title, message });
-        setTimeout(() => setAlert(null), 5000);
+        setAlert({
+            id: Date.now(),   // 🔥 ép remount
+            variant,
+            title,
+            message,
+        });
     };
 
     const resetChuongTrinhForm = () => {
@@ -1134,6 +1139,13 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
         } catch (err) {
             setIsEditChuongTrinhModalOpen(false);
             showAlert("error", "Lỗi", "Có lỗi xảy ra khi cập nhật chương trình");
+        } finally {
+            setIsEditChuongTrinhModalOpen(false);
+            // 👉 Cuộn lên đầu trang
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth",
+            });
         }
     };
 
@@ -1165,6 +1177,13 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
         } catch (err) {
             setIsDeleteChuongTrinhModalOpen(false);
             showAlert("error", "Lỗi", "Có lỗi xảy ra khi xóa chương trình");
+        } finally {
+            setIsDeleteChuongTrinhModalOpen(false);
+            // 👉 Cuộn lên đầu trang
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth",
+            });
         }
     };
 
@@ -1207,6 +1226,13 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
         } catch (err) {
             setIsApDungModalOpen(false);
             showAlert("error", "Lỗi", "Có lỗi xảy ra khi áp dụng chương trình");
+        } finally {
+            setIsApDungModalOpen(false);
+            // 👉 Cuộn lên đầu trang
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth",
+            });
         }
     };
 
@@ -1238,6 +1264,13 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
         } catch (err) {
             setIsDeleteApDungModalOpen(false);
             showAlert("error", "Lỗi", "Có lỗi xảy ra khi xóa áp dụng");
+        } finally {
+            setIsDeleteApDungModalOpen(false);
+            // 👉 Cuộn lên đầu trang
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth",
+            });
         }
     };
 
@@ -1289,10 +1322,14 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
                 {alert && (
                     <div className="mb-6">
                         <Alert
+                            key={alert.id}        // 🔥 reset state mỗi lần show
                             variant={alert.variant}
                             title={alert.title}
                             message={alert.message}
+                            dismissible
                             autoDismiss
+                            duration={15000}
+                            onClose={() => setAlert(null)}   // 🔥 unmount thật
                         />
                     </div>
                 )}
@@ -1776,7 +1813,7 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
                     <h3 className="mb-4 text-xl font-semibold text-gray-800 dark:text-white/90">
                         Xác nhận xóa chương trình đào tạo
                     </h3>
-                    <p className="text-sm text-gray-600 dark: text-gray-400 mb-8">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-8">
                         Bạn có chắc chắn muốn xóa chương trình đào tạo{" "}
                         <span className="font-semibold text-gray-900 dark:text-white">
                             {deletingChuongTrinh?.tenChuongTrinh}
@@ -1784,7 +1821,7 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
                         (Mã:  {deletingChuongTrinh?.maChuongTrinh})?
                         <br /><br />
                         <span className="text-error-500">
-                            Lưu ý:  Cần xóa các áp dụng của chương trình này trước.
+                           Cần xoá liên kết niên khoá của chương trình này trước khi xoá chương trình.
                         </span>
                     </p>
                     <div className="flex justify-end gap-3">
@@ -1817,7 +1854,7 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
                     <h3 className="mb-4 text-xl font-semibold text-gray-800 dark:text-white/90">
                         Xác nhận xóa áp dụng chương trình
                     </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-8">
+                    <div className="text-sm text-gray-600 dark:text-gray-400 mb-8">
                         Bạn có chắc chắn muốn xóa áp dụng chương trình{" "}
                         <span className="font-semibold text-brand-600 dark: text-brand-400">
                             {deletingApDung?.chuongTrinh.tenChuongTrinh}
@@ -1827,8 +1864,8 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
                             {deletingApDung?.apDung.nienKhoa.tenNienKhoa}
                         </span>
                         ? <br /><br />
-                        Hành động này không thể hoàn tác.
-                    </p>
+                        <p className="text-red-500">Hành động này không thể hoàn tác.</p>
+                    </div>
                     <div className="flex justify-end gap-3">
                         <Button
                             variant="outline"

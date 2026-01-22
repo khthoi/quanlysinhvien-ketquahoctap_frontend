@@ -34,6 +34,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 
 type TinhTrang = "DANG_HOC" | "THOI_HOC" | "DA_TOT_NGHIEP" | "BAO_LUU";
+type tinhTrangOptions = "DANG_HOC" | "THOI_HOC" | "BAO_LUU";
 type GioiTinh = "NAM" | "NU";
 type LoaiQuyetDinh = "KHEN_THUONG" | "KY_LUAT";
 
@@ -119,19 +120,6 @@ interface ThanhTichResponse {
     khenThuongKyLuat: ThanhTich[];
 }
 
-interface XetTotNghiepResult {
-    nienKhoa: {
-        id: number;
-        maNienKhoa: string;
-        tenNienKhoa: string;
-        namHoc: string;
-        moTa: string;
-    };
-    tongSinhVienCuaNienKhoa: number;
-    soSinhVienDatTotNghiep: number;
-    soSinhVienKhongDatTotNghiep: number;
-    tongSinhVienDuocXet: number;
-}
 
 const getCookie = (name: string): string | null => {
     const value = `; ${document.cookie}`;
@@ -256,7 +244,6 @@ const SinhVienModal: React.FC<SinhVienModalProps> = ({
     const tinhTrangOptions = [
         { value: "DANG_HOC", label: "Đang học" },
         { value: "THOI_HOC", label: "Thôi học" },
-        { value: "DA_TOT_NGHIEP", label: "Đã tốt nghiệp" },
         { value: "BAO_LUU", label: "Bảo lưu" },
     ];
 
@@ -351,7 +338,7 @@ const SinhVienModal: React.FC<SinhVienModalProps> = ({
                         <SearchableSelect
                             options={tinhTrangOptions}
                             placeholder="Chọn tình trạng"
-                            onChange={(value) => onTinhTrangChange((value as TinhTrang) || "")}
+                            onChange={(value) => onTinhTrangChange((value as tinhTrangOptions) || "")}
                             defaultValue={tinhTrang || ""}
                             showSecondary={false}
                         />
@@ -740,29 +727,48 @@ const ImportSinhVienExcelModal: React.FC<ImportSinhVienExcelModalProps> = ({
     );
 };
 
-// ==================== MODAL XÉT TỐT NGHIỆP ====================
+// ==================== MODAL XÉT TỐT NGHI���P ====================
 interface XetTotNghiepModalProps {
     isOpen: boolean;
     onClose: () => void;
     nienKhoaOptions: NienKhoaOption[];
+    nganhOptions: NganhOption[];
 }
 
 const XetTotNghiepModal: React.FC<XetTotNghiepModalProps> = ({
     isOpen,
     onClose,
     nienKhoaOptions,
+    nganhOptions,
 }) => {
     const [selectedNienKhoaId, setSelectedNienKhoaId] = useState("");
+    const [selectedNganhId, setSelectedNganhId] = useState("");
     const [isLoading, setIsLoading] = useState(false);
-    const [result, setResult] = useState<XetTotNghiepResult | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [isSuccess, setIsSuccess] = useState(false);
 
     const handleClose = () => {
         setSelectedNienKhoaId("");
-        setResult(null);
+        setSelectedNganhId("");
         setError(null);
         setIsLoading(false);
+        setIsSuccess(false);
         onClose();
+    };
+
+    const handleReset = () => {
+        setSelectedNienKhoaId("");
+        setSelectedNganhId("");
+        setError(null);
+        setIsSuccess(false);
+    };
+
+    const getSelectedNienKhoa = () => {
+        return nienKhoaOptions.find(nk => nk.id.toString() === selectedNienKhoaId);
+    };
+
+    const getSelectedNganh = () => {
+        return nganhOptions.find(n => n.id.toString() === selectedNganhId);
     };
 
     const handleXetTotNghiep = async () => {
@@ -770,28 +776,51 @@ const XetTotNghiepModal: React.FC<XetTotNghiepModalProps> = ({
             setError("Vui lòng chọn niên khóa");
             return;
         }
+        if (!selectedNganhId) {
+            setError("Vui lòng chọn ngành");
+            return;
+        }
 
         setIsLoading(true);
         setError(null);
-        setResult(null);
 
         try {
             const accessToken = getCookie("access_token");
             const res = await fetch(
-                `http://localhost:3000/sinh-vien/xet-tot-nghiep/${selectedNienKhoaId}/thong-ke`,
+                `http://localhost:3000/sinh-vien/xet-tot-nghiep/thong-ke`,
                 {
+                    method: "POST",
                     headers: {
+                        "Content-Type": "application/json",
                         Authorization: `Bearer ${accessToken}`,
                     },
+                    body: JSON.stringify({
+                        nienKhoaId: Number(selectedNienKhoaId),
+                        nganhId: Number(selectedNganhId),
+                    }),
                 }
             );
 
-            const json = await res.json();
-
             if (res.ok) {
-                setResult(json);
+                // Xử lý tải file Excel
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+
+                const nienKhoa = getSelectedNienKhoa();
+                const nganh = getSelectedNganh();
+                link.download = `Thống kê sinh viên tốt nghiệp Khoá ${nienKhoa?.maNienKhoa || ''} Ngành ${nganh?.maNganh || ''}.xlsx`;
+
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+
+                setIsSuccess(true);
             } else {
-                setError(json.message || "Xét tốt nghiệp thất bại");
+                const err = await res.json();
+                setError(err.message || "Xét tốt nghiệp thất bại");
             }
         } catch (err) {
             setError("Có lỗi xảy ra khi xét tốt nghiệp");
@@ -800,45 +829,175 @@ const XetTotNghiepModal: React.FC<XetTotNghiepModalProps> = ({
         }
     };
 
-    const handleReset = () => {
-        setSelectedNienKhoaId("");
-        setResult(null);
-        setError(null);
-    };
-
     if (!isOpen) return null;
 
     return (
         <Modal isOpen={isOpen} onClose={handleClose} className="max-w-2xl">
             <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
-                <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90 flex items-center gap-2">
-                    <FontAwesomeIcon icon={faGraduationCap} className="text-brand-500" />
-                    Xét Tốt Nghiệp theo Niên Khóa
-                </h3>
-
-                {/* Chọn Niên khóa */}
-                <div className="mb-6 relative z-10">
-                    <Label className="mb-2 block">Chọn Niên khóa</Label>
-                    <div className="min-h-[270px]">
-                        <SearchableSelect
-                            options={nienKhoaOptions.map((nk) => ({
-                                value: nk.id.toString(),
-                                label: nk.maNienKhoa,
-                                secondary: nk.tenNienKhoa,
-                            }))}
-                            placeholder="Chọn niên khóa để xét tốt nghiệp"
-                            onChange={(value) => {
-                                setSelectedNienKhoaId(value);
-                                setResult(null);
-                                setError(null);
-                            }}
-                            defaultValue={selectedNienKhoaId}
-                            showSecondary={true}
-                            maxDisplayOptions={10}
-                            searchPlaceholder="Tìm niên khóa..."
+                {/* Header */}
+                <div className="flex items-center gap-4 mb-6">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30">
+                        <FontAwesomeIcon
+                            icon={faGraduationCap}
+                            className="text-2xl text-emerald-600 dark:text-emerald-400"
                         />
                     </div>
+                    <div>
+                        <h3 className="text-xl font-semibold text-gray-800 dark:text-white/90">
+                            Xét Tốt Nghiệp & Xuất Thống Kê
+                        </h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                            Xét và xuất danh sách sinh viên tốt nghiệp theo niên khóa và ngành
+                        </p>
+                    </div>
                 </div>
+
+                {/* Hướng dẫn sử dụng */}
+                <div className="mb-6 rounded-xl border border-blue-200 bg-blue-50 dark:border-blue-800/50 dark:bg-blue-900/20">
+                    <div className="p-4">
+                        <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0">
+                                <FontAwesomeIcon
+                                    icon={faCircleExclamation}
+                                    className="text-lg text-blue-600 dark: text-blue-400 mt-0.5"
+                                />
+                            </div>
+                            <div className="flex-1">
+                                <h4 className="font-semibold text-blue-800 dark:text-blue-300 mb-2">
+                                    Hướng dẫn sử dụng
+                                </h4>
+                                <ul className="text-sm text-blue-700/80 dark:text-blue-300/70 space-y-1.5">
+                                    <li className="flex items-start gap-2">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 flex-shrink-0"></span>
+                                        <span>Chọn <strong>Niên khóa</strong> và <strong>Ngành</strong> cần xét tốt nghiệp</span>
+                                    </li>
+                                    <li className="flex items-start gap-2">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 flex-shrink-0"></span>
+                                        <span>Hệ thống sẽ xét tốt nghiệp cho tất cả sinh viên thuộc NK và ngành đã chọn</span>
+                                    </li>
+                                    <li className="flex items-start gap-2">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 flex-shrink-0"></span>
+                                        <span>File Excel thống kê sẽ được trả về sau khi xét xong</span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Form chọn Niên khóa và Ngành */}
+                {!isSuccess && (
+                    <div className="mb-6 p-5 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700">
+                        <h4 className="font-medium text-gray-800 dark:text-white mb-4 flex items-center gap-2">
+                            <FontAwesomeIcon icon={faMagnifyingGlass} className="text-gray-500" />
+                            Chọn NK và ngành để xét tốt nghiệp
+                        </h4>
+
+                        <div className="grid grid-cols-1 md: grid-cols-2 gap-4">
+                            {/* Chọn Niên khóa */}
+                            <div>
+                                <Label className="mb-2 block text-sm font-medium">
+                                    Niên khóa <span className="text-red-500">*</span>
+                                </Label>
+                                <SearchableSelect
+                                    options={nienKhoaOptions.map((nk) => ({
+                                        value: nk.id.toString(),
+                                        label: nk.maNienKhoa,
+                                        secondary: nk.tenNienKhoa,
+                                    }))}
+                                    placeholder="Chọn niên khóa..."
+                                    onChange={(value) => {
+                                        setSelectedNienKhoaId(value);
+                                        setError(null);
+                                    }}
+                                    defaultValue={selectedNienKhoaId}
+                                    showSecondary={true}
+                                    maxDisplayOptions={10}
+                                    searchPlaceholder="Tìm niên khóa..."
+                                />
+                            </div>
+
+                            {/* Chọn Ngành */}
+                            <div>
+                                <Label className="mb-2 block text-sm font-medium">
+                                    Ngành <span className="text-red-500">*</span>
+                                </Label>
+                                <SearchableSelect
+                                    options={nganhOptions.map((n) => ({
+                                        value: n.id.toString(),
+                                        label: n.maNganh,
+                                        secondary: n.tenNganh,
+                                    }))}
+                                    placeholder="Chọn ngành..."
+                                    onChange={(value) => {
+                                        setSelectedNganhId(value);
+                                        setError(null);
+                                    }}
+                                    defaultValue={selectedNganhId}
+                                    showSecondary={true}
+                                    maxDisplayOptions={10}
+                                    searchPlaceholder="Tìm ngành..."
+                                />
+                            </div>
+                        </div>
+
+                        {/* Hiển thị thông tin đã chọn */}
+                        {(selectedNienKhoaId || selectedNganhId) && (
+                            <div className="mt-4 p-3 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+                                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Thông tin đã chọn: </p>
+                                <div className="flex flex-wrap gap-2">
+                                    {selectedNienKhoaId && (
+                                        <Badge variant="solid" color="primary">
+                                            Niên khóa: {getSelectedNienKhoa()?.tenNienKhoa}
+                                        </Badge>
+                                    )}
+                                    {selectedNganhId && (
+                                        <Badge variant="solid" color="success">
+                                            Ngành: {getSelectedNganh()?.tenNganh}
+                                        </Badge>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Thông tin file sẽ xuất */}
+                {!isSuccess && selectedNienKhoaId && selectedNganhId && (
+                    <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 dark:border-emerald-800/50 dark: bg-emerald-900/20">
+                        <div className="p-4">
+                            <div className="flex items-start gap-3">
+                                <div className="flex-shrink-0">
+                                    <FontAwesomeIcon
+                                        icon={faFileExcel}
+                                        className="text-lg text-emerald-600 dark:text-emerald-400 mt-0.5"
+                                    />
+                                </div>
+                                <div className="flex-1">
+                                    <h4 className="font-semibold text-emerald-800 dark:text-emerald-300 mb-2">
+                                        Thông tin file xuất
+                                    </h4>
+                                    <ul className="text-sm text-emerald-700/80 dark:text-emerald-300/70 space-y-1.5">
+                                        <li className="flex items-center gap-2">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                            <span>Định dạng:  <strong>Excel (.xlsx)</strong></span>
+                                        </li>
+                                        <li className="flex items-center gap-2">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                            <span>
+                                                Tên file: <strong>Thống kê sinh viên tốt nghiệp Khoá {getSelectedNienKhoa()?.maNienKhoa} Ngành {getSelectedNganh()?.maNganh}.xlsx</strong>
+                                            </span>
+                                        </li>
+                                        <li className="flex items-center gap-2">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                            <span>Nội dung:  Danh sách sinh viên đạt/không đạt tốt nghiệp</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Hiển thị lỗi */}
                 {error && (
@@ -851,112 +1010,66 @@ const XetTotNghiepModal: React.FC<XetTotNghiepModalProps> = ({
                     </div>
                 )}
 
-                {/* Hiển thị kết quả thống kê */}
-                {result && (
+                {/* Hiển thị thành công */}
+                {isSuccess && (
                     <div className="mb-6">
-                        {/* Alert thành công */}
-                        <div className="mb-4">
-                            <Alert
-                                variant="success"
-                                title="Xét tốt nghiệp thành công"
-                                message={`Đã xét tốt nghiệp cho niên khóa ${result.nienKhoa.tenNienKhoa}`}
-                            />
-                        </div>
-
-                        {/* Thông tin niên khóa */}
-                        <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 mb-4">
-                            <h4 className="font-medium text-gray-800 dark:text-white mb-3">
-                                Thông tin Niên khóa
-                            </h4>
-                            <div className="grid grid-cols-2 gap-3 text-sm">
-                                <div>
-                                    <p className="text-gray-500 dark:text-gray-400">Mã niên khóa</p>
-                                    <p className="font-medium text-gray-800 dark: text-white">
-                                        {result.nienKhoa.maNienKhoa}
-                                    </p>
+                        <div className="rounded-xl border border-emerald-200 bg-emerald-50 dark:border-emerald-800/50 dark: bg-emerald-900/20 p-6">
+                            <div className="flex flex-col items-center text-center">
+                                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-800/50 mb-4">
+                                    <FontAwesomeIcon
+                                        icon={faCircleCheck}
+                                        className="text-3xl text-emerald-600 dark:text-emerald-400"
+                                    />
                                 </div>
-                                <div>
-                                    <p className="text-gray-500 dark:text-gray-400">Tên niên khóa</p>
-                                    <p className="font-medium text-gray-800 dark:text-white">
-                                        {result.nienKhoa.tenNienKhoa}
-                                    </p>
-                                </div>
-                                <div className="col-span-2">
-                                    <p className="text-gray-500 dark:text-gray-400">Năm học</p>
-                                    <p className="font-medium text-gray-800 dark:text-white">
-                                        {result.nienKhoa.namHoc}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Thống kê kết quả */}
-                        <div className="p-4 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-                            <h4 className="font-medium text-gray-800 dark:text-white mb-4">
-                                Kết quả Thống kê
-                            </h4>
-                            <div className="grid grid-cols-2 gap-4">
-                                {/* Tổng sinh viên niên khóa */}
-                                <div className="p-4 bg-gray-50 dark: bg-gray-800/50 rounded-lg text-center">
-                                    <p className="text-2xl font-bold text-gray-800 dark:text-white">
-                                        {result.tongSinhVienCuaNienKhoa}
-                                    </p>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                        Tổng SV niên khóa
-                                    </p>
-                                </div>
-
-                                {/* Tổng sinh viên được xét */}
-                                <div className="p-4 bg-blue-50 dark: bg-blue-900/20 rounded-lg text-center">
-                                    <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                                        {result.tongSinhVienDuocXet}
-                                    </p>
-                                    <p className="text-sm text-gray-500 dark: text-gray-400 mt-1">
-                                        Tổng SV được xét
-                                    </p>
-                                </div>
-
-                                {/* Đạt tốt nghiệp */}
-                                <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg text-center">
-                                    <p className="text-2xl font-bold text-green-600 dark: text-green-400">
-                                        {result.soSinhVienDatTotNghiep}
-                                    </p>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                        Đạt tốt nghiệp
-                                    </p>
-                                    <Badge variant="solid" color="success" className="mt-2">
-                                        {result.tongSinhVienDuocXet > 0
-                                            ? ((result.soSinhVienDatTotNghiep / result.tongSinhVienDuocXet) * 100).toFixed(1)
-                                            : 0}%
+                                <h4 className="text-lg font-semibold text-emerald-800 dark:text-emerald-300 mb-2">
+                                    Xét tốt nghiệp thành công!
+                                </h4>
+                                <p className="text-sm text-emerald-700/80 dark:text-emerald-300/70 mb-3">
+                                    File thống kê đã được tải xuống tự động.
+                                </p>
+                                <div className="flex flex-wrap justify-center gap-2">
+                                    <Badge variant="solid" color="primary">
+                                        Niên khóa: {getSelectedNienKhoa()?.tenNienKhoa}
                                     </Badge>
-                                </div>
-
-                                {/* Không đạt */}
-                                <div className="p-4 bg-red-50 dark: bg-red-900/20 rounded-lg text-center">
-                                    <p className="text-2xl font-bold text-red-600 dark:text-red-400">
-                                        {result.soSinhVienKhongDatTotNghiep}
-                                    </p>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                        Không đạt
-                                    </p>
-                                    <Badge variant="solid" color="error" className="mt-2">
-                                        {result.tongSinhVienDuocXet > 0
-                                            ? ((result.soSinhVienKhongDatTotNghiep / result.tongSinhVienDuocXet) * 100).toFixed(1)
-                                            : 0}%
+                                    <Badge variant="solid" color="success">
+                                        Ngành: {getSelectedNganh()?.tenNganh}
                                     </Badge>
                                 </div>
                             </div>
                         </div>
                     </div>
                 )}
+
+                {/* Loading state */}
+                {isLoading && (
+                    <div className="mb-6 p-6 bg-gray-50 dark:bg-gray-800 rounded-xl flex flex-col items-center justify-center">
+                        <div className="relative mb-4">
+                            <div className="h-16 w-16 rounded-full border-4 border-emerald-100 dark:border-emerald-900/50"></div>
+                            <div className="absolute top-0 left-0 h-16 w-16 rounded-full border-4 border-emerald-500 border-t-transparent animate-spin"></div>
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+                                <FontAwesomeIcon
+                                    icon={faGraduationCap}
+                                    className="text-xl text-emerald-500"
+                                />
+                            </div>
+                        </div>
+                        <p className="text-gray-700 dark:text-gray-300 font-medium">
+                            Đang xét tốt nghiệp và tạo báo cáo...
+                        </p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                            Vui lòng đợi trong giây lát
+                        </p>
+                    </div>
+                )}
+
                 {/* Buttons */}
-                <div className="flex justify-end gap-3">
-                    {result ? (
+                <div className="flex justify-end gap-3 pt-2">
+                    {isSuccess ? (
                         <>
                             <Button variant="outline" onClick={handleReset}>
-                                Xét niên khóa khác
+                                Xét niên khóa/ngành khác
                             </Button>
-                            <Button variant="outline" onClick={handleClose}>
+                            <Button variant="primary" onClick={handleClose}>
                                 Đóng
                             </Button>
                         </>
@@ -967,8 +1080,12 @@ const XetTotNghiepModal: React.FC<XetTotNghiepModalProps> = ({
                             </Button>
                             <Button
                                 onClick={handleXetTotNghiep}
-                                disabled={!selectedNienKhoaId || isLoading}
-                                startIcon={!isLoading ? <FontAwesomeIcon icon={faGraduationCap} /> : undefined}
+                                disabled={!selectedNienKhoaId || !selectedNganhId || isLoading}
+                                startIcon={
+                                    isLoading
+                                        ? <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
+                                        : <FontAwesomeIcon icon={faGraduationCap} />
+                                }
                             >
                                 {isLoading ? "Đang xử lý..." : "Xét Tốt Nghiệp"}
                             </Button>
@@ -1132,6 +1249,7 @@ export default function QuanLySinhVienPage() {
     });
 
     const [alert, setAlert] = useState<{
+        id: number;
         variant: "success" | "error" | "warning" | "info";
         title: string;
         message: string;
@@ -1291,8 +1409,12 @@ export default function QuanLySinhVienPage() {
         title: string,
         message: string
     ) => {
-        setAlert({ variant, title, message });
-        setTimeout(() => setAlert(null), 5000);
+        setAlert({
+            id: Date.now(),   // 🔥 ép remount
+            variant,
+            title,
+            message,
+        });
     };
 
     const validateForm = () => {
@@ -1422,6 +1544,13 @@ export default function QuanLySinhVienPage() {
             }
         } catch (err) {
             showAlert("error", "Lỗi", "Có lỗi xảy ra khi tạo sinh viên");
+        } finally {
+            setIsCreateModalOpen(false);
+            // 👉 Cuộn lên đầu trang
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth",
+            });
         }
     };
 
@@ -1453,7 +1582,6 @@ export default function QuanLySinhVienPage() {
                 }),
             });
 
-            setIsEditModalOpen(false);
             if (res.ok) {
                 showAlert("success", "Thành công", "Cập nhật sinh viên thành công");
                 resetForm();
@@ -1464,7 +1592,13 @@ export default function QuanLySinhVienPage() {
             }
         } catch (err) {
             setIsEditModalOpen(false);
-            showAlert("error", "Lỗi", "Có lỗi xảy ra khi cập nhật");
+        } finally {
+            setIsEditModalOpen(false);
+            // 👉 Cuộn lên đầu trang
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth",
+            });
         }
     };
 
@@ -1497,6 +1631,13 @@ export default function QuanLySinhVienPage() {
         } catch (err) {
             setIsDeleteModalOpen(false);
             showAlert("error", "Lỗi", "Có lỗi xảy ra khi xóa");
+        } finally {
+            setIsDeleteModalOpen(false);
+            // 👉 Cuộn lên đầu trang
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth",
+            });
         }
     };
 
@@ -1532,6 +1673,11 @@ export default function QuanLySinhVienPage() {
             setIsBulkCreateAccountModalOpen(false);
         } finally {
             setIsBulkCreatingAccounts(false);
+             // 👉 Cuộn lên đầu trang
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth",
+            });
         }
     };
 
@@ -1587,13 +1733,20 @@ export default function QuanLySinhVienPage() {
                 closeExportPhieuDiemModal();
             } else {
                 const err = await res.json();
+                closeExportPhieuDiemModal();
                 showAlert("error", "Lỗi", err.message || "Không thể xuất phiếu điểm");
             }
         } catch (err) {
             console.error("Lỗi xuất phiếu điểm:", err);
+            closeExportPhieuDiemModal();
             showAlert("error", "Lỗi", "Có lỗi xảy ra khi xuất phiếu điểm");
         } finally {
             setIsExportingPhieuDiem(false);
+             // 👉 Cuộn lên đầu trang
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth",
+            });
         }
     };
 
@@ -1672,8 +1825,18 @@ export default function QuanLySinhVienPage() {
                 showAlert("error", "Lỗi", err.message || "Xóa thất bại");
             }
         } catch (err) {
-            closeThanhTichModal
+            closeThanhTichModal();
             showAlert("error", "Lỗi", "Có lỗi xảy ra khi xóa");
+        } finally {
+            setIsThanhTichModalOpen(false);
+            setSelectedSinhVienForThanhTich(null);
+            setThanhTichData(null);
+            setFilterLoaiQuyetDinh("");
+            // 👉 Cuộn lên đầu trang
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth",
+            });
         }
     };
 
@@ -1755,6 +1918,13 @@ export default function QuanLySinhVienPage() {
             }
         } catch (err) {
             showAlert("error", "Lỗi", "Có lỗi xảy ra khi thêm quyết định");
+        } finally {
+            // 👉 Cuộn lên đầu trang
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth",
+            });
+            closeAddQuyetDinhModal();
         }
     };
 
@@ -1812,6 +1982,11 @@ export default function QuanLySinhVienPage() {
             showAlert("error", "Lỗi", "Có lỗi xảy ra khi tạo tài khoản");
         } finally {
             setIsCreatingAccount(false);
+            // 👉 Cuộn lên đầu trang
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth",
+            });
         }
     };
 
@@ -1853,10 +2028,14 @@ export default function QuanLySinhVienPage() {
                 {alert && (
                     <div className="mb-6">
                         <Alert
+                            key={alert.id}        // 🔥 reset state mỗi lần show
                             variant={alert.variant}
                             title={alert.title}
                             message={alert.message}
+                            dismissible
                             autoDismiss
+                            duration={15000}
+                            onClose={() => setAlert(null)}   // 🔥 unmount thật
                         />
                     </div>
                 )}
@@ -2003,7 +2182,7 @@ export default function QuanLySinhVienPage() {
                         <div className="min-w-[1000px]">
                             <Table>
                                 <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
-                                    <TableRow className="grid grid-cols-[10%_14%_14%_12%_12%_12%_26%]">
+                                    <TableRow className="grid grid-cols-[12%_21%_14%_14%_12%_12%_15%]">
                                         <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-theme-xs">
                                             Mã SV
                                         </TableCell>
@@ -2036,7 +2215,7 @@ export default function QuanLySinhVienPage() {
                                         </TableRow>
                                     ) : (
                                         sinhViens.map((sv) => (
-                                            <TableRow key={sv.id} className="grid grid-cols-[10%_14%_14%_12%_12%_12%_26%] items-center">
+                                            <TableRow key={sv.id} className="grid grid-cols-[12%_21%_14%_14%_12%_12%_15%] items-center">
                                                 <TableCell className="px-5 py-4 text-gray-800 dark:text-white/90">
                                                     {sv.maSinhVien}
                                                 </TableCell>
@@ -2438,11 +2617,13 @@ export default function QuanLySinhVienPage() {
                 }}
                 showAlert={showAlert}
             />
+
             {/* Modal Xét Tốt Nghiệp */}
             <XetTotNghiepModal
                 isOpen={isXetTotNghiepModalOpen}
                 onClose={() => setIsXetTotNghiepModalOpen(false)}
                 nienKhoaOptions={nienKhoaOptions}
+                nganhOptions={nganhOptions}
             />
 
             {/* Modal Tạo tài khoản */}
@@ -2848,7 +3029,7 @@ export default function QuanLySinhVienPage() {
                                 <div className="flex-shrink-0">
                                     <FontAwesomeIcon
                                         icon={faFileExcel}
-                                        className="text-lg text-blue-600 dark: text-blue-400 mt-0.5"
+                                        className="text-lg text-blue-600 dark:text-blue-400 mt-0.5"
                                     />
                                 </div>
                                 <div className="flex-1">
@@ -2866,7 +3047,7 @@ export default function QuanLySinhVienPage() {
                                         </li>
                                         <li className="flex items-center gap-2">
                                             <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                                            <span>Nội dung:  Điểm tất cả môn học đã được vào điểm</span>
+                                            <span>Nội dung: Điểm tất cả môn học đã được vào điểm</span>
                                         </li>
                                     </ul>
                                 </div>

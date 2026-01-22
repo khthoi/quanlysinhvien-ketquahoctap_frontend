@@ -865,6 +865,7 @@ export default function QuanLyGiangVienPage() {
     });
 
     const [alert, setAlert] = useState<{
+        id: number;
         variant: "success" | "error" | "warning" | "info";
         title: string;
         message: string;
@@ -955,10 +956,13 @@ export default function QuanLyGiangVienPage() {
         title: string,
         message: string
     ) => {
-        setAlert({ variant, title, message });
-        setTimeout(() => setAlert(null), 5000);
+        setAlert({
+            id: Date.now(),   // 🔥 ép remount
+            variant,
+            title,
+            message,
+        });
     };
-
     const resetForm = () => {
         setFormData({
             maGiangVien: "",
@@ -1067,6 +1071,13 @@ export default function QuanLyGiangVienPage() {
         } catch (err) {
             setIsEditModalOpen(false);
             showAlert("error", "Lỗi", "Có lỗi xảy ra khi cập nhật");
+        } finally {
+            setIsEditModalOpen(false);
+            // 👉 Cuộn lên đầu trang
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth",
+            });
         }
     };
 
@@ -1130,6 +1141,13 @@ export default function QuanLyGiangVienPage() {
         } catch (err) {
             setIsUnassignModalOpen(false);
             showAlert("error", "Lỗi", "Có lỗi xảy ra khi hủy phân công");
+        } finally {
+            setIsUnassignModalOpen(false);
+            // 👉 Cuộn lên đầu trang
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth",
+            });
         }
     };
 
@@ -1335,7 +1353,7 @@ export default function QuanLyGiangVienPage() {
                     status: "failed",
                     message: "Lỗi kết nối",
                 });
-            }
+            } 
         }
 
         setBulkDeleteResults(results);
@@ -1416,10 +1434,14 @@ export default function QuanLyGiangVienPage() {
                 {alert && (
                     <div className="mb-6">
                         <Alert
+                            key={alert.id}        // 🔥 reset state mỗi lần show
                             variant={alert.variant}
                             title={alert.title}
                             message={alert.message}
+                            dismissible
                             autoDismiss
+                            duration={15000}
+                            onClose={() => setAlert(null)}   // 🔥 unmount thật
                         />
                     </div>
                 )}
@@ -1521,7 +1543,7 @@ export default function QuanLyGiangVienPage() {
                             <Table>
                                 {/* Table Header */}
                                 <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
-                                    <TableRow className="grid grid-cols-[5%_5%_12%_20%_10%_15%_33%]">
+                                    <TableRow className="grid grid-cols-[5%_5%_25%_25%_10%_15%_15%]">
                                         <TableCell
                                             isHeader
                                             className="px-3 py-3 font-medium text-gray-500 text-theme-xs dark:text-gray-400 flex items-center justify-center"
@@ -1578,7 +1600,7 @@ export default function QuanLyGiangVienPage() {
                                         <React.Fragment key={gv.id}>
                                             {/* Main Row */}
                                             <TableRow
-                                                className={`grid grid-cols-[5%_5%_12%_20%_10%_15%_33%] items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors ${isRowExpanded(gv.id) ? "bg-gray-50 dark:bg-white/[0.02]" : ""
+                                                className={`grid grid-cols-[5%_5%_25%_25%_10%_15%_15%] items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors ${isRowExpanded(gv.id) ? "bg-gray-50 dark:bg-white/[0.02]" : ""
                                                     } ${isSelected(gv.id) ? "bg-brand-50 dark:bg-brand-900/10" : ""}`}
                                             >
                                                 {/* Checkbox */}
