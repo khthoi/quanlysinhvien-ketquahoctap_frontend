@@ -513,6 +513,170 @@ const ImportMonHocExcelModal: React.FC<ImportMonHocExcelModalProps> = ({
     );
 };
 
+// ==================== MODAL XUẤT MÔN HỌC EXCEL ====================
+interface ExportMonHocExcelModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    showAlert: (variant: "success" | "error" | "warning" | "info", title: string, message: string) => void;
+}
+
+const ExportMonHocExcelModal: React.FC<ExportMonHocExcelModalProps> = ({
+    isOpen,
+    onClose,
+    showAlert,
+}) => {
+    const [isExporting, setIsExporting] = useState(false);
+
+    const handleExport = async () => {
+        setIsExporting(true);
+
+        try {
+            const accessToken = getCookie("access_token");
+
+            const res = await fetch("http://localhost:3000/danh-muc/mon-hoc/export-excel", {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+            });
+
+            if (res.ok) {
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = "Danh sách môn học trong hệ thống.xlsx";
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+
+                showAlert(
+                    "success",
+                    "Thành công",
+                    "Xuất danh sách môn học ra Excel thành công"
+                );
+                onClose();
+            } else {
+                const error = await res.json();
+                showAlert("error", "Lỗi", error.message || "Xuất Excel thất bại");
+            }
+        } catch (err) {
+            showAlert("error", "Lỗi", "Có lỗi xảy ra khi xuất Excel");
+        } finally {
+            setIsExporting(false);
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth",
+            });
+        }
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} className="max-w-2xl">
+            <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
+                <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
+                    Xuất danh sách môn học ra Excel
+                </h3>
+
+                {/* Thông tin hướng dẫn */}
+                <div className="mb-6 rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 dark:border-blue-800/50 dark:from-blue-900/20 dark:to-indigo-900/20">
+                    <div className="p-5">
+                        <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-800/50">
+                                    <FontAwesomeIcon
+                                        icon={faTableColumns}
+                                        className="text-lg text-blue-600 dark:text-blue-400"
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex-1">
+                                <h4 className="font-semibold text-blue-800 dark:text-blue-300 mb-2">
+                                    Thông tin file Excel
+                                </h4>
+                                <ul className="text-sm text-blue-700/80 dark:text-blue-300/70 space-y-1.5">
+                                    <li className="flex items-start gap-2">
+                                        <span className="text-blue-500 mt-0.5">•</span>
+                                        <span>File sẽ chứa toàn bộ thông tin môn học trong hệ thống</span>
+                                    </li>
+                                    <li className="flex items-start gap-2">
+                                        <span className="text-blue-500 mt-0.5">•</span>
+                                        <span>Bao gồm: Mã môn, Tên môn, Loại môn, Số tín chỉ, Mô tả</span>
+                                    </li>
+                                    <li className="flex items-start gap-2">
+                                        <span className="text-blue-500 mt-0.5">•</span>
+                                        <span>Tên file: <span className="font-medium">Danh sách môn học trong hệ thống.xlsx</span></span>
+                                    </li>
+                                    <li className="flex items-start gap-2">
+                                        <span className="text-blue-500 mt-0.5">•</span>
+                                        <span>File có thể dùng để lưu trữ hoặc làm cơ sở dữ liệu tham khảo</span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Khung hiển thị thông tin xuất */}
+                <div className="mb-6 rounded-xl border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/50">
+                    <div className="p-5">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-green-100 dark:bg-green-900/30">
+                                <FontAwesomeIcon
+                                    icon={faFileExcel}
+                                    className="text-xl text-green-600 dark:text-green-400"
+                                />
+                            </div>
+                            <div>
+                                <h4 className="font-semibold text-gray-800 dark:text-white/90">
+                                    Sẵn sàng xuất dữ liệu
+                                </h4>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                    Nhấn "Xác nhận" để tải file Excel
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Lưu ý */}
+                <div className="mb-6 p-4 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800/50">
+                    <div className="flex items-start gap-2">
+                        <FontAwesomeIcon
+                            icon={faLightbulb}
+                            className="text-yellow-600 dark:text-yellow-400 mt-0.5"
+                        />
+                        <div className="flex-1">
+                            <p className="text-sm font-medium text-yellow-800 dark:text-yellow-300 mb-1">
+                                Lưu ý
+                            </p>
+                            <p className="text-sm text-yellow-700/80 dark:text-yellow-300/70">
+                                Dữ liệu được xuất ra dựa trên tất cả môn học hiện có trong hệ thống, không phân biệt bộ lọc hoặc tìm kiếm đang áp dụng.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Buttons */}
+                <div className="flex justify-end gap-3">
+                    <Button variant="outline" onClick={onClose} disabled={isExporting}>
+                        Hủy
+                    </Button>
+                    <Button
+                        onClick={handleExport}
+                        disabled={isExporting}
+                        startIcon={isExporting ? undefined : <FontAwesomeIcon icon={faDownload} />}
+                    >
+                        {isExporting ? "Đang xuất..." : "Xác nhận"}
+                    </Button>
+                </div>
+            </div>
+        </Modal>
+    );
+};
 
 
 // ==================== TRANG CHÍNH QUẢN LÝ MÔN HỌC ====================
@@ -532,6 +696,7 @@ export default function QuanLyMonHocPage() {
     const [deletingMonHoc, setDeletingMonHoc] = useState<MonHoc | null>(null);
     const [editingMonHoc, setEditingMonHoc] = useState<MonHoc | null>(null);
     const [searchKeyword, setSearchKeyword] = useState("");
+    const [isExportExcelModalOpen, setIsExportExcelModalOpen] = useState(false);
 
     // State cho form
     const [maMonHoc, setMaMonHoc] = useState("");
@@ -981,6 +1146,13 @@ export default function QuanLyMonHocPage() {
                         </Button>
                         <Button
                             variant="primary"
+                            onClick={() => setIsExportExcelModalOpen(true)}
+                            startIcon={<FontAwesomeIcon icon={faDownload} />}
+                        >
+                            Xuất Excel
+                        </Button>
+                        <Button
+                            variant="primary"
                             onClick={openPhanCongModal}
                         >
                             Phân công môn học
@@ -1260,6 +1432,12 @@ export default function QuanLyMonHocPage() {
                 onSuccess={() => {
                     fetchMonHocs(currentPage, searchKeyword, filterLoaiMon);
                 }}
+                showAlert={showAlert}
+            />
+            {/* Modal Export Excel */}
+            <ExportMonHocExcelModal
+                isOpen={isExportExcelModalOpen}
+                onClose={() => setIsExportExcelModalOpen(false)}
                 showAlert={showAlert}
             />
         </div>
