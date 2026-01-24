@@ -716,65 +716,6 @@ export default function QuanLyLopHocPhanPage() {
         return !Object.values(newErrors).some((e) => e);
     };
 
-    const resetForm = () => {
-        setMaLopHocPhan("");
-        setMonHocId("");
-        setGiangVienId("");
-        setNamHocId("");
-        setHocKyId("");
-        setNienKhoaId("");
-        setKhoaId("");
-        setNganhId("");
-        setGhiChu("");
-        setKhoaDiem(false);
-        setErrors({
-            maLopHocPhan: false,
-            monHocId: false,
-            giangVienId: false,
-            hocKyId: false,
-            nienKhoaId: false,
-            nganhId: false,
-        });
-    };
-
-    const handleUpdate = async () => {
-        if (!editingLopHocPhan || !validateForm()) return;
-
-        try {
-            const accessToken = getCookie("access_token");
-            const res = await fetch(`http://localhost:3000/giang-day/lop-hoc-phan/${editingLopHocPhan.id}`, {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${accessToken}`,
-                },
-                body: JSON.stringify({
-                    maLopHocPhan: maLopHocPhan.trim(),
-                    giangVienId: Number(giangVienId),
-                    monHocId: Number(monHocId),
-                    hocKyId: Number(hocKyId),
-                    nienKhoaId: Number(nienKhoaId),
-                    nganhId: Number(nganhId),
-                    ghiChu: ghiChu.trim() || null,
-                    khoaDiem,
-                }),
-            });
-
-            setIsEditModalOpen(false);
-            if (res.ok) {
-                showAlert("success", "Thành công", "Cập nhật lớp học phần thành công");
-                resetForm();
-                fetchLopHocPhans(currentPage, searchKeyword, filterMonHocId, filterGiangVienId, filterHocKyId, filterNienKhoaId, filterNganhId);
-            } else {
-                const err = await res.json();
-                showAlert("error", "Lỗi", err.message || "Cập nhật thất bại");
-            }
-        } catch (err) {
-            setIsEditModalOpen(false);
-            showAlert("error", "Lỗi", "Có lỗi xảy ra khi cập nhật");
-        }
-    };
-
     const openViewModal = (lopHocPhan: LopHocPhan) => {
         setViewingLopHocPhan(lopHocPhan);
         setIsViewModalOpen(true);
