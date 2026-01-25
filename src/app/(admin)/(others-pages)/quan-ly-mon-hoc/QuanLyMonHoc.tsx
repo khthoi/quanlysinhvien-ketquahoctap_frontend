@@ -392,32 +392,6 @@ const ImportMonHocExcelModal: React.FC<ImportMonHocExcelModalProps> = ({
                     </Button>
                 </div>
 
-                {/* 👇 ĐOẠN MỚI THÊM VÀO ĐÂY 👇 */}
-                {/* Thông báo hướng dẫn phân công giảng viên */}
-                <div className="mb-6 rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 dark:border-blue-800/50 dark:from-blue-900/20 dark:to-indigo-900/20">
-                    <div className="p-4">
-                        <div className="flex items-start gap-3">
-                            <div className="flex-shrink-0">
-                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-800/50">
-                                    <FontAwesomeIcon
-                                        icon={faLightbulb}
-                                        className="text-lg text-blue-600 dark:text-blue-400"
-                                    />
-                                </div>
-                            </div>
-                            <div className="flex-1">
-                                <h4 className="font-semibold text-blue-800 dark:text-blue-300 mb-1">
-                                    <FontAwesomeIcon icon={faUserTie} className="mr-2 text-sm" />
-                                    Phân công giảng viên
-                                </h4>
-                                <p className="text-sm text-blue-700/80 dark:text-blue-300/70 leading-relaxed text-justify">
-                                    Bạn có thể phân công môn học cho giảng viên trực tiếp trong file Excel bằng cách điền thông tin vào cột thứ 7 của file mẫu.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
                 {/* Dropzone */}
                 <div className="mb-6">
                     <Label className="mb-2 block">Chọn file Excel nhập môn học</Label>
@@ -599,19 +573,19 @@ const ExportMonHocExcelModal: React.FC<ExportMonHocExcelModalProps> = ({
                                 </h4>
                                 <ul className="text-sm text-blue-700/80 dark:text-blue-300/70 space-y-1.5">
                                     <li className="flex items-start gap-2">
-                                        <span className="text-blue-500 mt-0.5">•</span>
+                                        <span className="text-blue-500">•</span>
                                         <span>File sẽ chứa toàn bộ thông tin môn học trong hệ thống</span>
                                     </li>
                                     <li className="flex items-start gap-2">
-                                        <span className="text-blue-500 mt-0.5">•</span>
-                                        <span>Bao gồm: Mã môn, Tên môn, Loại môn, Số tín chỉ, Mô tả</span>
+                                        <span className="text-blue-500">•</span>
+                                        <span>Bao gồm: Mã môn, Tên môn, Loại môn, Số tín chỉ, Mô tả, GV phụ trách</span>
                                     </li>
                                     <li className="flex items-start gap-2">
-                                        <span className="text-blue-500 mt-0.5">•</span>
+                                        <span className="text-blue-500">•</span>
                                         <span>Tên file: <span className="font-medium">Danh sách môn học trong hệ thống.xlsx</span></span>
                                     </li>
                                     <li className="flex items-start gap-2">
-                                        <span className="text-blue-500 mt-0.5">•</span>
+                                        <span className="text-blue-500">•</span>
                                         <span>File có thể dùng để lưu trữ hoặc làm cơ sở dữ liệu tham khảo</span>
                                     </li>
                                 </ul>
@@ -1352,8 +1326,7 @@ export default function QuanLyMonHocPage() {
                                 <div className="mt-2 p-3 bg-brand-50 dark:bg-brand-500/10 rounded-lg">
                                     <p className="text-sm text-brand-600 dark:text-brand-400">
                                         <span className="font-medium">Đã chọn:  </span>
-                                        {monHocOptionsForPhanCong.find(mh => mh.id.toString() === selectedMonHocId)?.maMonHoc} -
-                                        {monHocOptionsForPhanCong.find(mh => mh.id.toString() === selectedMonHocId)?.tenMonHoc}
+                                        {monHocOptionsForPhanCong.find(mh => mh.id.toString() === selectedMonHocId)?.maMonHoc} - {monHocOptionsForPhanCong.find(mh => mh.id.toString() === selectedMonHocId)?.tenMonHoc}
                                     </p>
                                 </div>
                             )}
@@ -1384,8 +1357,7 @@ export default function QuanLyMonHocPage() {
                                 <div className="mt-2 p-3 bg-success-50 dark: bg-success-500/10 rounded-lg">
                                     <p className="text-sm text-success-600 dark: text-success-400">
                                         <span className="font-medium">Đã chọn: </span>
-                                        {giangVienOptions.find(gv => gv.id.toString() === selectedGiangVienId)?.maGiangVien} -
-                                        {giangVienOptions.find(gv => gv.id.toString() === selectedGiangVienId)?.hoTen}
+                                        {giangVienOptions.find(gv => gv.id.toString() === selectedGiangVienId)?.maGiangVien} - {giangVienOptions.find(gv => gv.id.toString() === selectedGiangVienId)?.hoTen}
                                     </p>
                                 </div>
                             )}

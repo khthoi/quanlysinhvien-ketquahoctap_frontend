@@ -219,9 +219,17 @@ const ImportNganhExcelModal: React.FC<ImportNganhExcelModalProps> = ({
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [fileError, setFileError] = useState<string>("");
     const [isUploading, setIsUploading] = useState(false);
+    // Thêm state lưu kết quả import
+    const [importResult, setImportResult] = useState<{
+        totalRows: number;
+        success: number;
+        failed: number;
+        errors: { row: number; maNganh?: string; error: string }[];
+    } | null>(null);
 
     const onDrop = (acceptedFiles: File[], rejectedFiles: any[]) => {
         setFileError("");
+        setImportResult(null); // Reset kết quả khi chọn file mới
 
         if (rejectedFiles.length > 0) {
             setFileError("Chỉ chấp nhận file Excel (.xlsx)");
@@ -264,6 +272,7 @@ const ImportNganhExcelModal: React.FC<ImportNganhExcelModalProps> = ({
         }
 
         setIsUploading(true);
+        setImportResult(null);
 
         try {
             const accessToken = getCookie("access_token");
@@ -281,26 +290,15 @@ const ImportNganhExcelModal: React.FC<ImportNganhExcelModalProps> = ({
             const result = await res.json();
 
             if (res.ok) {
-                if (result.errors?.length > 0) {
-                    const errorMessages = result.errors
-                        .map((err: any) =>
-                            `Dòng ${err.row}${err.maNganh ? ` (${err.maNganh})` : ""}: ${err.error}`
-                        )
-                        .join("\n");
+                // Lưu kết quả vào state thay vì đóng modal
+                setImportResult({
+                    totalRows: result.totalRows || 0,
+                    success: result.success || 0,
+                    failed: result.failed || 0,
+                    errors: result.errors || [],
+                });
 
-                    showAlert(
-                        "warning",
-                        "Nhập ngành hoàn tất với cảnh báo",
-                        `Tổng: ${result.totalRows}, Thành công: ${result.success}, Thất bại: ${result.failed}\n${errorMessages}`
-                    );
-                } else {
-                    showAlert(
-                        "success",
-                        "Thành công",
-                        `Nhập ngành từ Excel thành công. Đã thêm ${result.success} ngành.`
-                    );
-                }
-                handleClose();
+                // Gọi callback reload
                 onSuccess();
             } else {
                 showAlert("error", "Lỗi", result.message || "Nhập ngành thất bại");
@@ -315,18 +313,20 @@ const ImportNganhExcelModal: React.FC<ImportNganhExcelModalProps> = ({
     const handleClose = () => {
         setSelectedFile(null);
         setFileError("");
+        setImportResult(null);
         onClose();
     };
 
     const removeFile = () => {
         setSelectedFile(null);
         setFileError("");
+        setImportResult(null);
     };
 
     if (!isOpen) return null;
 
     return (
-        <Modal isOpen={isOpen} onClose={handleClose} className="max-w-lg">
+        <Modal isOpen={isOpen} onClose={handleClose} className="max-w-3xl">
             <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
                 <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
                     Nhập ngành bằng Excel
@@ -421,24 +421,102 @@ const ImportNganhExcelModal: React.FC<ImportNganhExcelModalProps> = ({
                     )}
                 </div>
 
+                {/* === KẾT QUẢ IMPORT === */}
+                {importResult && (
+                    <div className="mb-6">
+                        {/* Summary */}
+                        <div className="grid grid-cols-3 gap-4 mb-4">
+                            <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg text-center">
+                                <p className="text-2xl font-bold text-gray-800 dark:text-white">
+                                    {importResult.totalRows}
+                                </p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">Tổng số</p>
+                            </div>
+                            <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg text-center">
+                                <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                                    {importResult.success}
+                                </p>
+                                <p className="text-sm text-green-600 dark:text-green-400">Thành công</p>
+                            </div>
+                            <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg text-center">
+                                <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+                                    {importResult.failed}
+                                </p>
+                                <p className="text-sm text-red-600 dark:text-red-400">Thất bại</p>
+                            </div>
+                        </div>
+
+                        {/* Chi tiết lỗi */}
+                        {importResult.errors && importResult.errors.length > 0 && (
+                            <div className="mb-4">
+                                <h4 className="text-base font-semibold text-red-600 dark:text-red-400 mb-3 flex items-center gap-2">
+                                    Chi tiết lỗi ({importResult.errors.length})
+                                </h4>
+                                <div className="max-h-60 overflow-y-auto border border-red-200 dark:border-red-900/30 rounded-lg">
+                                    <Table>
+                                        <TableHeader className="border-b border-red-100 dark:border-red-900/30 top-0 bg-red-50 dark:bg-red-900/10">
+                                            <TableRow>
+                                                <TableCell isHeader className="px-4 py-3 font-medium text-gray-700 dark:text-gray-300 text-xs text-center w-[15%]">
+                                                    Dòng
+                                                </TableCell>
+                                                <TableCell isHeader className="px-4 py-3 font-medium text-gray-700 dark:text-gray-300 text-xs w-[25%]">
+                                                    Mã ngành
+                                                </TableCell>
+                                                <TableCell isHeader className="px-4 py-3 font-medium text-gray-700 dark:text-gray-300 text-xs w-[60%] text-left">
+                                                    Lỗi
+                                                </TableCell>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody className="divide-y divide-red-100 dark:divide-red-900/30 text-sm">
+                                            {importResult.errors.map((err, index) => (
+                                                <TableRow key={index} className="hover:bg-red-50/50 dark:hover:bg-red-900/5">
+                                                    <TableCell className="px-4 py-3 text-gray-800 dark:text-white text-center">
+                                                        {err.row}
+                                                    </TableCell>
+                                                    <TableCell className="px-4 py-3 text-gray-800 dark:text-white font-medium text-center">
+                                                        {err.maNganh || "--"}
+                                                    </TableCell>
+                                                    <TableCell className="px-4 py-3 text-red-600 dark:text-red-400 text-xs">
+                                                        {err.error}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Thông báo thành công nếu không có lỗi */}
+                        {importResult.errors.length === 0 && importResult.success > 0 && (
+                            <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                                <p className="text-green-700 dark:text-green-400 text-center font-medium">
+                                    ✓ Nhập ngành từ Excel thành công! Đã thêm {importResult.success} ngành.
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {/* Buttons */}
                 <div className="flex justify-end gap-3">
                     <Button variant="outline" onClick={handleClose} disabled={isUploading}>
-                        Hủy
+                        {importResult ? "Đóng" : "Hủy"}
                     </Button>
-                    <Button
-                        onClick={handleUpload}
-                        disabled={!selectedFile || isUploading}
-                        startIcon={isUploading ? undefined : <FontAwesomeIcon icon={faFileExcel} />}
-                    >
-                        {isUploading ? "Đang xử lý..." : "Xác nhận"}
-                    </Button>
+                    {!importResult && (
+                        <Button
+                            onClick={handleUpload}
+                            disabled={!selectedFile || isUploading}
+                            startIcon={isUploading ? undefined : <FontAwesomeIcon icon={faFileExcel} />}
+                        >
+                            {isUploading ? "Đang xử lý..." : "Xác nhận"}
+                        </Button>
+                    )}
                 </div>
             </div>
         </Modal>
     );
 };
-
 // ==================== TRANG CHÍNH QUẢN LÝ NGÀNH ====================
 export default function QuanLyNganhPage() {
     const [nganhs, setNganhs] = useState<Nganh[]>([]);

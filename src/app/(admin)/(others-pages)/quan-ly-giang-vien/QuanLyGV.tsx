@@ -511,9 +511,39 @@ const ImportGiangVienExcelModal: React.FC<ImportGiangVienExcelModalProps> = ({
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [fileError, setFileError] = useState<string>("");
     const [isUploading, setIsUploading] = useState(false);
+    const [isDownloadingTemplate, setIsDownloadingTemplate] = useState(false);
+
+    // Cập nhật state lưu kết quả import theo response mới
+    const [importResult, setImportResult] = useState<{
+        message: string;
+        totalRowsSheet1: number;
+        successSheet1: number;
+        failedSheet1: number;
+        totalRowsSheet2: number;
+        successSheet2: number;
+        failedSheet2: number;
+        errors: Array<{
+            sheet: string;
+            row: number;
+            maGiangVien: string;
+            maMonHoc?: string;
+            error: string;
+        }>;
+        success: Array<{
+            sheet: string;
+            row: number;
+            maGiangVien: string;
+            maMonHoc?: string;
+            message: string;
+        }>;
+    } | null>(null);
+
+    // State để toggle hiển thị chi tiết thành công
+    const [showSuccessDetails, setShowSuccessDetails] = useState(false);
 
     const onDrop = (acceptedFiles: File[], rejectedFiles: any[]) => {
         setFileError("");
+        setImportResult(null);
 
         if (rejectedFiles.length > 0) {
             setFileError("Chỉ chấp nhận file Excel (.xlsx)");
@@ -539,14 +569,39 @@ const ImportGiangVienExcelModal: React.FC<ImportGiangVienExcelModalProps> = ({
         multiple: false,
     });
 
-    const handleDownloadTemplate = () => {
-        const templateUrl = "/templates/mau-nhap-giang-vien.xlsx";
-        const link = document.createElement("a");
-        link.href = templateUrl;
-        link.download = "mau-nhap-giang-vien.xlsx";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+    // Sửa lại hàm tải file mẫu - fetch từ API
+    const handleDownloadTemplate = async () => {
+        setIsDownloadingTemplate(true);
+
+        try {
+            const accessToken = getCookie("access_token");
+            const res = await fetch("http://localhost:3000/danh-muc/giang-vien/export-excel-template", {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+            });
+
+            if (res.ok) {
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                // Format tên file theo yêu cầu
+                link.download = "Mẫu nhập excel giảng viên kèm phân công môn học.xlsx";
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+            } else {
+                showAlert("error", "Lỗi", "Không thể tải file mẫu");
+            }
+        } catch (err) {
+            console.error("Lỗi tải file mẫu:", err);
+            showAlert("error", "Lỗi", "Có lỗi xảy ra khi tải file mẫu");
+        } finally {
+            setIsDownloadingTemplate(false);
+        }
     };
 
     const handleUpload = async () => {
@@ -556,6 +611,7 @@ const ImportGiangVienExcelModal: React.FC<ImportGiangVienExcelModalProps> = ({
         }
 
         setIsUploading(true);
+        setImportResult(null);
 
         try {
             const accessToken = getCookie("access_token");
@@ -573,26 +629,20 @@ const ImportGiangVienExcelModal: React.FC<ImportGiangVienExcelModalProps> = ({
             const result = await res.json();
 
             if (res.ok) {
-                if (result.errors?.length > 0) {
-                    const errorMessages = result.errors
-                        .map((err: any) =>
-                            `Dòng ${err.row}${err.maGiangVien ? ` (${err.maGiangVien})` : ""}: ${err.error}`
-                        )
-                        .join("\n");
+                // Lưu kết quả theo format response mới
+                setImportResult({
+                    message: result.message || "",
+                    totalRowsSheet1: result.totalRowsSheet1 || 0,
+                    successSheet1: result.successSheet1 || 0,
+                    failedSheet1: result.failedSheet1 || 0,
+                    totalRowsSheet2: result.totalRowsSheet2 || 0,
+                    successSheet2: result.successSheet2 || 0,
+                    failedSheet2: result.failedSheet2 || 0,
+                    errors: result.errors || [],
+                    success: result.success || [],
+                });
 
-                    showAlert(
-                        "warning",
-                        "Nhập giảng viên hoàn tất với cảnh báo",
-                        `Tổng: ${result.totalRows}, Thành công: ${result.success}, Thất bại: ${result.failed}\n${errorMessages}`
-                    );
-                } else {
-                    showAlert(
-                        "success",
-                        "Thành công",
-                        `Nhập giảng viên từ Excel thành công. Đã thêm ${result.success} giảng viên.`
-                    );
-                }
-                handleClose();
+                // Gọi callback reload
                 onSuccess();
             } else {
                 showAlert("error", "Lỗi", result.message || "Nhập giảng viên thất bại");
@@ -607,73 +657,134 @@ const ImportGiangVienExcelModal: React.FC<ImportGiangVienExcelModalProps> = ({
     const handleClose = () => {
         setSelectedFile(null);
         setFileError("");
+        setImportResult(null);
+        setShowSuccessDetails(false);
         onClose();
     };
 
     const removeFile = () => {
         setSelectedFile(null);
         setFileError("");
+        setImportResult(null);
     };
+
+    // Lọc errors và success theo sheet
+    const getErrorsBySheet = (sheet: string) =>
+        importResult?.errors.filter(e => e.sheet === sheet) || [];
+
+    const getSuccessBySheet = (sheet: string) =>
+        importResult?.success.filter(s => s.sheet === sheet) || [];
 
     if (!isOpen) return null;
 
     return (
-        <Modal isOpen={isOpen} onClose={handleClose} className="max-w-lg">
+        <Modal isOpen={isOpen} onClose={handleClose} className="max-w-4xl">
             <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
-                <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
-                    Nhập giảng viên bằng Excel
-                </h3>
+                {/* Header */}
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400">
+                        <FontAwesomeIcon icon={faFileExcel} className="text-xl" />
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-semibold text-gray-800 dark:text-white/90">
+                            Nhập giảng viên bằng Excel
+                        </h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                            Nhập thông tin giảng viên và phân công môn học từ file Excel
+                        </p>
+                    </div>
+                </div>
 
                 {/* Button tải file mẫu */}
                 <div className="mb-6">
                     <Button
                         variant="outline"
                         onClick={handleDownloadTemplate}
-                        startIcon={<FontAwesomeIcon icon={faDownload} />}
+                        disabled={isDownloadingTemplate}
+                        startIcon={
+                            isDownloadingTemplate
+                                ? <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
+                                : <FontAwesomeIcon icon={faDownload} />
+                        }
                         className="w-full"
                     >
-                        Tải file Excel mẫu
+                        {isDownloadingTemplate ? "Đang tải..." : "Tải file Excel mẫu"}
                     </Button>
                 </div>
 
-                {/* Hướng dẫn sử dụng */}
-                <div className="mb-6 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-4">
-                    <div className="flex items-start gap-3">
-                        <div className="flex-shrink-0 mt-0.5">
-                            <FontAwesomeIcon
-                                icon={faInfoCircle}
-                                className="text-blue-500 dark:text-blue-400"
-                            />
+                {/* Thông tin về cấu trúc file Excel */}
+                <div className="mb-6 rounded-xl border border-blue-200 bg-blue-50 dark:border-blue-800/50 dark:bg-blue-900/20">
+                    <div className="p-4">
+                        <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0">
+                                <FontAwesomeIcon
+                                    icon={faInfoCircle}
+                                    className="text-lg text-blue-600 dark:text-blue-400 mt-0.5"
+                                />
+                            </div>
+                            <div className="flex-1">
+                                <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">
+                                    Cấu trúc file Excel mẫu
+                                </h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                    {/* Sheet 1 */}
+                                    <div className="p-3 bg-white/60 dark:bg-gray-800/40 rounded-lg border border-blue-100 dark:border-blue-800/30">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-500 text-white text-xs font-bold">1</span>
+                                            <span className="font-medium text-blue-800 dark:text-blue-200">Sheet "Giảng viên"</span>
+                                        </div>
+                                        <ul className="text-blue-700/80 dark:text-blue-300/70 space-y-1 ml-8 list-disc">
+                                            <li>Mã giảng viên (bắt buộc)</li>
+                                            <li>Họ tên, Email, SĐT</li>
+                                            <li>Ngày sinh, Giới tính, Địa chỉ</li>
+                                        </ul>
+                                    </div>
+                                    {/* Sheet 2 */}
+                                    <div className="p-3 bg-white/60 dark:bg-gray-800/40 rounded-lg border border-blue-100 dark:border-blue-800/30">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-500 text-white text-xs font-bold">2</span>
+                                            <span className="font-medium text-blue-800 dark:text-blue-200">Sheet "Phân công môn học"</span>
+                                        </div>
+                                        <ul className="text-blue-700/80 dark:text-blue-300/70 space-y-1 ml-8 list-disc">
+                                            <li>Mã giảng viên</li>
+                                            <li>Mã môn học</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div className="flex-1">
-                            <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">
-                                Hướng dẫn nhập giảng viên
-                            </h4>
-                            <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1.5">
-                                <li className="flex items-start gap-2">
-                                    <span className="text-blue-500 dark:text-blue-400 mt-0.5">•</span>
-                                    <span>Tải file Excel mẫu và điền thông tin giảng viên</span>
-                                </li>
-                                <li className="flex items-start gap-2">
-                                    <span className="text-blue-500 dark:text-blue-400 mt-0.5">•</span>
-                                    <span>Đảm bảo các cột bắt buộc được điền đầy đủ</span>
-                                </li>
-                                <li className="flex items-start gap-2">
-                                    <span className="text-blue-500 dark:text-blue-400 mt-0.5">•</span>
-                                    <span>Có thể phân công môn học ở cột "Mã Môn học"</span>
-                                </li>
-                                <li className="flex items-start gap-2">
-                                    <span className="text-blue-500 dark:text-blue-400 mt-0.5">•</span>
-                                    <span>Chỉ chấp nhận file định dạng .xlsx</span>
-                                </li>
-                            </ul>
+                    </div>
+                </div>
+
+                {/* Lưu ý quan trọng */}
+                <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800/50 dark:bg-amber-900/20">
+                    <div className="p-4">
+                        <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0">
+                                <FontAwesomeIcon
+                                    icon={faTriangleExclamation}
+                                    className="text-lg text-amber-600 dark:text-amber-400 mt-0.5"
+                                />
+                            </div>
+                            <div className="flex-1">
+                                <h4 className="font-semibold text-amber-800 dark:text-amber-300 mb-1">
+                                    Lưu ý quan trọng
+                                </h4>
+                                <ul className="text-sm text-amber-700/80 dark:text-amber-300/70 space-y-1 list-disc list-inside">
+                                    <li>Đảm bảo các trường bắt buộc được điền đầy đủ</li>
+                                    <li>Mã giảng viên và Email phải là duy nhất trong hệ thống</li>
+                                    <li>Hệ thống sẽ xử lý dữ liệu ở Sheet 1 trước, sau đó mới đến Sheet 2</li>
+                                    <li>Mã môn học & mã Giảng viên ở Sheet 2 phải tồn tại trong hệ thống</li>
+                                    <li>Chỉ chấp nhận file định dạng <strong>.xlsx</strong></li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 {/* Dropzone */}
                 <div className="mb-6">
-                    <Label className="mb-2 block">Chọn file Excel nhập lớp</Label>
+                    <Label className="mb-2 block">Chọn file Excel nhập giảng viên</Label>
                     <div
                         className={`transition border-2 border-dashed cursor-pointer rounded-xl 
                             ${fileError ? 'border-red-500' : 'border-gray-300 dark:border-gray-700'}
@@ -692,7 +803,6 @@ const ImportGiangVienExcelModal: React.FC<ImportGiangVienExcelModalProps> = ({
                             <input {...getInputProps()} />
 
                             <div className="flex flex-col items-center">
-                                {/* Icon */}
                                 <div className="mb-4 flex justify-center">
                                     <div className={`flex h-16 w-16 items-center justify-center rounded-full 
                                         ${selectedFile
@@ -707,7 +817,6 @@ const ImportGiangVienExcelModal: React.FC<ImportGiangVienExcelModalProps> = ({
                                     </div>
                                 </div>
 
-                                {/* Text Content */}
                                 {selectedFile ? (
                                     <>
                                         <p className="mb-2 font-medium text-gray-800 dark:text-white/90">
@@ -724,7 +833,7 @@ const ImportGiangVienExcelModal: React.FC<ImportGiangVienExcelModalProps> = ({
                                             }}
                                             className="mt-3 text-sm text-red-500 hover:text-red-600 underline"
                                         >
-                                            Hủy
+                                            Hủy chọn file
                                         </button>
                                     </>
                                 ) : (
@@ -748,18 +857,312 @@ const ImportGiangVienExcelModal: React.FC<ImportGiangVienExcelModalProps> = ({
                     )}
                 </div>
 
+                {/* === KẾT QUẢ IMPORT === */}
+                {importResult && (
+                    <div className="mb-6 space-y-5">
+                        {/* Message tổng quan */}
+                        <div className="p-4 bg-gradient-to-r from-gray-100 to-gray-50 dark:from-gray-800 dark:to-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700">
+                            <p className="text-center font-semibold text-gray-800 dark:text-white text-lg">
+                                {importResult.message}
+                            </p>
+                        </div>
+
+                        {/* ====== SHEET 1: GIẢNG VIÊN ====== */}
+                        <div className="rounded-xl border border-blue-200 dark:border-blue-800/50 overflow-hidden">
+                            {/* Header Sheet 1 */}
+                            <div className="p-4 bg-gradient-to-r from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-white/20 text-white text-sm font-bold">1</span>
+                                        <h4 className="font-semibold text-white text-lg">Sheet "Giảng viên"</h4>
+                                    </div>
+                                    {/* Summary badges */}
+                                    <div className="flex items-center gap-2">
+                                        <span className="px-3 py-1 rounded-full bg-white/20 text-white text-sm font-medium">
+                                            Tổng: {importResult.totalRowsSheet1}
+                                        </span>
+                                        <span className="px-3 py-1 rounded-full bg-green-400/30 text-white text-sm font-medium">
+                                            Thành công: {importResult.successSheet1}
+                                        </span>
+                                        {importResult.failedSheet1 > 0 && (
+                                            <span className="px-3 py-1 rounded-full bg-red-800/30 text-white text-sm font-medium">
+                                                Lỗi: {importResult.failedSheet1}
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Content Sheet 1 */}
+                            <div className="p-4 bg-blue-50/50 dark:bg-blue-900/10">
+                                {/* Lỗi Sheet 1 */}
+                                {getErrorsBySheet("Giảng viên").length > 0 && (
+                                    <div className="mb-4">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <FontAwesomeIcon icon={faCircleExclamation} className="text-red-500" />
+                                            <span className="font-medium text-red-600 dark:text-red-400 text-sm">
+                                                Lỗi ({getErrorsBySheet("Giảng viên").length})
+                                            </span>
+                                        </div>
+                                        <div className="max-h-40 overflow-y-auto border border-red-200 dark:border-red-900/30 rounded-lg bg-white dark:bg-gray-900">
+                                            <Table>
+                                                <TableHeader className="border-b border-red-100 dark:border-red-900/30 sticky top-0 bg-red-50 dark:bg-red-900/20">
+                                                    <TableRow>
+                                                        <TableCell isHeader className="px-3 py-2 font-medium text-gray-700 dark:text-gray-300 text-xs text-center w-[15%]">
+                                                            Dòng
+                                                        </TableCell>
+                                                        <TableCell isHeader className="px-3 py-2 font-medium text-gray-700 dark:text-gray-300 text-xs text-center w-[25%]">
+                                                            Mã GV
+                                                        </TableCell>
+                                                        <TableCell isHeader className="px-3 py-2 font-medium text-gray-700 dark:text-gray-300 text-xs text-left w-[60%]">
+                                                            Lỗi
+                                                        </TableCell>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody className="divide-y divide-red-100 dark:divide-red-900/30 text-sm">
+                                                    {getErrorsBySheet("Giảng viên").map((err, index) => (
+                                                        <TableRow key={index} className="hover:bg-red-50/50 dark:hover:bg-red-900/5">
+                                                            <TableCell className="px-3 py-2 text-gray-800 dark:text-white text-center font-medium">
+                                                                {err.row}
+                                                            </TableCell>
+                                                            <TableCell className="px-3 py-2 text-gray-800 dark:text-white text-center font-mono text-xs">
+                                                                {err.maGiangVien}
+                                                            </TableCell>
+                                                            <TableCell className="px-3 py-2 text-red-600 dark:text-red-400 text-xs">
+                                                                {err.error}
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Thành công Sheet 1 */}
+                                {getSuccessBySheet("Giảng viên").length > 0 && (
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <FontAwesomeIcon icon={faCircleCheck} className="text-green-500" />
+                                            <span className="font-medium text-green-600 dark:text-green-400 text-sm">
+                                                Thành công ({getSuccessBySheet("Giảng viên").length})
+                                            </span>
+                                        </div>
+                                        <div className="max-h-40 overflow-y-auto border border-green-200 dark:border-green-900/30 rounded-lg bg-white dark:bg-gray-900">
+                                            <Table>
+                                                <TableHeader className="border-b border-green-100 dark:border-green-900/30 sticky top-0 bg-green-50 dark:bg-green-900/20">
+                                                    <TableRow>
+                                                        <TableCell isHeader className="px-3 py-2 font-medium text-gray-700 dark:text-gray-300 text-xs text-center w-[15%]">
+                                                            Dòng
+                                                        </TableCell>
+                                                        <TableCell isHeader className="px-3 py-2 font-medium text-gray-700 dark:text-gray-300 text-xs text-center w-[25%]">
+                                                            Mã GV
+                                                        </TableCell>
+                                                        <TableCell isHeader className="px-3 py-2 font-medium text-gray-700 dark:text-gray-300 text-xs text-left w-[60%]">
+                                                            Kết quả
+                                                        </TableCell>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody className="divide-y divide-green-100 dark:divide-green-900/30 text-sm">
+                                                    {getSuccessBySheet("Giảng viên").map((item, index) => (
+                                                        <TableRow key={index} className="hover:bg-green-50/50 dark:hover:bg-green-900/5">
+                                                            <TableCell className="px-3 py-2 text-gray-800 dark:text-white text-center font-medium">
+                                                                {item.row}
+                                                            </TableCell>
+                                                            <TableCell className="px-3 py-2 text-gray-800 dark:text-white text-center font-mono text-xs">
+                                                                {item.maGiangVien}
+                                                            </TableCell>
+                                                            <TableCell className="px-3 py-2 text-green-600 dark:text-green-400 text-xs">
+                                                                {item.message}
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Không có dữ liệu Sheet 1 */}
+                                {getErrorsBySheet("Giảng viên").length === 0 && getSuccessBySheet("Giảng viên").length === 0 && (
+                                    <div className="text-center py-4 text-gray-500 dark:text-gray-400 text-sm">
+                                        Không có dữ liệu xử lý ở sheet này
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* ====== SHEET 2: PHÂN CÔNG MÔN HỌC ====== */}
+                        <div className="rounded-xl border border-green-200 dark:border-green-800/50 overflow-hidden">
+                            {/* Header Sheet 2 */}
+                            <div className="p-4 bg-gradient-to-r from-green-500 to-emerald-600 dark:from-green-600 dark:to-emerald-700">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-white/20 text-white text-sm font-bold">2</span>
+                                        <h4 className="font-semibold text-white text-lg">Sheet "Phân công môn học"</h4>
+                                    </div>
+                                    {/* Summary badges */}
+                                    <div className="flex items-center gap-2">
+                                        <span className="px-3 py-1 rounded-full bg-white/20 text-white text-sm font-medium">
+                                            Tổng: {importResult.totalRowsSheet2}
+                                        </span>
+                                        <span className="px-3 py-1 rounded-full bg-green-400/30 text-white text-sm font-medium">
+                                            Thành công: {importResult.successSheet2}
+                                        </span>
+                                        {importResult.failedSheet2 > 0 && (
+                                            <span className="px-3 py-1 rounded-full bg-red-800/30 text-white text-sm font-medium">
+                                                Lỗi: {importResult.failedSheet2}
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Content Sheet 2 */}
+                            <div className="p-4 bg-green-50/50 dark:bg-green-900/10">
+                                {/* Lỗi Sheet 2 */}
+                                {getErrorsBySheet("Phân công môn học").length > 0 && (
+                                    <div className="mb-4">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <FontAwesomeIcon icon={faCircleExclamation} className="text-red-500" />
+                                            <span className="font-medium text-red-600 dark:text-red-400 text-sm">
+                                                Lỗi ({getErrorsBySheet("Phân công môn học").length})
+                                            </span>
+                                        </div>
+                                        <div className="max-h-40 overflow-y-auto border border-red-200 dark:border-red-900/30 rounded-lg bg-white dark:bg-gray-900">
+                                            <Table>
+                                                <TableHeader className="border-b border-red-100 dark:border-red-900/30 sticky top-0 bg-red-50 dark:bg-red-900/20">
+                                                    <TableRow>
+                                                        <TableCell isHeader className="px-3 py-2 font-medium text-gray-700 dark:text-gray-300 text-xs text-center w-[12%]">
+                                                            Dòng
+                                                        </TableCell>
+                                                        <TableCell isHeader className="px-3 py-2 font-medium text-gray-700 dark:text-gray-300 text-xs text-center w-[20%]">
+                                                            Mã GV
+                                                        </TableCell>
+                                                        <TableCell isHeader className="px-3 py-2 font-medium text-gray-700 dark:text-gray-300 text-xs text-center w-[20%]">
+                                                            Mã MH
+                                                        </TableCell>
+                                                        <TableCell isHeader className="px-3 py-2 font-medium text-gray-700 dark:text-gray-300 text-xs text-left w-[48%]">
+                                                            Lỗi
+                                                        </TableCell>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody className="divide-y divide-red-100 dark:divide-red-900/30 text-sm">
+                                                    {getErrorsBySheet("Phân công môn học").map((err, index) => (
+                                                        <TableRow key={index} className="hover:bg-red-50/50 dark:hover:bg-red-900/5">
+                                                            <TableCell className="px-3 py-2 text-gray-800 dark:text-white text-center font-medium">
+                                                                {err.row}
+                                                            </TableCell>
+                                                            <TableCell className="px-3 py-2 text-gray-800 dark:text-white text-center font-mono text-xs">
+                                                                {err.maGiangVien}
+                                                            </TableCell>
+                                                            <TableCell className="px-3 py-2 text-gray-800 dark:text-white text-center font-mono text-xs">
+                                                                {err.maMonHoc || "-"}
+                                                            </TableCell>
+                                                            <TableCell className="px-3 py-2 text-red-600 dark:text-red-400 text-xs">
+                                                                {err.error}
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Thành công Sheet 2 */}
+                                {getSuccessBySheet("Phân công môn học").length > 0 && (
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <FontAwesomeIcon icon={faCircleCheck} className="text-green-500" />
+                                            <span className="font-medium text-green-600 dark:text-green-400 text-sm">
+                                                Thành công ({getSuccessBySheet("Phân công môn học").length})
+                                            </span>
+                                        </div>
+                                        <div className="max-h-40 overflow-y-auto border border-green-200 dark:border-green-900/30 rounded-lg bg-white dark:bg-gray-900">
+                                            <Table>
+                                                <TableHeader className="border-b border-green-100 dark:border-green-900/30 sticky top-0 bg-green-50 dark:bg-green-900/20">
+                                                    <TableRow>
+                                                        <TableCell isHeader className="px-3 py-2 font-medium text-gray-700 dark:text-gray-300 text-xs text-center w-[12%]">
+                                                            Dòng
+                                                        </TableCell>
+                                                        <TableCell isHeader className="px-3 py-2 font-medium text-gray-700 dark:text-gray-300 text-xs text-center w-[20%]">
+                                                            Mã GV
+                                                        </TableCell>
+                                                        <TableCell isHeader className="px-3 py-2 font-medium text-gray-700 dark:text-gray-300 text-xs text-center w-[20%]">
+                                                            Mã MH
+                                                        </TableCell>
+                                                        <TableCell isHeader className="px-3 py-2 font-medium text-gray-700 dark:text-gray-300 text-xs text-left w-[48%]">
+                                                            Kết quả
+                                                        </TableCell>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody className="divide-y divide-green-100 dark:divide-green-900/30 text-sm">
+                                                    {getSuccessBySheet("Phân công môn học").map((item, index) => (
+                                                        <TableRow key={index} className="hover:bg-green-50/50 dark:hover:bg-green-900/5">
+                                                            <TableCell className="px-3 py-2 text-gray-800 dark:text-white text-center font-medium">
+                                                                {item.row}
+                                                            </TableCell>
+                                                            <TableCell className="px-3 py-2 text-gray-800 dark:text-white text-center font-mono text-xs">
+                                                                {item.maGiangVien}
+                                                            </TableCell>
+                                                            <TableCell className="px-3 py-2 text-gray-800 dark:text-white text-center font-mono text-xs">
+                                                                {item.maMonHoc || "-"}
+                                                            </TableCell>
+                                                            <TableCell className="px-3 py-2 text-green-600 dark:text-green-400 text-xs">
+                                                                {item.message}
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Không có dữ liệu Sheet 2 */}
+                                {getErrorsBySheet("Phân công môn học").length === 0 && getSuccessBySheet("Phân công môn học").length === 0 && (
+                                    <div className="text-center py-4 text-gray-500 dark:text-gray-400 text-sm">
+                                        Không có dữ liệu xử lý ở sheet này
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Thông báo thành công hoàn toàn */}
+                        {importResult.errors.length === 0 && (importResult.successSheet1 > 0 || importResult.successSheet2 > 0) && (
+                            <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl border border-green-200 dark:border-green-800">
+                                <div className="flex items-center justify-center gap-3">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
+                                        <FontAwesomeIcon icon={faCircleCheck} className="text-green-500 text-xl" />
+                                    </div>
+                                    <p className="text-green-700 dark:text-green-400 font-semibold">
+                                        Nhập dữ liệu từ Excel thành công! Không có lỗi nào xảy ra.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {/* Buttons */}
                 <div className="flex justify-end gap-3">
                     <Button variant="outline" onClick={handleClose} disabled={isUploading}>
-                        Hủy
+                        {importResult ? "Đóng" : "Hủy"}
                     </Button>
-                    <Button
-                        onClick={handleUpload}
-                        disabled={!selectedFile || isUploading}
-                        startIcon={isUploading ? undefined : <FontAwesomeIcon icon={faFileExcel} />}
-                    >
-                        {isUploading ? "Đang xử lý..." : "Xác nhận"}
-                    </Button>
+                    {!importResult && (
+                        <Button
+                            onClick={handleUpload}
+                            disabled={!selectedFile || isUploading}
+                            startIcon={
+                                isUploading
+                                    ? <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
+                                    : <FontAwesomeIcon icon={faFileExcel} />
+                            }
+                        >
+                            {isUploading ? "Đang xử lý..." : "Nhập giảng viên"}
+                        </Button>
+                    )}
                 </div>
             </div>
         </Modal>
@@ -1353,7 +1756,7 @@ export default function QuanLyGiangVienPage() {
                     status: "failed",
                     message: "Lỗi kết nối",
                 });
-            } 
+            }
         }
 
         setBulkDeleteResults(results);
@@ -2458,52 +2861,89 @@ export default function QuanLyGiangVienPage() {
                             )}
 
                             {/* Chi tiết kết quả */}
-                            <div className="mb-4">
-                                <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Chi tiết kết quả
+                            <div className="mb-6">
+                                <h4 className="mb-3 text-base font-semibold text-gray-800 dark:text-white/90 flex items-center gap-2">
+                                    <FontAwesomeIcon icon={faFileExcel} className="text-red-500" />
+                                    Chi tiết kết quả ({bulkDeleteResults.length})
                                 </h4>
-                                <div className="max-h-60 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700">
-                                    <table className="w-full text-sm">
-                                        <thead className="sticky top-0 bg-gray-50 dark:bg-gray-800">
-                                            <tr>
-                                                <th className="px-3 py-2 text-left text-gray-600 dark: text-gray-400 font-medium">Mã GV</th>
-                                                <th className="px-3 py-2 text-left text-gray-600 dark:text-gray-400 font-medium">Họ tên</th>
-                                                <th className="px-3 py-2 text-center text-gray-600 dark: text-gray-400 font-medium">Trạng thái</th>
-                                                <th className="px-3 py-2 text-left text-gray-600 dark: text-gray-400 font-medium">Chi tiết</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                                            {bulkDeleteResults.map((result) => (
-                                                <tr
-                                                    key={result.id}
-                                                    className={result.status === 'failed' ? 'bg-red-50 dark:bg-red-900/10' : ''}
+                                <div className="overflow-hidden rounded-xl border border-red-200 bg-white dark:border-red-900/30 dark:bg-white/[0.03] max-h-80 overflow-y-auto">
+                                    <Table>
+                                        {/* Header */}
+                                        <TableHeader className="border-b border-red-100 dark:border-red-900/30 top-0 bg-red-50 dark:bg-red-900/10 sticky z-10">
+                                            <TableRow className="grid grid-cols-[20%_25%_17%_38%]">
+                                                <TableCell
+                                                    isHeader
+                                                    className="px-4 py-3 font-medium text-gray-700 dark:text-gray-300 text-xs text-center"
                                                 >
-                                                    <td className="px-3 py-2 text-gray-800 dark:text-white font-medium">
+                                                    Mã GV
+                                                </TableCell>
+
+                                                <TableCell
+                                                    isHeader
+                                                    className="px-4 py-3 font-medium text-gray-700 dark:text-gray-300 text-xs text-left"
+                                                >
+                                                    Họ tên
+                                                </TableCell>
+
+                                                <TableCell
+                                                    isHeader
+                                                    className="px-4 py-3 font-medium text-gray-700 dark:text-gray-300 text-xs text-center"
+                                                >
+                                                    Trạng thái
+                                                </TableCell>
+
+                                                <TableCell
+                                                    isHeader
+                                                    className="px-4 py-3 font-medium text-gray-700 dark:text-gray-300 text-xs text-left"
+                                                >
+                                                    Chi tiết
+                                                </TableCell>
+                                            </TableRow>
+                                        </TableHeader>
+
+                                        {/* Body */}
+                                        <TableBody className="divide-y divide-red-100 dark:divide-red-900/30 text-theme-sm">
+                                            {bulkDeleteResults.map((result) => (
+                                                <TableRow
+                                                    key={result.id}
+                                                    className={`grid grid-cols-[20%_25%_17%_38%] hover:bg-red-50/50 dark:hover:bg-red-900/5 ${result.status === 'failed'
+                                                        ? 'bg-red-50/40 dark:bg-red-900/10'
+                                                        : ''
+                                                        }`}
+                                                >
+                                                    {/* Mã GV */}
+                                                    <TableCell className="px-4 py-3 text-gray-800 dark:text-white/90 text-sm text-center font-medium">
                                                         {result.maGiangVien}
-                                                    </td>
-                                                    <td className="px-3 py-2 text-gray-800 dark: text-white">
+                                                    </TableCell>
+
+                                                    {/* Họ tên */}
+                                                    <TableCell className="px-4 py-3 text-gray-800 dark:text-white/90 text-sm">
                                                         {result.hoTen}
-                                                    </td>
-                                                    <td className="px-3 py-2 text-center">
+                                                    </TableCell>
+
+                                                    {/* Trạng thái */}
+                                                    <TableCell className="px-4 py-3 text-center text-sm">
                                                         {result.status === 'success' ? (
-                                                            <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                                                            <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
                                                                 <FontAwesomeIcon icon={faCircleCheck} className="text-xs" />
                                                                 Thành công
                                                             </span>
                                                         ) : (
-                                                            <span className="inline-flex items-center gap-1 text-red-600 dark:text-red-400">
+                                                            <span className="inline-flex items-center gap-1 text-red-600 dark:text-red-400 font-medium">
                                                                 <FontAwesomeIcon icon={faCircleExclamation} className="text-xs" />
                                                                 Thất bại
                                                             </span>
                                                         )}
-                                                    </td>
-                                                    <td className="px-3 py-2 text-gray-600 dark:text-gray-400 text-xs">
+                                                    </TableCell>
+
+                                                    {/* Chi tiết */}
+                                                    <TableCell className="px-4 py-3 text-red-600 dark:text-red-400 text-sm">
                                                         {result.message}
-                                                    </td>
-                                                </tr>
+                                                    </TableCell>
+                                                </TableRow>
                                             ))}
-                                        </tbody>
-                                    </table>
+                                        </TableBody>
+                                    </Table>
                                 </div>
                             </div>
                         </>
