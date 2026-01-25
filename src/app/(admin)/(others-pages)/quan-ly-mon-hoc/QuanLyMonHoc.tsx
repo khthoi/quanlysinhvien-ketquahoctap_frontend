@@ -29,6 +29,7 @@ import {
     faUserTie,        // Thêm mới
     faTableColumns    // Thêm mới
 } from '@fortawesome/free-solid-svg-icons';
+import MultiSelectCustom from "@/components/form/MultiSelectCustom";
 
 type LoaiMon = "DAI_CUONG" | "TU_CHON" | "CHUYEN_NGANH";
 
@@ -409,32 +410,32 @@ const ImportMonHocExcelModal: React.FC<ImportMonHocExcelModalProps> = ({
                     <div className="mb-6 space-y-4">
                         {/* Thống kê tổng quan */}
                         <div className={`p-4 rounded-xl border ${importResult.failed === 0
-                                ? 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800/50'
-                                : 'bg-yellow-50 border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800/50'
+                            ? 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800/50'
+                            : 'bg-yellow-50 border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800/50'
                             }`}>
                             <div className="flex items-center gap-3 mb-3">
                                 <div className={`flex h-10 w-10 items-center justify-center rounded-full ${importResult.failed === 0
-                                        ? 'bg-green-100 dark:bg-green-800/50'
-                                        : 'bg-yellow-100 dark:bg-yellow-800/50'
+                                    ? 'bg-green-100 dark:bg-green-800/50'
+                                    : 'bg-yellow-100 dark:bg-yellow-800/50'
                                     }`}>
                                     <FontAwesomeIcon
                                         icon={importResult.failed === 0 ? faFileExcel : faLightbulb}
                                         className={`text-lg ${importResult.failed === 0
-                                                ? 'text-green-600 dark:text-green-400'
-                                                : 'text-yellow-600 dark:text-yellow-400'
+                                            ? 'text-green-600 dark:text-green-400'
+                                            : 'text-yellow-600 dark:text-yellow-400'
                                             }`}
                                     />
                                 </div>
                                 <div>
                                     <h4 className={`font-semibold ${importResult.failed === 0
-                                            ? 'text-green-800 dark:text-green-300'
-                                            : 'text-yellow-800 dark:text-yellow-300'
+                                        ? 'text-green-800 dark:text-green-300'
+                                        : 'text-yellow-800 dark:text-yellow-300'
                                         }`}>
                                         {importResult.failed === 0 ? 'Nhập thành công!' : 'Hoàn tất với một số lỗi'}
                                     </h4>
                                     <p className={`text-sm ${importResult.failed === 0
-                                            ? 'text-green-600 dark:text-green-400'
-                                            : 'text-yellow-600 dark:text-yellow-400'
+                                        ? 'text-green-600 dark:text-green-400'
+                                        : 'text-yellow-600 dark:text-yellow-400'
                                         }`}>
                                         Đã xử lý {importResult.totalRows} dòng dữ liệu
                                     </p>
@@ -880,13 +881,30 @@ export default function QuanLyMonHocPage() {
     const [isPhanCongModalOpen, setIsPhanCongModalOpen] = useState(false);
     const [monHocOptionsForPhanCong, setMonHocOptionsForPhanCong] = useState<MonHoc[]>([]);
     const [giangVienOptions, setGiangVienOptions] = useState<GiangVienOption[]>([]);
-    const [selectedMonHocId, setSelectedMonHocId] = useState<string>("");
+    const [selectedMonHocIds, setSelectedMonHocIds] = useState<string[]>([]);
     const [selectedGiangVienId, setSelectedGiangVienId] = useState<string>("");
     const [monHocSearchKeyword, setMonHocSearchKeyword] = useState("");
     const [giangVienSearchKeyword, setGiangVienSearchKeyword] = useState("");
     const [isPhanCongLoading, setIsPhanCongLoading] = useState(false);
     // Thêm vào phần khai báo state trong QuanLyLopNienChePage
     const [isImportExcelModalOpen, setIsImportExcelModalOpen] = useState(false);
+
+    // Thêm state mới cho tiến trình phân công
+    const [phanCongProgress, setPhanCongProgress] = useState<{
+        total: number;
+        current: number;
+        success: number;
+        failed: number;
+        isProcessing: boolean;
+        results: Array<{ monHocId: string; tenMonHoc: string; success: boolean; message: string }>;
+    }>({
+        total: 0,
+        current: 0,
+        success: 0,
+        failed: 0,
+        isProcessing: false,
+        results: [],
+    });
 
     const [errors, setErrors] = useState({
         maMonHoc: false,
@@ -983,68 +1001,138 @@ export default function QuanLyMonHocPage() {
         fetchGiangVienForPhanCong(giangVienSearchKeyword.trim());
     };
 
-    // Mở modal phân công
+    // hàm openPhanCongModal
     const openPhanCongModal = () => {
-        setSelectedMonHocId("");
+        setSelectedMonHocIds([]);
         setSelectedGiangVienId("");
         setMonHocSearchKeyword("");
         setGiangVienSearchKeyword("");
+        setPhanCongProgress({
+            total: 0,
+            current: 0,
+            success: 0,
+            failed: 0,
+            isProcessing: false,
+            results: [],
+        });
         fetchMonHocForPhanCong();
         fetchGiangVienForPhanCong();
         setIsPhanCongModalOpen(true);
     };
 
-    // Đóng modal phân công
+    // hàm closePhanCongModal
     const closePhanCongModal = () => {
         setIsPhanCongModalOpen(false);
-        setSelectedMonHocId("");
+        setSelectedMonHocIds([]);
         setSelectedGiangVienId("");
         setMonHocSearchKeyword("");
         setGiangVienSearchKeyword("");
         setMonHocOptionsForPhanCong([]);
         setGiangVienOptions([]);
+        setPhanCongProgress({
+            total: 0,
+            current: 0,
+            success: 0,
+            failed: 0,
+            isProcessing: false,
+            results: [],
+        });
     };
 
     // Xử lý phân công môn học
     const handlePhanCong = async () => {
-        if (!selectedMonHocId || !selectedGiangVienId) {
-            showAlert("warning", "Cảnh báo", "Vui lòng chọn cả môn học và giảng viên");
+        if (selectedMonHocIds.length === 0 || !selectedGiangVienId) {
+            showAlert("warning", "Cảnh báo", "Vui lòng chọn ít nhất một môn học và giảng viên");
             return;
         }
 
         setIsPhanCongLoading(true);
-        try {
-            const accessToken = getCookie("access_token");
-            const res = await fetch("http://localhost:3000/danh-muc/giang-vien/phancongmonhoc", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${accessToken}`,
-                },
-                body: JSON.stringify({
-                    giangVienId: Number(selectedGiangVienId),
-                    monHocId: Number(selectedMonHocId),
-                }),
-            });
+        setPhanCongProgress({
+            total: selectedMonHocIds.length,
+            current: 0,
+            success: 0,
+            failed: 0,
+            isProcessing: true,
+            results: [],
+        });
 
-            closePhanCongModal();
-            if (res.ok) {
-                showAlert("success", "Thành công", "Phân công môn học thành công");
-            } else {
-                const err = await res.json();
-                showAlert("error", "Lỗi", err.message || "Phân công thất bại");
+        const accessToken = getCookie("access_token");
+        const results: Array<{ monHocId: string; tenMonHoc: string; success: boolean; message: string }> = [];
+
+        // Xử lý từng môn học trong hàng đợi
+        for (let i = 0; i < selectedMonHocIds.length; i++) {
+            const monHocId = selectedMonHocIds[i];
+            const monHoc = monHocOptionsForPhanCong.find(mh => mh.id.toString() === monHocId);
+            const tenMonHoc = monHoc?.tenMonHoc || monHocId;
+
+            try {
+                const res = await fetch("http://localhost:3000/danh-muc/giang-vien/phancongmonhoc", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${accessToken}`,
+                    },
+                    body: JSON.stringify({
+                        giangVienId: Number(selectedGiangVienId),
+                        monHocId: Number(monHocId),
+                    }),
+                });
+
+                if (res.ok) {
+                    results.push({ monHocId, tenMonHoc, success: true, message: "Thành công" });
+                    setPhanCongProgress(prev => ({
+                        ...prev,
+                        current: i + 1,
+                        success: prev.success + 1,
+                        results: [...results],
+                    }));
+                } else {
+                    const err = await res.json();
+                    results.push({ monHocId, tenMonHoc, success: false, message: err.message || "Phân công thất bại" });
+                    setPhanCongProgress(prev => ({
+                        ...prev,
+                        current: i + 1,
+                        failed: prev.failed + 1,
+                        results: [...results],
+                    }));
+                }
+            } catch (err) {
+                results.push({ monHocId, tenMonHoc, success: false, message: "Có lỗi xảy ra" });
+                setPhanCongProgress(prev => ({
+                    ...prev,
+                    current: i + 1,
+                    failed: prev.failed + 1,
+                    results: [...results],
+                }));
             }
-        } catch (err) {
-            closePhanCongModal();
-            showAlert("error", "Lỗi", "Có lỗi xảy ra khi phân công môn học");
-        } finally {
-            setIsPhanCongLoading(false);
-            // 👉 Cuộn lên đầu trang
-            window.scrollTo({
-                top: 0,
-                behavior: "smooth",
-            });
+
+            // Delay nhỏ giữa các request để tránh quá tải server
+            if (i < selectedMonHocIds.length - 1) {
+                await new Promise(resolve => setTimeout(resolve, 300));
+            }
         }
+
+        setPhanCongProgress(prev => ({
+            ...prev,
+            isProcessing: false,
+        }));
+        setIsPhanCongLoading(false);
+    };
+
+    // Hàm đóng modal và hiển thị kết quả
+    const handleClosePhanCongWithResult = () => {
+        const { success, failed } = phanCongProgress;
+
+        if (success > 0 && failed === 0) {
+            showAlert("success", "Thành công", `Đã phân công ${success} môn học thành công`);
+        } else if (success > 0 && failed > 0) {
+            showAlert("warning", "Hoàn tất với cảnh báo", `Thành công: ${success}, Thất bại: ${failed}`);
+        } else if (failed > 0) {
+            showAlert("error", "Lỗi", `Phân công thất bại: ${failed} môn học`);
+        }
+
+        closePhanCongModal();
+        window.scrollTo({ top: 0, behavior: "smooth" });
     };
 
     useEffect(() => {
@@ -1492,102 +1580,210 @@ export default function QuanLyMonHocPage() {
                 onClose={closePhanCongModal}
                 className="max-w-2xl"
             >
-                <div className="p-6 sm:p-8">
+                <div className="p-6 sm:p-8 max-h-[85vh] overflow-y-auto">
                     <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
                         Phân công môn học cho giảng viên
                     </h3>
 
-                    <div className="space-y-6">
-                        {/* Khối tìm kiếm Môn học */}
-                        <div>
-                            <Label className="block mb-2">Chọn Môn học</Label>
-                            <div className="mt-3">
-                                <SearchableSelect
-                                    options={monHocOptionsForPhanCong.map((mh) => ({
-                                        value: mh.id.toString(),
-                                        label: mh.maMonHoc,
-                                        secondary: mh.tenMonHoc,
-                                    }))}
-                                    placeholder="Chọn môn học"
-                                    onChange={(value) => setSelectedMonHocId(value)}
-                                    defaultValue={selectedMonHocId}
-                                    showSecondary={true}
-                                    maxDisplayOptions={10}
-                                    searchPlaceholder="Tìm trong danh sách..."
-                                />
-                            </div>
-                            {selectedMonHocId && (
-                                <div className="mt-2 p-3 bg-brand-50 dark:bg-brand-500/10 rounded-lg">
-                                    <p className="text-sm text-brand-600 dark:text-brand-400">
-                                        <span className="font-medium">Đã chọn:  </span>
-                                        {monHocOptionsForPhanCong.find(mh => mh.id.toString() === selectedMonHocId)?.maMonHoc} - {monHocOptionsForPhanCong.find(mh => mh.id.toString() === selectedMonHocId)?.tenMonHoc}
-                                    </p>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Divider */}
-                        <div className="border-t border-gray-200 dark:border-gray-700" />
-
-                        {/* Khối tìm kiếm Giảng viên */}
-                        <div>
-                            <Label className="block mb-2">Chọn Giảng viên</Label>
-                            <div className="mt-3">
-                                <SearchableSelect
-                                    options={giangVienOptions.map((gv) => ({
-                                        value: gv.id.toString(),
-                                        label: gv.maGiangVien,
-                                        secondary: gv.hoTen,
-                                    }))}
-                                    placeholder="Chọn giảng viên"
-                                    onChange={(value) => setSelectedGiangVienId(value)}
-                                    defaultValue={selectedGiangVienId}
-                                    showSecondary={true}
-                                    maxDisplayOptions={10}
-                                    searchPlaceholder="Tìm trong danh sách..."
-                                />
-                            </div>
-                            {selectedGiangVienId && (
-                                <div className="mt-2 p-3 bg-success-50 dark: bg-success-500/10 rounded-lg">
-                                    <p className="text-sm text-success-600 dark: text-success-400">
-                                        <span className="font-medium">Đã chọn: </span>
-                                        {giangVienOptions.find(gv => gv.id.toString() === selectedGiangVienId)?.maGiangVien} - {giangVienOptions.find(gv => gv.id.toString() === selectedGiangVienId)?.hoTen}
-                                    </p>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Thông tin tổng hợp */}
-                        {selectedMonHocId && selectedGiangVienId && (
-                            <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-                                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Xác nhận phân công:
-                                </h4>
-                                <p className="text-sm text-gray-600 dark:text-gray-400">
-                                    Phân công giảng viên{" "}
-                                    <span className="font-semibold text-gray-800 dark:text-white">
-                                        {giangVienOptions.find(gv => gv.id.toString() === selectedGiangVienId)?.hoTen}
-                                    </span>{" "}
-                                    giảng dạy môn{" "}
-                                    <span className="font-semibold text-gray-800 dark:text-white">
-                                        {monHocOptionsForPhanCong.find(mh => mh.id.toString() === selectedMonHocId)?.tenMonHoc}
+                    {/* Hiển thị tiến trình phân công */}
+                    {phanCongProgress.isProcessing || phanCongProgress.results.length > 0 ? (
+                        <div className="space-y-4">
+                            {/* Progress bar */}
+                            <div className="p-4 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                        {phanCongProgress.isProcessing ? "Đang xử lý..." : "Hoàn tất"}
                                     </span>
-                                </p>
+                                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                                        {phanCongProgress.current} / {phanCongProgress.total}
+                                    </span>
+                                </div>
+                                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+                                    <div
+                                        className="bg-brand-500 h-2.5 rounded-full transition-all duration-300"
+                                        style={{ width: `${(phanCongProgress.current / phanCongProgress.total) * 100}%` }}
+                                    />
+                                </div>
                             </div>
-                        )}
-                    </div>
 
-                    <div className="mt-8 flex justify-end gap-3">
-                        <Button variant="outline" onClick={closePhanCongModal}>
-                            Hủy
-                        </Button>
-                        <Button
-                            onClick={handlePhanCong}
-                            disabled={!selectedMonHocId || !selectedGiangVienId || isPhanCongLoading}
-                        >
-                            {isPhanCongLoading ? "Đang xử lý..." : "Xác nhận phân công"}
-                        </Button>
-                    </div>
+                            {/* Thống kê */}
+                            <div className="grid grid-cols-3 gap-3">
+                                <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-center border border-gray-200 dark:border-gray-700">
+                                    <p className="text-2xl font-bold text-gray-800 dark:text-white">
+                                        {phanCongProgress.total}
+                                    </p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">Tổng số</p>
+                                </div>
+                                <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-center border border-green-200 dark:border-green-700">
+                                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                                        {phanCongProgress.success}
+                                    </p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">Thành công</p>
+                                </div>
+                                <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-center border border-red-200 dark:border-red-700">
+                                    <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+                                        {phanCongProgress.failed}
+                                    </p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">Thất bại</p>
+                                </div>
+                            </div>
+
+                            {/* Danh sách kết quả */}
+                            {phanCongProgress.results.length > 0 && (
+                                <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                                    <div className="bg-gray-50 dark:bg-gray-800 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                                        <h4 className="font-semibold text-gray-800 dark:text-gray-200">
+                                            Chi tiết kết quả
+                                        </h4>
+                                    </div>
+                                    <div className="max-h-48 overflow-y-auto">
+                                        <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                                            {phanCongProgress.results.map((result, idx) => (
+                                                <div
+                                                    key={idx}
+                                                    className={`px-4 py-3 flex items-center justify-between ${result.success
+                                                            ? "bg-green-50 dark:bg-green-900/10"
+                                                            : "bg-red-50 dark:bg-red-900/10"
+                                                        }`}
+                                                >
+                                                    <span className="text-sm text-gray-800 dark:text-gray-200">
+                                                        {result.tenMonHoc}
+                                                    </span>
+                                                    <Badge
+                                                        variant="light"
+                                                        color={result.success ? "success" : "error"}
+                                                    >
+                                                        {result.success ? "Thành công" : result.message}
+                                                    </Badge>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Buttons sau khi hoàn tất */}
+                            {!phanCongProgress.isProcessing && (
+                                <div className="flex justify-end gap-3 pt-2">
+                                    <Button onClick={handleClosePhanCongWithResult}>
+                                        Hoàn tất
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        // Form chọn môn học và giảng viên
+                        <>
+                            <div className="space-y-6">
+                                {/* Khối chọn Môn học - MultiSelect */}
+                                <div>
+                                    <Label className="block mb-2">Chọn Môn học (có thể chọn nhiều)</Label>
+                                    <div className="mt-3">
+                                        <MultiSelectCustom
+                                            options={monHocOptionsForPhanCong.map((mh) => ({
+                                                value: mh.id.toString(),
+                                                label: mh.maMonHoc,
+                                                secondary: mh.tenMonHoc,
+                                            }))}
+                                            placeholder="Chọn các môn học"
+                                            onChange={(values) => setSelectedMonHocIds(values)}
+                                            defaultValue={selectedMonHocIds}
+                                            showSecondary={true}
+                                            maxDisplayOptions={10}
+                                            maxDisplayTags={3}
+                                            searchPlaceholder="Tìm môn học..."
+                                            selectAllLabel="Chọn tất cả môn học"
+                                            showSelectAll={true}
+                                        />
+                                    </div>
+                                    {selectedMonHocIds.length > 0 && (
+                                        <div className="mt-2 p-3 bg-brand-50 dark:bg-brand-500/10 rounded-lg">
+                                            <p className="text-sm text-brand-600 dark:text-brand-400">
+                                                <span className="font-medium">Đã chọn: </span>
+                                                {selectedMonHocIds.length} môn học
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Divider */}
+                                <div className="border-t border-gray-200 dark:border-gray-700" />
+
+                                {/* Khối tìm kiếm Giảng viên */}
+                                <div>
+                                    <Label className="block mb-2">Chọn Giảng viên</Label>
+                                    <div className="mt-3">
+                                        <SearchableSelect
+                                            options={giangVienOptions.map((gv) => ({
+                                                value: gv.id.toString(),
+                                                label: gv.maGiangVien,
+                                                secondary: gv.hoTen,
+                                            }))}
+                                            placeholder="Chọn giảng viên"
+                                            onChange={(value) => setSelectedGiangVienId(value)}
+                                            defaultValue={selectedGiangVienId}
+                                            showSecondary={true}
+                                            maxDisplayOptions={10}
+                                            searchPlaceholder="Tìm trong danh sách..."
+                                        />
+                                    </div>
+                                    {selectedGiangVienId && (
+                                        <div className="mt-2 p-3 bg-success-50 dark:bg-success-500/10 rounded-lg">
+                                            <p className="text-sm text-success-600 dark:text-success-400">
+                                                <span className="font-medium">Đã chọn: </span>
+                                                {giangVienOptions.find(gv => gv.id.toString() === selectedGiangVienId)?.maGiangVien} - {giangVienOptions.find(gv => gv.id.toString() === selectedGiangVienId)?.hoTen}
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Thông tin tổng hợp */}
+                                {selectedMonHocIds.length > 0 && selectedGiangVienId && (
+                                    <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                                        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                            Xác nhận phân công:
+                                        </h4>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                                            Phân công giảng viên{" "}
+                                            <span className="font-semibold text-gray-800 dark:text-white">
+                                                {giangVienOptions.find(gv => gv.id.toString() === selectedGiangVienId)?.hoTen}
+                                            </span>{" "}
+                                            giảng dạy{" "}
+                                            <span className="font-semibold text-gray-800 dark:text-white">
+                                                {selectedMonHocIds.length} môn học
+                                            </span>
+                                        </p>
+                                        {/* Danh sách môn học được chọn */}
+                                        <div className="mt-3 max-h-32 overflow-y-auto">
+                                            <ul className="text-sm text-gray-500 dark:text-gray-400 space-y-1">
+                                                {selectedMonHocIds.map((id) => {
+                                                    const mh = monHocOptionsForPhanCong.find(m => m.id.toString() === id);
+                                                    return (
+                                                        <li key={id} className="flex items-center gap-2">
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-brand-500" />
+                                                            {mh?.maMonHoc} - {mh?.tenMonHoc}
+                                                        </li>
+                                                    );
+                                                })}
+                                            </ul>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="mt-8 flex justify-end gap-3">
+                                <Button variant="outline" onClick={closePhanCongModal}>
+                                    Hủy
+                                </Button>
+                                <Button
+                                    onClick={handlePhanCong}
+                                    disabled={selectedMonHocIds.length === 0 || !selectedGiangVienId || isPhanCongLoading}
+                                >
+                                    {isPhanCongLoading ? "Đang xử lý..." : `Xác nhận phân công (${selectedMonHocIds.length} môn)`}
+                                </Button>
+                            </div>
+                        </>
+                    )}
                 </div>
             </Modal>
 
