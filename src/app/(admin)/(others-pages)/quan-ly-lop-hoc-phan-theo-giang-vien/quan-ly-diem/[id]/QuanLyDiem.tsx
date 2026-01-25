@@ -18,7 +18,7 @@ import Input from "@/components/form/input/InputField";
 import Label from "@/components/form/Label";
 import Badge from "@/components/ui/badge/Badge";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faMagnifyingGlass, faEye, faEdit } from "@fortawesome/free-solid-svg-icons";
+import { faMagnifyingGlass, faEye, faEdit, faTriangleExclamation, faCircleInfo } from "@fortawesome/free-solid-svg-icons";
 import { DropdownItem } from "@/components/ui/dropdown/DropdownItem";
 import { Dropdown } from "@/components/ui/dropdown/Dropdown";
 import { FaAngleDown } from "react-icons/fa6";
@@ -495,7 +495,7 @@ const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
                     );
                 } else {
                     showAlert("success", "Thành công", `Nhập điểm từ Excel thành công. Đã nhập: ${data.success} sinh viên`);
-                    handleClose();
+                    // handleClose();
                 }
                 onSuccess();
             } else {
@@ -532,6 +532,51 @@ const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
                     Nhập điểm bằng Excel
                 </h3>
 
+                {/* === CẢNH BÁO QUAN TRỌNG (màu đỏ) === */}
+                <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800/50 dark:bg-amber-900/20">
+                    <div className="p-4">
+                        <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0">
+                                <FontAwesomeIcon
+                                    icon={faTriangleExclamation}
+                                    className="text-lg text-amber-600 dark:text-amber-400 mt-0.5"
+                                />
+                            </div>
+                            <div className="flex-1">
+                                <h4 className="font-semibold text-amber-800 dark:text-amber-300 mb-1">
+                                    Cảnh báo quan trọng – Hành động không thể hoàn tác:
+                                </h4>
+                                <ul className="text-sm text-amber-700/80 dark:text-amber-300/70 space-y-1.5 list-disc list-inside">
+                                    <li>Hệ thống sẽ <strong>ghi đè toàn bộ điểm</strong> của lớp học phần này khi nhập điểm mới</li>
+                                    <li>Lớp học phần <strong>đã khóa điểm</strong> sẽ <strong>không cho phép nhập điểm</strong></li>
+                                    <li>Chỉ giảng viên phụ trách LHP mới được nhập điểm cho lớp học phần đó</li>
+                                    <li>Điểm không hợp lệ (ngoài 0-10 hoặc thiếu) sẽ bị bỏ qua, nhưng điểm hợp lệ sẽ <strong>ghi đè hoàn toàn</strong></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* === LƯU Ý BỔ SUNG (màu xanh) === */}
+                <div className="mb-6 rounded-xl border border-blue-200 bg-blue-50 dark:border-blue-800/50 dark:bg-blue-900/20">
+                    <div className="p-4">
+                        <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0">
+                                <FontAwesomeIcon
+                                    icon={faCircleInfo}
+                                    className="text-lg text-blue-600 dark:text-blue-400 mt-0.5"
+                                />
+                            </div>
+                            <div className="flex-1">
+                                <p className="text-sm text-blue-700/80 dark:text-blue-300/70">
+                                    <strong>Lưu ý:</strong> File Excel cần chứa <strong>mã sinh viên</strong> (cột B), <strong>điểm chuyên cần</strong> (cột F), <strong>điểm thành phần</strong> (cột G), <strong>điểm thi</strong> (cột H).
+                                    Hệ thống sẽ tự động validate: sinh viên phải đăng ký lớp, điểm phải trong khoảng 0-10. Sinh viên không có trong lớp hoặc điểm không hợp lệ sẽ bị báo lỗi.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 {/* Button tải file mẫu */}
                 <div className="mb-6">
                     <Button
@@ -549,18 +594,18 @@ const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
                     <Label className="mb-2 block">Chọn file Excel nhập điểm</Label>
                     <div
                         className={`transition border-2 border-dashed cursor-pointer rounded-xl 
-                            ${fileError ? 'border-red-500' : 'border-gray-300 dark:border-gray-700'}
-                            ${isDragActive ? 'border-brand-500 bg-gray-100 dark:bg-gray-800' : 'hover:border-brand-500 dark:hover:border-brand-500'}
-                        `}
+                        ${fileError ? 'border-red-500' : 'border-gray-300 dark:border-gray-700'}
+                        ${isDragActive ? 'border-brand-500 bg-gray-100 dark:bg-gray-800' : 'hover:border-brand-500 dark:hover:border-brand-500'}
+                    `}
                     >
                         <div
                             {...getRootProps()}
                             className={`rounded-xl p-7 lg:p-10
-                                ${isDragActive
+                            ${isDragActive
                                     ? "bg-gray-100 dark:bg-gray-800"
                                     : "bg-gray-50 dark:bg-gray-900"
                                 }
-                            `}
+                        `}
                         >
                             <input {...getInputProps()} />
 
@@ -568,7 +613,7 @@ const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
                                 {/* Icon */}
                                 <div className="mb-4 flex justify-center">
                                     <div className={`flex h-16 w-16 items-center justify-center rounded-full 
-                                        ${selectedFile
+                                    ${selectedFile
                                             ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
                                             : 'bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-400'
                                         }`}
@@ -652,11 +697,11 @@ const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
                             <div className="overflow-hidden rounded-xl border border-red-200 bg-white dark:border-red-900/30 dark:bg-white/[0.03] max-h-80 overflow-y-auto">
                                 <Table>
                                     <TableHeader className="border-b border-red-100 dark:border-red-900/30 top-0 bg-red-50 dark:bg-red-900/10">
-                                        <TableRow>
-                                            <TableCell isHeader className="px-4 py-3 font-medium text-gray-700 dark:text-gray-300 text-xs text-center w-20">
+                                        <TableRow className="grid grid-cols-[10%_22%_68%]">
+                                            <TableCell isHeader className="px-4 py-3 font-medium text-gray-700 dark:text-gray-300 text-xs text-center">
                                                 Dòng
                                             </TableCell>
-                                            <TableCell isHeader className="px-4 py-3 font-medium text-gray-700 dark:text-gray-300 text-xs text-center w-32">
+                                            <TableCell isHeader className="px-4 py-3 font-medium text-gray-700 dark:text-gray-300 text-xs text-center">
                                                 Mã SV
                                             </TableCell>
                                             <TableCell isHeader className="px-4 py-3 font-medium text-gray-700 dark:text-gray-300 text-xs">
@@ -666,7 +711,7 @@ const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
                                     </TableHeader>
                                     <TableBody className="divide-y divide-red-100 dark:divide-red-900/30 text-theme-sm">
                                         {uploadErrors.map((error, index) => (
-                                            <TableRow key={index} className="hover:bg-red-50/50 dark:hover:bg-red-900/5">
+                                            <TableRow key={index} className="hover:bg-red-50/50 dark:hover:bg-red-900/5 grid grid-cols-[10%_22%_68%]">
                                                 <TableCell className="px-4 py-3 text-gray-800 dark:text-white/90 text-sm text-center">
                                                     {error.row}
                                                 </TableCell>
@@ -946,16 +991,16 @@ export default function ChiTietLopHocPhanPage() {
             <div className="rounded-2xl border border-gray-200 bg-white px-5 py-7 dark:border-gray-800 dark:bg-white/[0.03] xl:px-10 xl:py-12">
                 {alert && (
                     <div className="mb-6">
-                    <Alert
-                        key={alert.id}        // 🔥 reset state mỗi lần show
-                        variant={alert.variant}
-                        title={alert.title}
-                        message={alert.message}
-                        dismissible
-                        autoDismiss
-                        duration={5000}
-                        onClose={() => setAlert(null)}   // 🔥 unmount thật
-                    />
+                        <Alert
+                            key={alert.id}        // 🔥 reset state mỗi lần show
+                            variant={alert.variant}
+                            title={alert.title}
+                            message={alert.message}
+                            dismissible
+                            autoDismiss
+                            duration={5000}
+                            onClose={() => setAlert(null)}   // 🔥 unmount thật
+                        />
                     </div>
                 )}
 

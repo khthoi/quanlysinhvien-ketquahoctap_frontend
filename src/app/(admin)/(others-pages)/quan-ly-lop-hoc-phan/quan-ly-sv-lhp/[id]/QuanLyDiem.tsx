@@ -973,6 +973,7 @@ export default function ChiTietLopHocPhanPage() {
                                     <ul className="text-xs text-amber-700/80 dark:text-amber-300/70 space-y-1 list-disc list-inside">
                                         <li>Sinh viên sẽ bị xóa hoàn toàn khỏi lớp học phần này</li>
                                         <li>Sinh viên cần đăng ký lại nếu muốn tham gia lớp</li>
+                                        <li>Không thể xóa sinh viên khỏi LHP đã khóa điểm</li>
                                     </ul>
                                 </div>
                             </div>
@@ -1128,8 +1129,8 @@ export default function ChiTietLopHocPhanPage() {
                                             </h4>
                                             <ul className="text-sm text-red-700/80 dark:text-red-300/70 space-y-1 list-disc list-inside">
                                                 <li>Hành động này <strong>không thể hoàn tác</strong></li>
-                                                <li>Sinh viên sẽ bị xóa hoàn toàn khỏi lớp học phần</li>
-                                                <li>Sinh viên cần đăng ký lại nếu muốn tham gia lớp</li>
+                                                <li><strong>Không thể</strong> xóa sinh viên khỏi LHP đã khóa điểm</li>
+                                                <li><strong>Không thể</strong> xóa sinh viên đã có điểm</li>
                                             </ul>
                                         </div>
                                     </div>
@@ -1148,8 +1149,7 @@ export default function ChiTietLopHocPhanPage() {
                                         </div>
                                         <div className="flex-1">
                                             <p className="text-sm text-blue-700/80 dark:text-blue-300/70">
-                                                <strong>Lưu ý:</strong> Chỉ có thể xóa sinh viên chưa có điểm.
-                                                Sinh viên đã có điểm không thể chọn và không nằm trong danh sách này.
+                                                <strong>Lưu ý:</strong> Sinh viên đã có điểm không thể chọn và không nằm trong danh sách này.
                                             </p>
                                         </div>
                                     </div>
