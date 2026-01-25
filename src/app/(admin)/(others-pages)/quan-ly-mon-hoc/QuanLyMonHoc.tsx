@@ -253,6 +253,25 @@ interface ImportMonHocExcelModalProps {
     showAlert: (variant: "success" | "error" | "warning" | "info", title: string, message: string) => void;
 }
 
+// ==================== MODAL NHẬP MÔN HỌC EXCEL ====================
+interface ImportResult {
+    totalRows: number;
+    success: number;
+    failed: number;
+    errors: Array<{
+        row: number;
+        maMonHoc?: string;
+        error: string;
+    }>;
+}
+
+interface ImportMonHocExcelModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onSuccess: () => void;
+    showAlert: (variant: "success" | "error" | "warning" | "info", title: string, message: string) => void;
+}
+
 const ImportMonHocExcelModal: React.FC<ImportMonHocExcelModalProps> = ({
     isOpen,
     onClose,
@@ -262,9 +281,13 @@ const ImportMonHocExcelModal: React.FC<ImportMonHocExcelModalProps> = ({
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [fileError, setFileError] = useState<string>("");
     const [isUploading, setIsUploading] = useState(false);
+    const [importResult, setImportResult] = useState<ImportResult | null>(null);
+    const [importError, setImportError] = useState<string>("");
 
     const onDrop = (acceptedFiles: File[], rejectedFiles: any[]) => {
         setFileError("");
+        setImportResult(null);
+        setImportError("");
 
         if (rejectedFiles.length > 0) {
             setFileError("Chỉ chấp nhận file Excel (.xlsx)");
@@ -307,6 +330,8 @@ const ImportMonHocExcelModal: React.FC<ImportMonHocExcelModalProps> = ({
         }
 
         setIsUploading(true);
+        setImportResult(null);
+        setImportError("");
 
         try {
             const accessToken = getCookie("access_token");
@@ -324,164 +349,333 @@ const ImportMonHocExcelModal: React.FC<ImportMonHocExcelModalProps> = ({
             const result = await res.json();
 
             if (res.ok) {
-                if (result.errors?.length > 0) {
-                    const errorMessages = result.errors
-                        .map((err: any) =>
-                            `Dòng ${err.row}${err.maMonHoc ? ` (${err.maMonHoc})` : ""}: ${err.error}`
-                        )
-                        .join("\n");
-
-                    showAlert(
-                        "warning",
-                        "Nhập môn học hoàn tất với cảnh báo",
-                        `Tổng: ${result.totalRows}, Thành công: ${result.success}, Thất bại: ${result.failed}\n${errorMessages}`
-                    );
-                } else {
-                    showAlert(
-                        "success",
-                        "Thành công",
-                        `Nhập môn học từ Excel thành công. Đã thêm ${result.success} môn học.`
-                    );
-                }
-                handleClose();
-                onSuccess();
+                setImportResult(result);
+                onSuccess(); // Refresh danh sách
             } else {
-                showAlert("error", "Lỗi", result.message || "Nhập môn học thất bại");
+                setImportError(result.message || "Nhập môn học thất bại");
             }
         } catch (err) {
-            showAlert("error", "Lỗi", "Có lỗi xảy ra khi nhập môn học từ Excel");
+            setImportError("Có lỗi xảy ra khi nhập môn học từ Excel");
         } finally {
             setIsUploading(false);
-            // 👉 Cuộn lên đầu trang
-            window.scrollTo({
-                top: 0,
-                behavior: "smooth",
-            });
         }
     };
 
     const handleClose = () => {
         setSelectedFile(null);
         setFileError("");
+        setImportResult(null);
+        setImportError("");
         onClose();
+    };
+
+    const handleCloseAndNotify = () => {
+        if (importResult && importResult.success > 0) {
+            showAlert(
+                importResult.errors?.length > 0 ? "warning" : "success",
+                importResult.errors?.length > 0 ? "Hoàn tất với cảnh báo" : "Thành công",
+                `Đã thêm ${importResult.success} môn học${importResult.failed > 0 ? `, ${importResult.failed} lỗi` : ""}`
+            );
+        }
+        handleClose();
+        window.scrollTo({ top: 0, behavior: "smooth" });
     };
 
     const removeFile = () => {
         setSelectedFile(null);
         setFileError("");
+        setImportResult(null);
+        setImportError("");
+    };
+
+    const resetForNewUpload = () => {
+        setSelectedFile(null);
+        setFileError("");
+        setImportResult(null);
+        setImportError("");
     };
 
     if (!isOpen) return null;
 
     return (
-        <Modal isOpen={isOpen} onClose={handleClose} className="max-w-lg">
-            <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
+        <Modal isOpen={isOpen} onClose={handleClose} className="max-w-2xl">
+            <div className="p-6 sm:p-8 max-h-[85vh] overflow-y-auto">
                 <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
                     Nhập môn học bằng Excel
                 </h3>
 
-                {/* Button tải file mẫu */}
-                <div className="mb-6">
-                    <Button
-                        variant="outline"
-                        onClick={handleDownloadTemplate}
-                        startIcon={<FontAwesomeIcon icon={faDownload} />}
-                        className="w-full"
-                    >
-                        Tải file Excel mẫu
-                    </Button>
-                </div>
-
-                {/* Dropzone */}
-                <div className="mb-6">
-                    <Label className="mb-2 block">Chọn file Excel nhập môn học</Label>
-                    <div
-                        className={`transition border-2 border-dashed cursor-pointer rounded-xl 
-                            ${fileError ? 'border-red-500' : 'border-gray-300 dark:border-gray-700'}
-                            ${isDragActive ? 'border-brand-500 bg-gray-100 dark:bg-gray-800' : 'hover:border-brand-500 dark:hover:border-brand-500'}
-                        `}
-                    >
-                        <div
-                            {...getRootProps()}
-                            className={`rounded-xl p-7 lg:p-10
-                                ${isDragActive
-                                    ? "bg-gray-100 dark:bg-gray-800"
-                                    : "bg-gray-50 dark:bg-gray-900"
-                                }
-                            `}
-                        >
-                            <input {...getInputProps()} />
-
-                            <div className="flex flex-col items-center">
-                                {/* Icon */}
-                                <div className="mb-4 flex justify-center">
-                                    <div className={`flex h-16 w-16 items-center justify-center rounded-full 
-                                        ${selectedFile
-                                            ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
-                                            : 'bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-400'
-                                        }`}
-                                    >
-                                        <FontAwesomeIcon
-                                            icon={selectedFile ? faFileExcel : faCloudArrowUp}
-                                            className="text-2xl"
-                                        />
-                                    </div>
+                {/* Hiển thị kết quả import */}
+                {importResult && (
+                    <div className="mb-6 space-y-4">
+                        {/* Thống kê tổng quan */}
+                        <div className={`p-4 rounded-xl border ${importResult.failed === 0
+                                ? 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800/50'
+                                : 'bg-yellow-50 border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800/50'
+                            }`}>
+                            <div className="flex items-center gap-3 mb-3">
+                                <div className={`flex h-10 w-10 items-center justify-center rounded-full ${importResult.failed === 0
+                                        ? 'bg-green-100 dark:bg-green-800/50'
+                                        : 'bg-yellow-100 dark:bg-yellow-800/50'
+                                    }`}>
+                                    <FontAwesomeIcon
+                                        icon={importResult.failed === 0 ? faFileExcel : faLightbulb}
+                                        className={`text-lg ${importResult.failed === 0
+                                                ? 'text-green-600 dark:text-green-400'
+                                                : 'text-yellow-600 dark:text-yellow-400'
+                                            }`}
+                                    />
                                 </div>
+                                <div>
+                                    <h4 className={`font-semibold ${importResult.failed === 0
+                                            ? 'text-green-800 dark:text-green-300'
+                                            : 'text-yellow-800 dark:text-yellow-300'
+                                        }`}>
+                                        {importResult.failed === 0 ? 'Nhập thành công!' : 'Hoàn tất với một số lỗi'}
+                                    </h4>
+                                    <p className={`text-sm ${importResult.failed === 0
+                                            ? 'text-green-600 dark:text-green-400'
+                                            : 'text-yellow-600 dark:text-yellow-400'
+                                        }`}>
+                                        Đã xử lý {importResult.totalRows} dòng dữ liệu
+                                    </p>
+                                </div>
+                            </div>
 
-                                {/* Text Content */}
-                                {selectedFile ? (
-                                    <>
-                                        <p className="mb-2 font-medium text-gray-800 dark:text-white/90">
-                                            {selectedFile.name}
-                                        </p>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                                            {(selectedFile.size / 1024).toFixed(2)} KB
-                                        </p>
-                                        <button
-                                            type="button"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                removeFile();
-                                            }}
-                                            className="mt-3 text-sm text-red-500 hover:text-red-600 underline"
-                                        >
-                                            Hủy
-                                        </button>
-                                    </>
-                                ) : (
-                                    <>
-                                        <h4 className="mb-2 font-semibold text-gray-800 dark:text-white/90">
-                                            {isDragActive ? "Thả file vào đây" : "Kéo & thả file vào đây"}
-                                        </h4>
-                                        <p className="text-center text-sm text-gray-500 dark:text-gray-400 mb-3">
-                                            Chỉ chấp nhận file Excel (.xlsx)
-                                        </p>
-                                        <span className="font-medium underline text-sm text-brand-500">
-                                            Chọn file
-                                        </span>
-                                    </>
-                                )}
+                            {/* Grid thống kê */}
+                            <div className="grid grid-cols-3 gap-3 mt-4">
+                                <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-center border border-gray-200 dark:border-gray-700">
+                                    <p className="text-2xl font-bold text-gray-800 dark:text-white">
+                                        {importResult.totalRows}
+                                    </p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">Tổng dòng</p>
+                                </div>
+                                <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-center border border-green-200 dark:border-green-700">
+                                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                                        {importResult.success}
+                                    </p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">Thành công</p>
+                                </div>
+                                <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-center border border-red-200 dark:border-red-700">
+                                    <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+                                        {importResult.failed}
+                                    </p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">Thất bại</p>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    {fileError && (
-                        <p className="mt-2 text-sm text-red-500">{fileError}</p>
-                    )}
-                </div>
 
-                {/* Buttons */}
-                <div className="flex justify-end gap-3">
-                    <Button variant="outline" onClick={handleClose} disabled={isUploading}>
-                        Hủy
-                    </Button>
-                    <Button
-                        onClick={handleUpload}
-                        disabled={!selectedFile || isUploading}
-                        startIcon={isUploading ? undefined : <FontAwesomeIcon icon={faFileExcel} />}
-                    >
-                        {isUploading ? "Đang xử lý..." : "Xác nhận"}
-                    </Button>
-                </div>
+                        {/* Bảng chi tiết lỗi */}
+                        {importResult.errors && importResult.errors.length > 0 && (
+                            <div className="rounded-xl border border-red-200 dark:border-red-800/50 overflow-hidden">
+                                <div className="bg-red-50 dark:bg-red-900/20 px-4 py-3 border-b border-red-200 dark:border-red-800/50">
+                                    <h4 className="font-semibold text-red-800 dark:text-red-300 flex items-center gap-2">
+                                        <FontAwesomeIcon icon={faLightbulb} className="text-red-500" />
+                                        Chi tiết các dòng lỗi ({importResult.errors.length})
+                                    </h4>
+                                </div>
+                                <div className="max-h-48 overflow-y-auto">
+                                    <table className="w-full">
+                                        <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
+                                            <tr className="grid grid-cols-[15%_25%_60%]">
+                                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                                                    Dòng
+                                                </th>
+                                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                                                    Mã môn
+                                                </th>
+                                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                                                    Lỗi
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                                            {importResult.errors.map((err, idx) => (
+                                                <tr key={idx} className="grid grid-cols-[15%_25%_60%] bg-white dark:bg-gray-900">
+                                                    <td className="px-4 py-2 text-sm text-gray-800 dark:text-gray-200">
+                                                        <Badge variant="light" color="error">
+                                                            {err.row}
+                                                        </Badge>
+                                                    </td>
+                                                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 font-mono">
+                                                        {err.maMonHoc || '-'}
+                                                    </td>
+                                                    <td className="px-4 py-2 text-sm text-red-600 dark:text-red-400">
+                                                        {err.error}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Buttons sau khi import */}
+                        <div className="flex justify-end gap-3 pt-2">
+                            <Button variant="outline" onClick={resetForNewUpload}>
+                                Nhập file khác
+                            </Button>
+                            <Button onClick={handleCloseAndNotify}>
+                                Hoàn tất
+                            </Button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Hiển thị lỗi tổng quát */}
+                {importError && (
+                    <div className="mb-6 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50">
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 dark:bg-red-800/50">
+                                <FontAwesomeIcon
+                                    icon={faLightbulb}
+                                    className="text-lg text-red-600 dark:text-red-400"
+                                />
+                            </div>
+                            <div>
+                                <h4 className="font-semibold text-red-800 dark:text-red-300">
+                                    Lỗi nhập dữ liệu
+                                </h4>
+                                <p className="text-sm text-red-600 dark:text-red-400">
+                                    {importError}
+                                </p>
+                            </div>
+                        </div>
+                        <div className="mt-4 flex justify-end">
+                            <Button variant="outline" size="sm" onClick={resetForNewUpload}>
+                                Thử lại
+                            </Button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Form upload - chỉ hiển thị khi chưa có kết quả */}
+                {!importResult && !importError && (
+                    <>
+                        {/* Button tải file mẫu */}
+                        <div className="mb-6">
+                            <Button
+                                variant="outline"
+                                onClick={handleDownloadTemplate}
+                                startIcon={<FontAwesomeIcon icon={faDownload} />}
+                                className="w-full"
+                            >
+                                Tải file Excel mẫu
+                            </Button>
+                        </div>
+
+                        {/* Hướng dẫn */}
+                        <div className="mb-6 p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50">
+                            <div className="flex items-start gap-3">
+                                <FontAwesomeIcon
+                                    icon={faLightbulb}
+                                    className="text-blue-500 mt-0.5"
+                                />
+                                <div>
+                                    <h4 className="font-semibold text-blue-800 dark:text-blue-300 mb-1">
+                                        Hướng dẫn
+                                    </h4>
+                                    <ul className="text-sm text-blue-700/80 dark:text-blue-300/70 space-y-1">
+                                        <li>• Tải file mẫu và điền thông tin môn học theo định dạng</li>
+                                        <li>• Các cột bắt buộc: Mã môn, Tên môn, Loại môn, Số tín chỉ</li>
+                                        <li>• Loại môn: DAI_CUONG, TU_CHON, CHUYEN_NGANH</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Dropzone */}
+                        <div className="mb-6">
+                            <Label className="mb-2 block">Chọn file Excel nhập môn học</Label>
+                            <div
+                                className={`transition border-2 border-dashed cursor-pointer rounded-xl 
+                                    ${fileError ? 'border-red-500' : 'border-gray-300 dark:border-gray-700'}
+                                    ${isDragActive ? 'border-brand-500 bg-gray-100 dark:bg-gray-800' : 'hover:border-brand-500 dark:hover:border-brand-500'}
+                                `}
+                            >
+                                <div
+                                    {...getRootProps()}
+                                    className={`rounded-xl p-7 lg:p-10
+                                        ${isDragActive
+                                            ? "bg-gray-100 dark:bg-gray-800"
+                                            : "bg-gray-50 dark:bg-gray-900"
+                                        }
+                                    `}
+                                >
+                                    <input {...getInputProps()} />
+
+                                    <div className="flex flex-col items-center">
+                                        {/* Icon */}
+                                        <div className="mb-4 flex justify-center">
+                                            <div className={`flex h-16 w-16 items-center justify-center rounded-full 
+                                                ${selectedFile
+                                                    ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+                                                    : 'bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-400'
+                                                }`}
+                                            >
+                                                <FontAwesomeIcon
+                                                    icon={selectedFile ? faFileExcel : faCloudArrowUp}
+                                                    className="text-2xl"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Text Content */}
+                                        {selectedFile ? (
+                                            <>
+                                                <p className="mb-2 font-medium text-gray-800 dark:text-white/90">
+                                                    {selectedFile.name}
+                                                </p>
+                                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                                    {(selectedFile.size / 1024).toFixed(2)} KB
+                                                </p>
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        removeFile();
+                                                    }}
+                                                    className="mt-3 text-sm text-red-500 hover:text-red-600 underline"
+                                                >
+                                                    Hủy
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <h4 className="mb-2 font-semibold text-gray-800 dark:text-white/90">
+                                                    {isDragActive ? "Thả file vào đây" : "Kéo & thả file vào đây"}
+                                                </h4>
+                                                <p className="text-center text-sm text-gray-500 dark:text-gray-400 mb-3">
+                                                    Chỉ chấp nhận file Excel (.xlsx)
+                                                </p>
+                                                <span className="font-medium underline text-sm text-brand-500">
+                                                    Chọn file
+                                                </span>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                            {fileError && (
+                                <p className="mt-2 text-sm text-red-500">{fileError}</p>
+                            )}
+                        </div>
+
+                        {/* Buttons */}
+                        <div className="flex justify-end gap-3">
+                            <Button variant="outline" onClick={handleClose} disabled={isUploading}>
+                                Hủy
+                            </Button>
+                            <Button
+                                onClick={handleUpload}
+                                disabled={!selectedFile || isUploading}
+                                startIcon={isUploading ? undefined : <FontAwesomeIcon icon={faFileExcel} />}
+                            >
+                                {isUploading ? "Đang xử lý..." : "Xác nhận"}
+                            </Button>
+                        </div>
+                    </>
+                )}
             </div>
         </Modal>
     );
