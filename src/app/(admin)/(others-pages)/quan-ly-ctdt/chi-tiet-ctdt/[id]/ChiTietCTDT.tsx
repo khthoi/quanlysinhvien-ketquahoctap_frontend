@@ -499,7 +499,7 @@ const XemLopHocPhanModal: React.FC<XemLopHocPhanModalProps> = ({
                     <div className="max-w-full overflow-x-auto">
                         <Table>
                             <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
-                                <TableRow className="grid grid-cols-[23%_20%_15%_20%_10%_12%]">
+                                <TableRow className="grid grid-cols-[23%_20%_15%_17%_10%_15%]">
                                     <TableCell isHeader className="px-4 py-3 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-left">
                                         Mã LHP
                                     </TableCell>
@@ -531,7 +531,7 @@ const XemLopHocPhanModal: React.FC<XemLopHocPhanModalProps> = ({
                                     filteredLopHocPhans.map((lhp) => (
                                         <TableRow
                                             key={lhp.id}
-                                            className="grid grid-cols-[23%_20%_15%_20%_10%_12%] items-center"
+                                            className="grid grid-cols-[23%_20%_15%_17%_10%_15%] items-center"
                                         >
                                             <TableCell className="px-4 py-3 font-medium text-gray-800 dark:text-white/90">
                                                 <span className="truncate block max-w-[140px]" title={lhp.maLopHocPhan}>

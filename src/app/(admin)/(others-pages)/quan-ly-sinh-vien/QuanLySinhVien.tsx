@@ -493,6 +493,28 @@ const ViewSinhVienModal: React.FC<ViewSinhVienModalProps> = ({
     );
 };
 
+// ==================== INTERFACES CHO IMPORT EXCEL ====================
+interface ImportSinhVienSuccessRow {
+    row: number;
+    maSinhVien: string;
+    hoTen: string;
+}
+
+interface ImportSinhVienErrorRow {
+    row: number;
+    maSinhVien: string;
+    error: string;
+}
+
+interface ImportSinhVienResult {
+    message?: string;
+    totalRows?: number;
+    success: number;
+    failed: number;
+    errors?: ImportSinhVienErrorRow[];
+    successRows?: ImportSinhVienSuccessRow[];
+}
+
 // ==================== MODAL NHẬP SINH VIÊN EXCEL ====================
 interface ImportSinhVienExcelModalProps {
     isOpen: boolean;
@@ -510,18 +532,21 @@ const ImportSinhVienExcelModal: React.FC<ImportSinhVienExcelModalProps> = ({
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [fileError, setFileError] = useState<string>("");
     const [isUploading, setIsUploading] = useState(false);
+    const [importResult, setImportResult] = useState<ImportSinhVienResult | null>(null);
+    const [importError, setImportError] = useState<string>("");
+    const [activeTab, setActiveTab] = useState<"success" | "error">("success");
+    const [hasImported, setHasImported] = useState(false);
 
     const onDrop = (acceptedFiles: File[], rejectedFiles: any[]) => {
         setFileError("");
 
         if (rejectedFiles.length > 0) {
-            setFileError("Chỉ chấp nhận file Excel (. xlsx)");
+            setFileError("Chỉ chấp nhận file Excel (.xlsx)");
             return;
         }
 
         if (acceptedFiles.length > 0) {
             const file = acceptedFiles[0];
-            // Kiểm tra thêm extension
             if (!file.name.endsWith('.xlsx')) {
                 setFileError("Chỉ chấp nhận file Excel (.xlsx)");
                 return;
@@ -540,7 +565,6 @@ const ImportSinhVienExcelModal: React.FC<ImportSinhVienExcelModalProps> = ({
     });
 
     const handleDownloadTemplate = () => {
-        // Đường dẫn file mẫu - bạn có thể sửa lại sau
         const templateUrl = "/templates/mau-nhap-sinh-vien.xlsx";
         const link = document.createElement("a");
         link.href = templateUrl;
@@ -557,6 +581,8 @@ const ImportSinhVienExcelModal: React.FC<ImportSinhVienExcelModalProps> = ({
         }
 
         setIsUploading(true);
+        setImportResult(null);
+        setImportError("");
 
         try {
             const accessToken = getCookie("access_token");
@@ -571,39 +597,41 @@ const ImportSinhVienExcelModal: React.FC<ImportSinhVienExcelModalProps> = ({
                 body: formData,
             });
 
-            const result = await res.json();
+            const result: ImportSinhVienResult = await res.json();
 
             if (res.ok) {
-                // Kiểm tra nếu có lỗi trong response
-                if (result.errors && result.errors.length > 0) {
-                    const errorMessages = result.errors
-                        .map((err: any) => `Dòng ${err.row} (${err.maSinhVien}): ${err.error}`)
-                        .join("\n");
-                    showAlert(
-                        "warning",
-                        "Nhập sinh viên hoàn tất với cảnh báo",
-                        `Thành công: ${result.success}, Thất bại: ${result.failed}\n${errorMessages}`
-                    );
-                    console.log("Import errors:", result.errors);
-                } else {
-                    showAlert("success", "Thành công", `Nhập sinh viên từ Excel thành công.  Đã thêm ${result.success} sinh viên.`);
-                }
-                handleClose();
-                onSuccess();
+                setImportResult(result);
+                setActiveTab(result.failed > 0 ? "error" : "success");
+                setHasImported(true);
             } else {
-                showAlert("error", "Lỗi", result.message || "Nhập sinh viên thất bại");
+                setImportError((result as any).message || "Nhập sinh viên thất bại");
             }
         } catch (err) {
-            showAlert("error", "Lỗi", "Có lỗi xảy ra khi nhập sinh viên");
+            setImportError("Có lỗi xảy ra khi nhập sinh viên từ Excel");
         } finally {
             setIsUploading(false);
         }
     };
 
     const handleClose = () => {
+        if (hasImported) {
+            onSuccess();
+            if (importResult && importResult.success > 0) {
+                showAlert(
+                    importResult.failed > 0 ? "warning" : "success",
+                    importResult.failed > 0 ? "Hoàn tất với cảnh báo" : "Thành công",
+                    `Đã thêm ${importResult.success} sinh viên${importResult.failed > 0 ? `, ${importResult.failed} lỗi` : ""}`
+                );
+            }
+        }
         setSelectedFile(null);
         setFileError("");
+        setImportResult(null);
+        setImportError("");
+        setActiveTab("success");
+        setHasImported(false);
         onClose();
+        window.scrollTo({ top: 0, behavior: "smooth" });
     };
 
     const removeFile = () => {
@@ -611,145 +639,467 @@ const ImportSinhVienExcelModal: React.FC<ImportSinhVienExcelModalProps> = ({
         setFileError("");
     };
 
+    const resetForNewUpload = () => {
+        setSelectedFile(null);
+        setFileError("");
+        setImportResult(null);
+        setImportError("");
+        setActiveTab("success");
+    };
+
     if (!isOpen) return null;
 
     return (
-        <Modal isOpen={isOpen} onClose={handleClose} className="max-w-lg">
+        <Modal isOpen={isOpen} onClose={handleClose} className="max-w-4xl">
             <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
                 <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
                     Nhập sinh viên bằng Excel
                 </h3>
 
-                {/* Button tải file mẫu */}
-                <div className="mb-6">
-                    <Button
-                        variant="outline"
-                        onClick={handleDownloadTemplate}
-                        startIcon={<FontAwesomeIcon icon={faDownload} />}
-                        className="w-full"
-                    >
-                        Tải file Excel mẫu
-                    </Button>
-                </div>
-
-                {/* Dropzone */}
-                <div className="mb-6">
-                    <Label className="mb-2 block">Chọn file Excel nhập sinh viên</Label>
-                    <div
-                        className={`transition border-2 border-dashed cursor-pointer rounded-xl 
-                            ${fileError ? 'border-red-500' : 'border-gray-300 dark:border-gray-700'}
-                            ${isDragActive ? 'border-brand-500 bg-gray-100 dark: bg-gray-800' : 'hover:border-brand-500 dark:hover:border-brand-500'}
-                        `}
-                    >
-                        <div
-                            {...getRootProps()}
-                            className={`rounded-xl p-7 lg: p-10
-                                ${isDragActive
-                                    ? "bg-gray-100 dark:bg-gray-800"
-                                    : "bg-gray-50 dark:bg-gray-900"
-                                }
-                            `}
-                        >
-                            <input {...getInputProps()} />
-
-                            <div className="flex flex-col items-center">
-                                {/* Icon */}
-                                <div className="mb-4 flex justify-center">
-                                    <div className={`flex h-16 w-16 items-center justify-center rounded-full 
-                                        ${selectedFile
-                                            ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
-                                            : 'bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-400'
-                                        }`}
-                                    >
-                                        <FontAwesomeIcon
-                                            icon={selectedFile ? faFileExcel : faCloudArrowUp}
-                                            className="text-2xl"
-                                        />
-                                    </div>
+                {/* ==================== HIỂN THỊ KẾT QUẢ IMPORT ==================== */}
+                {importResult !== null && (
+                    <div className="space-y-6">
+                        {/* Header tổng kết */}
+                        <div className={`p-5 rounded-xl border ${importResult.failed === 0
+                                ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 dark:from-green-900/20 dark:to-emerald-900/20 dark:border-green-800/50'
+                                : 'bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-200 dark:from-yellow-900/20 dark:to-amber-900/20 dark:border-yellow-800/50'
+                            }`}>
+                            <div className="flex items-center gap-4 mb-4">
+                                <div className={`flex h-12 w-12 items-center justify-center rounded-full ${importResult.failed === 0
+                                        ? 'bg-green-100 dark:bg-green-800/50'
+                                        : 'bg-yellow-100 dark:bg-yellow-800/50'
+                                    }`}>
+                                    <FontAwesomeIcon
+                                        icon={importResult.failed === 0 ? faCircleCheck : faCircleExclamation}
+                                        className={`text-xl ${importResult.failed === 0
+                                                ? 'text-green-600 dark:text-green-400'
+                                                : 'text-yellow-600 dark:text-yellow-400'
+                                            }`}
+                                    />
                                 </div>
+                                <div>
+                                    <h4 className={`text-lg font-semibold ${importResult.failed === 0
+                                            ? 'text-green-800 dark:text-green-300'
+                                            : 'text-yellow-800 dark:text-yellow-300'
+                                        }`}>
+                                        {importResult.failed === 0 ? 'Nhập dữ liệu thành công!' : 'Hoàn tất với một số lỗi'}
+                                    </h4>
+                                    <p className={`text-sm ${importResult.failed === 0
+                                            ? 'text-green-600 dark:text-green-400'
+                                            : 'text-yellow-600 dark:text-yellow-400'
+                                        }`}>
+                                        {importResult.message || `Đã xử lý ${(importResult.success || 0) + (importResult.failed || 0)} dòng dữ liệu`}
+                                    </p>
+                                </div>
+                            </div>
 
-                                {/* Text Content */}
-                                {selectedFile ? (
-                                    <>
-                                        <p className="mb-2 font-medium text-gray-800 dark:text-white/90">
-                                            {selectedFile.name}
-                                        </p>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                                            {(selectedFile.size / 1024).toFixed(2)} KB
-                                        </p>
-                                        <button
-                                            type="button"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                removeFile();
-                                            }}
-                                            className="mt-3 text-sm text-red-500 hover:text-red-600 underline"
-                                        >
-                                            Hủy
-                                        </button>
-                                    </>
-                                ) : (
-                                    <>
-                                        <h4 className="mb-2 font-semibold text-gray-800 dark:text-white/90">
-                                            {isDragActive ? "Thả file vào đây" : "Kéo & thả file vào đây"}
-                                        </h4>
-                                        <p className="text-center text-sm text-gray-500 dark:text-gray-400 mb-3">
-                                            Chỉ chấp nhận file Excel (.xlsx)
-                                        </p>
-                                        <span className="font-medium underline text-sm text-brand-500">
-                                            Chọn file
-                                        </span>
-                                    </>
-                                )}
+                            {/* Grid thống kê */}
+                            <div className="grid grid-cols-3 gap-4">
+                                <div className="bg-white dark:bg-gray-800 rounded-xl p-4 text-center border border-gray-200 dark:border-gray-700 shadow-sm">
+                                    <p className="text-3xl font-bold text-gray-800 dark:text-white">
+                                        {(importResult.success || 0) + (importResult.failed || 0)}
+                                    </p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Tổng số dòng</p>
+                                </div>
+                                <div className="bg-white dark:bg-gray-800 rounded-xl p-4 text-center border border-green-200 dark:border-green-700 shadow-sm">
+                                    <p className="text-3xl font-bold text-green-600 dark:text-green-400">
+                                        {importResult.success || 0}
+                                    </p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Thành công</p>
+                                </div>
+                                <div className="bg-white dark:bg-gray-800 rounded-xl p-4 text-center border border-red-200 dark:border-red-700 shadow-sm">
+                                    <p className="text-3xl font-bold text-red-600 dark:text-red-400">
+                                        {importResult.failed || 0}
+                                    </p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Thất bại</p>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    {fileError && (
-                        <p className="mt-2 text-sm text-red-500">{fileError}</p>
-                    )}
-                </div>
 
-                {/* Buttons */}
-                <div className="flex justify-end gap-3">
-                    <Button variant="outline" onClick={handleClose} disabled={isUploading}>
-                        Hủy
-                    </Button>
-                    <Button
-                        onClick={handleUpload}
-                        disabled={!selectedFile || isUploading}
-                        startIcon={isUploading ? undefined : <FontAwesomeIcon icon={faFileExcel} />}
-                    >
-                        {isUploading ? "Đang xử lý..." : "Nhập sinh viên"}
-                    </Button>
-                </div>
+                        {/* Tabs chuyển đổi */}
+                        {((importResult.successRows && importResult.successRows.length > 0) ||
+                            (importResult.errors && importResult.errors.length > 0)) && (
+                                <div className="flex gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                                    <button
+                                        type="button"
+                                        onClick={() => setActiveTab("success")}
+                                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium rounded-md transition-all ${activeTab === "success"
+                                                ? "bg-white dark:bg-gray-700 text-green-600 dark:text-green-400 shadow-sm"
+                                                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                                            }`}
+                                    >
+                                        <FontAwesomeIcon icon={faCircleCheck} className={activeTab === "success" ? "text-green-500" : ""} />
+                                        Thành công ({importResult.successRows?.length || importResult.success || 0})
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setActiveTab("error")}
+                                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium rounded-md transition-all ${activeTab === "error"
+                                                ? "bg-white dark:bg-gray-700 text-red-600 dark:text-red-400 shadow-sm"
+                                                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                                            }`}
+                                    >
+                                        <FontAwesomeIcon icon={faCircleExclamation} className={activeTab === "error" ? "text-red-500" : ""} />
+                                        Thất bại ({importResult.errors?.length || 0})
+                                    </button>
+                                </div>
+                            )}
+
+                        {/* ==================== TABLE THÀNH CÔNG ==================== */}
+                        {activeTab === "success" && (
+                            <div className="rounded-xl border border-green-200 dark:border-green-800/50 overflow-hidden">
+                                <div className="bg-green-50 dark:bg-green-900/20 px-4 py-3 border-b border-green-200 dark:border-green-800/50">
+                                    <h4 className="font-semibold text-green-800 dark:text-green-300 flex items-center gap-2">
+                                        <FontAwesomeIcon icon={faCircleCheck} className="text-green-500" />
+                                        Chi tiết các dòng nhập thành công
+                                    </h4>
+                                </div>
+
+                                {importResult.successRows && importResult.successRows.length > 0 ? (
+                                    <div className="max-h-64 overflow-y-auto">
+                                        <Table>
+                                            <TableHeader className="bg-gray-50 dark:bg-gray-800 sticky top-0 z-10">
+                                                <TableRow className="grid grid-cols-[15%_35%_50%]">
+                                                    <TableCell
+                                                        isHeader
+                                                        className="px-4 py-3 font-medium text-gray-600 dark:text-gray-300 text-center text-xs uppercase tracking-wider"
+                                                    >
+                                                        Dòng
+                                                    </TableCell>
+                                                    <TableCell
+                                                        isHeader
+                                                        className="px-4 py-3 font-medium text-gray-600 dark:text-gray-300 text-left text-xs uppercase tracking-wider"
+                                                    >
+                                                        Mã sinh viên
+                                                    </TableCell>
+                                                    <TableCell
+                                                        isHeader
+                                                        className="px-4 py-3 font-medium text-gray-600 dark:text-gray-300 text-left text-xs uppercase tracking-wider"
+                                                    >
+                                                        Họ tên
+                                                    </TableCell>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody className="divide-y divide-gray-100 dark:divide-gray-700">
+                                                {importResult.successRows.map((row, idx) => (
+                                                    <TableRow
+                                                        key={idx}
+                                                        className="grid grid-cols-[15%_35%_50%] bg-white dark:bg-gray-900 hover:bg-green-50/50 dark:hover:bg-green-900/10 transition-colors"
+                                                    >
+                                                        <TableCell className="px-4 py-3 text-center">
+                                                            <Badge variant="light" color="success">
+                                                                {row.row}
+                                                            </Badge>
+                                                        </TableCell>
+                                                        <TableCell className="px-4 py-3 text-left">
+                                                            <span className="font-mono text-sm text-gray-800 dark:text-gray-200">
+                                                                {row.maSinhVien}
+                                                            </span>
+                                                        </TableCell>
+                                                        <TableCell className="px-4 py-3 text-left text-gray-700 dark:text-gray-300">
+                                                            {row.hoTen}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center py-12 text-gray-500 dark:text-gray-400">
+                                        {importResult.success > 0 ? (
+                                            <>
+                                                <FontAwesomeIcon icon={faCircleCheck} className="text-4xl mb-3 text-green-400" />
+                                                <p className="text-green-600 dark:text-green-400">
+                                                    Đã nhập thành công {importResult.success} sinh viên
+                                                </p>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <FontAwesomeIcon icon={faFileExcel} className="text-4xl mb-3 text-gray-300 dark:text-gray-600" />
+                                                <p>Không có dòng nào được nhập thành công</p>
+                                            </>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* ==================== TABLE LỖI ==================== */}
+                        {activeTab === "error" && (
+                            <div className="rounded-xl border border-red-200 dark:border-red-800/50 overflow-hidden">
+                                <div className="bg-red-50 dark:bg-red-900/20 px-4 py-3 border-b border-red-200 dark:border-red-800/50">
+                                    <h4 className="font-semibold text-red-800 dark:text-red-300 flex items-center gap-2">
+                                        <FontAwesomeIcon icon={faCircleExclamation} className="text-red-500" />
+                                        Chi tiết các dòng bị lỗi
+                                    </h4>
+                                </div>
+
+                                {importResult.errors && importResult.errors.length > 0 ? (
+                                    <div className="max-h-64 overflow-y-auto">
+                                        <Table>
+                                            <TableHeader className="bg-gray-50 dark:bg-gray-800 sticky top-0 z-10">
+                                                <TableRow className="grid grid-cols-[12%_23%_65%]">
+                                                    <TableCell
+                                                        isHeader
+                                                        className="px-4 py-3 font-medium text-gray-600 dark:text-gray-300 text-center text-xs uppercase tracking-wider"
+                                                    >
+                                                        Dòng
+                                                    </TableCell>
+                                                    <TableCell
+                                                        isHeader
+                                                        className="px-4 py-3 font-medium text-gray-600 dark:text-gray-300 text-left text-xs uppercase tracking-wider"
+                                                    >
+                                                        Mã sinh viên
+                                                    </TableCell>
+                                                    <TableCell
+                                                        isHeader
+                                                        className="px-4 py-3 font-medium text-gray-600 dark:text-gray-300 text-left text-xs uppercase tracking-wider"
+                                                    >
+                                                        Mô tả lỗi
+                                                    </TableCell>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody className="divide-y divide-gray-100 dark:divide-gray-700">
+                                                {importResult.errors.map((err, idx) => (
+                                                    <TableRow
+                                                        key={idx}
+                                                        className="grid grid-cols-[12%_23%_65%] bg-white dark:bg-gray-900 hover:bg-red-50/50 dark:hover:bg-red-900/10 transition-colors"
+                                                    >
+                                                        <TableCell className="px-4 py-3 text-center">
+                                                            <Badge variant="light" color="error">
+                                                                {err.row}
+                                                            </Badge>
+                                                        </TableCell>
+                                                        <TableCell className="px-4 py-3 text-left">
+                                                            <span className="font-mono text-sm text-gray-600 dark:text-gray-400">
+                                                                {err.maSinhVien || 'N/A'}
+                                                            </span>
+                                                        </TableCell>
+                                                        <TableCell className="px-4 py-3 text-left">
+                                                            <span className="text-sm text-red-600 dark:text-red-400">
+                                                                {err.error}
+                                                            </span>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center py-12 text-gray-500 dark:text-gray-400">
+                                        <FontAwesomeIcon icon={faCircleCheck} className="text-4xl mb-3 text-green-400" />
+                                        <p className="text-green-600 dark:text-green-400">Tất cả các dòng đều nhập thành công!</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Buttons sau khi import */}
+                        <div className="flex justify-end gap-3 pt-2">
+                            <Button variant="outline" onClick={resetForNewUpload}>
+                                Nhập file khác
+                            </Button>
+                            <Button onClick={handleClose}>
+                                Hoàn tất
+                            </Button>
+                        </div>
+                    </div>
+                )}
+
+                {/* ==================== HIỂN THỊ LỖI TỔNG QUÁT ==================== */}
+                {importError && importResult === null && (
+                    <div className="mb-6 p-5 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50">
+                        <div className="flex items-center gap-4">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-800/50">
+                                <FontAwesomeIcon
+                                    icon={faCircleExclamation}
+                                    className="text-xl text-red-600 dark:text-red-400"
+                                />
+                            </div>
+                            <div className="flex-1">
+                                <h4 className="font-semibold text-red-800 dark:text-red-300">
+                                    Lỗi nhập dữ liệu
+                                </h4>
+                                <p className="text-sm text-red-600 dark:text-red-400 mt-1">
+                                    {importError}
+                                </p>
+                            </div>
+                        </div>
+                        <div className="mt-4 flex justify-end gap-3">
+                            <Button variant="outline" size="sm" onClick={resetForNewUpload}>
+                                Thử lại
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={handleClose}>
+                                Đóng
+                            </Button>
+                        </div>
+                    </div>
+                )}
+
+                {/* ==================== FORM UPLOAD ==================== */}
+                {importResult === null && !importError && (
+                    <>
+                        {/* Button tải file mẫu */}
+                        <div className="mb-6">
+                            <Button
+                                variant="outline"
+                                onClick={handleDownloadTemplate}
+                                startIcon={<FontAwesomeIcon icon={faDownload} />}
+                                className="w-full"
+                            >
+                                Tải file Excel mẫu
+                            </Button>
+                        </div>
+
+                        {/* Hướng dẫn */}
+                        <div className="mb-6 p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50">
+                            <div className="flex items-start gap-3">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-800/50 flex-shrink-0">
+                                    <FontAwesomeIcon
+                                        icon={faCircleExclamation}
+                                        className="text-blue-500"
+                                    />
+                                </div>
+                                <div>
+                                    <h4 className="font-semibold text-blue-800 dark:text-blue-300 mb-2">
+                                        Hướng dẫn nhập sinh viên
+                                    </h4>
+                                    <ul className="text-sm text-blue-700/80 dark:text-blue-300/70 space-y-1.5">
+                                        <li className="flex items-start gap-2">
+                                            <span className="font-semibold text-blue-500">1.</span>
+                                            <span>Tải file mẫu Excel bằng nút bên trên</span>
+                                        </li>
+                                        <li className="flex items-start gap-2">
+                                            <span className="font-semibold text-blue-500">2.</span>
+                                            <span>Điền thông tin sinh viên theo định dạng trong file mẫu</span>
+                                        </li>
+                                        <li className="flex items-start gap-2">
+                                            <span className="font-semibold text-blue-500">3.</span>
+                                            <span>Các cột bắt buộc: <strong>Mã SV, Họ tên, Ngày sinh, Giới tính, Email, SĐT, Mã lớp</strong></span>
+                                        </li>
+                                        <li className="flex items-start gap-2">
+                                            <span className="font-semibold text-blue-500">4.</span>
+                                            <span>Lớp phải tồn tại trong hệ thống trước khi import</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Dropzone */}
+                        <div className="mb-6">
+                            <Label className="mb-2 block">Chọn file Excel nhập sinh viên</Label>
+                            <div
+                                className={`transition border-2 border-dashed cursor-pointer rounded-xl 
+                                    ${fileError ? 'border-red-500' : 'border-gray-300 dark:border-gray-700'}
+                                    ${isDragActive ? 'border-brand-500 bg-gray-100 dark:bg-gray-800' : 'hover:border-brand-500 dark:hover:border-brand-500'}
+                                `}
+                            >
+                                <div
+                                    {...getRootProps()}
+                                    className={`rounded-xl p-8 lg:p-10
+                                        ${isDragActive
+                                            ? "bg-gray-100 dark:bg-gray-800"
+                                            : "bg-gray-50 dark:bg-gray-900"
+                                        }
+                                    `}
+                                >
+                                    <input {...getInputProps()} />
+
+                                    <div className="flex flex-col items-center">
+                                        <div className="mb-4 flex justify-center">
+                                            <div className={`flex h-16 w-16 items-center justify-center rounded-full 
+                                                ${selectedFile
+                                                    ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+                                                    : 'bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-400'
+                                                }`}
+                                            >
+                                                <FontAwesomeIcon
+                                                    icon={selectedFile ? faFileExcel : faCloudArrowUp}
+                                                    className="text-2xl"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {selectedFile ? (
+                                            <>
+                                                <p className="mb-2 font-medium text-gray-800 dark:text-white/90">
+                                                    {selectedFile.name}
+                                                </p>
+                                                <p className="text-sm text-gray-500 dark:text-gray-400">
+                                                    {(selectedFile.size / 1024).toFixed(2)} KB
+                                                </p>
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        removeFile();
+                                                    }}
+                                                    className="mt-3 text-sm text-red-500 hover:text-red-600 underline"
+                                                >
+                                                    Hủy chọn file
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <h4 className="mb-2 font-semibold text-gray-800 dark:text-white/90">
+                                                    {isDragActive ? "Thả file vào đây" : "Kéo & thả file vào đây"}
+                                                </h4>
+                                                <p className="text-center text-sm text-gray-500 dark:text-gray-400 mb-3">
+                                                    Chỉ chấp nhận file Excel (.xlsx)
+                                                </p>
+                                                <span className="font-medium underline text-sm text-brand-500">
+                                                    Hoặc click để chọn file
+                                                </span>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                            {fileError && (
+                                <p className="mt-2 text-sm text-red-500">{fileError}</p>
+                            )}
+                        </div>
+
+                        {/* Buttons */}
+                        <div className="flex justify-end gap-3">
+                            <Button variant="outline" onClick={handleClose} disabled={isUploading}>
+                                Hủy
+                            </Button>
+                            <Button
+                                onClick={handleUpload}
+                                disabled={!selectedFile || isUploading}
+                                startIcon={isUploading ? <FontAwesomeIcon icon={faSpinner} className="animate-spin" /> : <FontAwesomeIcon icon={faFileExcel} />}
+                            >
+                                {isUploading ? "Đang xử lý..." : "Nhập sinh viên"}
+                            </Button>
+                        </div>
+                    </>
+                )}
             </div>
         </Modal>
     );
 };
 
-// ==================== MODAL XÉT TỐT NGHI���P ====================
+// ==================== MODAL XÉT TỐT NGHIỆP ====================
 interface XetTotNghiepModalProps {
     isOpen: boolean;
     onClose: () => void;
     nienKhoaOptions: NienKhoaOption[];
-    nganhOptions: NganhOption[];
 }
 
 const XetTotNghiepModal: React.FC<XetTotNghiepModalProps> = ({
     isOpen,
     onClose,
     nienKhoaOptions,
-    nganhOptions,
 }) => {
     const [selectedNienKhoaId, setSelectedNienKhoaId] = useState("");
-    const [selectedNganhId, setSelectedNganhId] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isSuccess, setIsSuccess] = useState(false);
 
     const handleClose = () => {
         setSelectedNienKhoaId("");
-        setSelectedNganhId("");
         setError(null);
         setIsLoading(false);
         setIsSuccess(false);
@@ -758,7 +1108,6 @@ const XetTotNghiepModal: React.FC<XetTotNghiepModalProps> = ({
 
     const handleReset = () => {
         setSelectedNienKhoaId("");
-        setSelectedNganhId("");
         setError(null);
         setIsSuccess(false);
     };
@@ -767,20 +1116,12 @@ const XetTotNghiepModal: React.FC<XetTotNghiepModalProps> = ({
         return nienKhoaOptions.find(nk => nk.id.toString() === selectedNienKhoaId);
     };
 
-    const getSelectedNganh = () => {
-        return nganhOptions.find(n => n.id.toString() === selectedNganhId);
-    };
 
     const handleXetTotNghiep = async () => {
         if (!selectedNienKhoaId) {
             setError("Vui lòng chọn niên khóa");
             return;
         }
-        if (!selectedNganhId) {
-            setError("Vui lòng chọn ngành");
-            return;
-        }
-
         setIsLoading(true);
         setError(null);
 
@@ -796,7 +1137,6 @@ const XetTotNghiepModal: React.FC<XetTotNghiepModalProps> = ({
                     },
                     body: JSON.stringify({
                         nienKhoaId: Number(selectedNienKhoaId),
-                        nganhId: Number(selectedNganhId),
                     }),
                 }
             );
@@ -809,8 +1149,7 @@ const XetTotNghiepModal: React.FC<XetTotNghiepModalProps> = ({
                 link.href = url;
 
                 const nienKhoa = getSelectedNienKhoa();
-                const nganh = getSelectedNganh();
-                link.download = `Thống kê sinh viên tốt nghiệp Khoá ${nienKhoa?.maNienKhoa || ''} Ngành ${nganh?.maNganh || ''}.xlsx`;
+                link.download = `Thống kê sinh viên tốt nghiệp Khoá ${nienKhoa?.maNienKhoa || ''}.xlsx`;
 
                 document.body.appendChild(link);
                 link.click();
@@ -847,7 +1186,7 @@ const XetTotNghiepModal: React.FC<XetTotNghiepModalProps> = ({
                             Xét Tốt Nghiệp & Xuất Thống Kê
                         </h3>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Xét và xuất danh sách sinh viên tốt nghiệp theo niên khóa và ngành
+                            Xét và xuất danh sách sinh viên tốt nghiệp theo niên khóa
                         </p>
                     </div>
                 </div>
@@ -869,11 +1208,11 @@ const XetTotNghiepModal: React.FC<XetTotNghiepModalProps> = ({
                                 <ul className="text-sm text-blue-700/80 dark:text-blue-300/70 space-y-1.5">
                                     <li className="flex items-start gap-2">
                                         <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 flex-shrink-0"></span>
-                                        <span>Chọn <strong>Niên khóa</strong> và <strong>Ngành</strong> cần xét tốt nghiệp</span>
+                                        <span>Chọn <strong>Niên khóa</strong> cần xét tốt nghiệp</span>
                                     </li>
                                     <li className="flex items-start gap-2">
                                         <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 flex-shrink-0"></span>
-                                        <span>Hệ thống sẽ xét tốt nghiệp cho tất cả sinh viên thuộc NK và ngành đã chọn</span>
+                                        <span>Hệ thống sẽ xét tốt nghiệp cho tất cả sinh viên thuộc niên khóa đã chọn</span>
                                     </li>
                                     <li className="flex items-start gap-2">
                                         <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 flex-shrink-0"></span>
@@ -890,70 +1229,40 @@ const XetTotNghiepModal: React.FC<XetTotNghiepModalProps> = ({
                     <div className="mb-6 p-5 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700">
                         <h4 className="font-medium text-gray-800 dark:text-white mb-4 flex items-center gap-2">
                             <FontAwesomeIcon icon={faMagnifyingGlass} className="text-gray-500" />
-                            Chọn NK và ngành để xét tốt nghiệp
+                            Chọn niên khóa xét tốt nghiệp
                         </h4>
 
-                        <div className="grid grid-cols-1 md: grid-cols-2 gap-4">
-                            {/* Chọn Niên khóa */}
-                            <div>
-                                <Label className="mb-2 block text-sm font-medium">
-                                    Niên khóa <span className="text-red-500">*</span>
-                                </Label>
-                                <SearchableSelect
-                                    options={nienKhoaOptions.map((nk) => ({
-                                        value: nk.id.toString(),
-                                        label: nk.maNienKhoa,
-                                        secondary: nk.tenNienKhoa,
-                                    }))}
-                                    placeholder="Chọn niên khóa..."
-                                    onChange={(value) => {
-                                        setSelectedNienKhoaId(value);
-                                        setError(null);
-                                    }}
-                                    defaultValue={selectedNienKhoaId}
-                                    showSecondary={true}
-                                    maxDisplayOptions={10}
-                                    searchPlaceholder="Tìm niên khóa..."
-                                />
-                            </div>
-
-                            {/* Chọn Ngành */}
-                            <div>
-                                <Label className="mb-2 block text-sm font-medium">
-                                    Ngành <span className="text-red-500">*</span>
-                                </Label>
-                                <SearchableSelect
-                                    options={nganhOptions.map((n) => ({
-                                        value: n.id.toString(),
-                                        label: n.maNganh,
-                                        secondary: n.tenNganh,
-                                    }))}
-                                    placeholder="Chọn ngành..."
-                                    onChange={(value) => {
-                                        setSelectedNganhId(value);
-                                        setError(null);
-                                    }}
-                                    defaultValue={selectedNganhId}
-                                    showSecondary={true}
-                                    maxDisplayOptions={10}
-                                    searchPlaceholder="Tìm ngành..."
-                                />
-                            </div>
+                        {/* Chọn Niên khóa */}
+                        <div>
+                            <Label className="mb-2 block text-sm font-medium">
+                                Niên khóa <span className="text-red-500">*</span>
+                            </Label>
+                            <SearchableSelect
+                                options={nienKhoaOptions.map((nk) => ({
+                                    value: nk.id.toString(),
+                                    label: nk.maNienKhoa,
+                                    secondary: nk.tenNienKhoa,
+                                }))}
+                                placeholder="Chọn niên khóa..."
+                                onChange={(value) => {
+                                    setSelectedNienKhoaId(value);
+                                    setError(null);
+                                }}
+                                defaultValue={selectedNienKhoaId}
+                                showSecondary={true}
+                                maxDisplayOptions={10}
+                                searchPlaceholder="Tìm niên khóa..."
+                            />
                         </div>
 
                         {/* Hiển thị thông tin đã chọn */}
-                        {(selectedNienKhoaId || selectedNganhId) && (
+                        {(selectedNienKhoaId) && (
                             <div className="mt-4 p-3 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
                                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Thông tin đã chọn: </p>
                                 <div className="flex flex-wrap gap-2">
                                     {selectedNienKhoaId && (
                                         <Badge variant="solid" color="primary">
                                             Niên khóa: {getSelectedNienKhoa()?.tenNienKhoa}
-                                        </Badge>
-                                    )}
-                                    {selectedNganhId && (
-                                        <Badge variant="solid" color="success">
-                                            Ngành: {getSelectedNganh()?.tenNganh}
                                         </Badge>
                                     )}
                                 </div>
@@ -963,8 +1272,8 @@ const XetTotNghiepModal: React.FC<XetTotNghiepModalProps> = ({
                 )}
 
                 {/* Thông tin file sẽ xuất */}
-                {!isSuccess && selectedNienKhoaId && selectedNganhId && (
-                    <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 dark:border-emerald-800/50 dark: bg-emerald-900/20">
+                {!isSuccess && selectedNienKhoaId && (
+                    <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 dark:border-emerald-800/50 dark:bg-emerald-900/20">
                         <div className="p-4">
                             <div className="flex items-start gap-3">
                                 <div className="flex-shrink-0">
@@ -985,12 +1294,12 @@ const XetTotNghiepModal: React.FC<XetTotNghiepModalProps> = ({
                                         <li className="flex items-center gap-2">
                                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                                             <span>
-                                                Tên file: <strong>Thống kê sinh viên tốt nghiệp Khoá {getSelectedNienKhoa()?.maNienKhoa} Ngành {getSelectedNganh()?.maNganh}.xlsx</strong>
+                                                Tên file: <strong>Thống kê sinh viên tốt nghiệp Khoá {getSelectedNienKhoa()?.maNienKhoa}.xlsx</strong>
                                             </span>
                                         </li>
                                         <li className="flex items-center gap-2">
                                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                            <span>Nội dung:  Danh sách sinh viên đạt/không đạt tốt nghiệp</span>
+                                            <span>Nội dung:  Danh sách sinh viên đạt/không đạt tốt nghiệp & xếp loại TN</span>
                                         </li>
                                     </ul>
                                 </div>
@@ -1030,9 +1339,6 @@ const XetTotNghiepModal: React.FC<XetTotNghiepModalProps> = ({
                                 <div className="flex flex-wrap justify-center gap-2">
                                     <Badge variant="solid" color="primary">
                                         Niên khóa: {getSelectedNienKhoa()?.tenNienKhoa}
-                                    </Badge>
-                                    <Badge variant="solid" color="success">
-                                        Ngành: {getSelectedNganh()?.tenNganh}
                                     </Badge>
                                 </div>
                             </div>
@@ -1080,7 +1386,7 @@ const XetTotNghiepModal: React.FC<XetTotNghiepModalProps> = ({
                             </Button>
                             <Button
                                 onClick={handleXetTotNghiep}
-                                disabled={!selectedNienKhoaId || !selectedNganhId || isLoading}
+                                disabled={!selectedNienKhoaId || isLoading}
                                 startIcon={
                                     isLoading
                                         ? <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
@@ -1673,7 +1979,7 @@ export default function QuanLySinhVienPage() {
             setIsBulkCreateAccountModalOpen(false);
         } finally {
             setIsBulkCreatingAccounts(false);
-             // 👉 Cuộn lên đầu trang
+            // 👉 Cuộn lên đầu trang
             window.scrollTo({
                 top: 0,
                 behavior: "smooth",
@@ -1742,7 +2048,7 @@ export default function QuanLySinhVienPage() {
             showAlert("error", "Lỗi", "Có lỗi xảy ra khi xuất phiếu điểm");
         } finally {
             setIsExportingPhieuDiem(false);
-             // 👉 Cuộn lên đầu trang
+            // 👉 Cuộn lên đầu trang
             window.scrollTo({
                 top: 0,
                 behavior: "smooth",
@@ -2227,7 +2533,7 @@ export default function QuanLySinhVienPage() {
                                                         {getTinhTrangLabel(sv.tinhTrang)}
                                                     </Badge>
                                                 </TableCell>
-                                                <TableCell className="px-5 py-4 text-gray-800 dark: text-white/90">
+                                                <TableCell className="px-5 py-4 text-gray-800 dark:text-white/90">
                                                     {sv.lop.maLop}
                                                 </TableCell>
                                                 <TableCell className="px-5 py-4 text-gray-800 dark:text-white/90">
@@ -2543,14 +2849,14 @@ export default function QuanLySinhVienPage() {
                 onClose={closeAddQuyetDinhModal}
                 className="max-w-lg"
             >
-                <div className="p-6 sm: p-8">
+                <div className="p-6 sm:p-8">
                     <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
                         Thêm Quyết định Khen thưởng/Kỷ luật
                     </h3>
 
                     {/* Thông tin sinh viên */}
                     {selectedSinhVienForAdd && (
-                        <div className="mb-6 p-4 bg-gray-50 dark: bg-gray-800/50 rounded-lg border border-gray-200 dark: border-gray-700">
+                        <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
                             <p className="text-sm text-gray-500 dark:text-gray-400">Sinh viên</p>
                             <p className="font-medium text-gray-800 dark:text-white">
                                 {selectedSinhVienForAdd.maSinhVien} - {selectedSinhVienForAdd.hoTen}
@@ -2623,7 +2929,6 @@ export default function QuanLySinhVienPage() {
                 isOpen={isXetTotNghiepModalOpen}
                 onClose={() => setIsXetTotNghiepModalOpen(false)}
                 nienKhoaOptions={nienKhoaOptions}
-                nganhOptions={nganhOptions}
             />
 
             {/* Modal Tạo tài khoản */}
@@ -2645,7 +2950,7 @@ export default function QuanLySinhVienPage() {
 
                     {/* Thông tin sinh viên */}
                     {creatingAccountSinhVien && (
-                        <div className="mb-6 p-4 bg-gray-50 dark: bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+                        <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
                             <div className="space-y-2 text-sm">
                                 <div className="flex justify-between">
                                     <span className="text-gray-500 dark:text-gray-400">Mã SV:</span>
@@ -2676,7 +2981,7 @@ export default function QuanLySinhVienPage() {
                     )}
 
                     {/* Thông tin tài khoản sẽ tạo */}
-                    <div className="mb-6 p-4 bg-blue-50 dark: bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                         <p className="text-sm text-blue-800 dark:text-blue-300 mb-2">
                             <strong>Thông tin tài khoản sẽ được tạo: </strong>
                         </p>
