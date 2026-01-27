@@ -535,6 +535,11 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
         message: string;
     } | null>(null);
 
+    // State cho Export Excel Modal
+    const [isExportExcelModalOpen, setIsExportExcelModalOpen] = useState(false);
+    const [exportingChuongTrinh, setExportingChuongTrinh] = useState<ChuongTrinhDaoTao | null>(null);
+    const [isExporting, setIsExporting] = useState(false);
+
     // ==================== API CALLS ====================
     const fetchChuongTrinhs = async (
         page: number = 1,
@@ -1007,6 +1012,64 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
         }
     };
 
+    // Hàm xử lý export Excel
+    const handleExportExcel = async () => {
+        if (!exportingChuongTrinh) return;
+
+        setIsExporting(true);
+        try {
+            const token = getCookie("access_token");
+            const response = await fetch(
+                `http://localhost:3000/dao-tao/chuong-trinh/export-excel/${exportingChuongTrinh.id}`,
+                {
+                    method: "GET",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            );
+
+            setIsExportExcelModalOpen(false);
+
+            if (!response.ok) {
+                throw new Error("Không thể tải file Excel");
+            }
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+
+            // Tạo tên file theo định dạng: Chương trình đào tạo - Tên ngành
+            const fileName = `Chuong_trinh_dao_tao_${exportingChuongTrinh.nganh.tenNganh.replace(/\s+/g, '_')}.xlsx`;
+            link.download = fileName;
+
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+
+            setAlert({
+                id: Date.now(),
+                variant: "success",
+                title: "Thành công",
+                message: "Xuất file Excel thành công!",
+            });
+            setIsExportExcelModalOpen(false);
+            setExportingChuongTrinh(null);
+        } catch (error) {
+            console.error("Error exporting Excel:", error);
+            setAlert({
+                id: Date.now(),
+                variant: "error",
+                title: "Lỗi",
+                message: "Có lỗi xảy ra khi xuất file Excel!",
+            });
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
     // Open modals
     const openEditChuongTrinhModal = (chuongTrinh: ChuongTrinhDaoTao) => {
         setEditingChuongTrinh(chuongTrinh);
@@ -1310,6 +1373,16 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
                                                                         Chỉnh sửa
                                                                     </DropdownItem>
 
+                                                                    <DropdownItem
+                                                                        onClick={() => {
+                                                                            setExportingChuongTrinh(ct);
+                                                                            setIsExportExcelModalOpen(true);
+                                                                        }}
+                                                                    >
+                                                                        <FontAwesomeIcon icon={faFileExcel} className="w-4 h-4 mr-2" />
+                                                                        Xuất Excel
+                                                                    </DropdownItem>
+
                                                                     <div className="my-1 border-t border-gray-100 dark:border-gray-700" />
 
                                                                     {/* Xóa */}
@@ -1542,7 +1615,7 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
                         (Mã:  {deletingChuongTrinh?.maChuongTrinh})?
                         <br /><br />
                         <span className="text-error-500">
-                           Cần xoá liên kết niên khoá của chương trình này trước khi xoá chương trình.
+                            Cần xoá liên kết niên khoá của chương trình này trước khi xoá chương trình.
                         </span>
                     </p>
                     <div className="flex justify-end gap-3">
@@ -1599,6 +1672,105 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
                         </Button>
                         <Button variant="primary" onClick={confirmDeleteApDung}>
                             Xóa
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
+            {/* Modal Export Excel */}
+            <Modal
+                isOpen={isExportExcelModalOpen}
+                onClose={() => {
+                    setIsExportExcelModalOpen(false);
+                    setExportingChuongTrinh(null);
+                }}
+                className="max-w-lg"
+            >
+                <div className="p-6 sm:p-8">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="flex items-center justify-center w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-xl">
+                            <FontAwesomeIcon
+                                icon={faFileExcel}
+                                className="w-6 h-6 text-green-600 dark:text-green-400"
+                            />
+                        </div>
+                        <h3 className="text-xl font-semibold text-gray-800 dark:text-white/90">
+                            Xuất File Excel
+                        </h3>
+                    </div>
+
+                    <div className="space-y-4 mb-8">
+                        <div className="p-4 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800/30 rounded-lg">
+                            <div className="flex items-start gap-3">
+                                <FontAwesomeIcon
+                                    icon={faCircleInfo}
+                                    className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5"
+                                />
+                                <div className="flex-1">
+                                    <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">
+                                        Thông tin chương trình đào tạo
+                                    </p>
+                                    <div className="space-y-1.5 text-sm text-blue-700 dark:text-blue-300">
+                                        <div className="flex items-center gap-2">
+                                            <FontAwesomeIcon icon={faBookOpen} className="w-4 h-4" />
+                                            <span className="font-medium">Tên:</span>
+                                            <span>{exportingChuongTrinh?.tenChuongTrinh}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <FontAwesomeIcon icon={faListOl} className="w-4 h-4" />
+                                            <span className="font-medium">Mã:</span>
+                                            <span>{exportingChuongTrinh?.maChuongTrinh}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <FontAwesomeIcon icon={faBookOpen} className="w-4 h-4" />
+                                            <span className="font-medium">Ngành:</span>
+                                            <span>{exportingChuongTrinh?.nganh.tenNganh}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-4 bg-gray-50 dark:bg-white/[0.02] border border-gray-200 dark:border-white/[0.05] rounded-lg">
+                            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                                <FontAwesomeIcon icon={faDownload} className="w-4 h-4" />
+                                <span>
+                                    File Excel sẽ được tải về với tên:{" "}
+                                    <span className="font-medium text-gray-900 dark:text-white">
+                                        Chuong_trinh_dao_tao_{exportingChuongTrinh?.nganh.tenNganh.replace(/\s+/g, '_')}.xlsx
+                                    </span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end gap-3">
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setIsExportExcelModalOpen(false);
+                                setExportingChuongTrinh(null);
+                            }}
+                            disabled={isExporting}
+                        >
+                            Hủy
+                        </Button>
+                        <Button
+                            variant="primary"
+                            onClick={handleExportExcel}
+                            disabled={isExporting}
+                            className="flex items-center gap-2"
+                        >
+                            {isExporting ? (
+                                <>
+                                    <span className="animate-spin">⏳</span>
+                                    Đang xuất...
+                                </>
+                            ) : (
+                                <>
+                                    <FontAwesomeIcon icon={faFileExcel} />
+                                    Xác nhận xuất
+                                </>
+                            )}
                         </Button>
                     </div>
                 </div>

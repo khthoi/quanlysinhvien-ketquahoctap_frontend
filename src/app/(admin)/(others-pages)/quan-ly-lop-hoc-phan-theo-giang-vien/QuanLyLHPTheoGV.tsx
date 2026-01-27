@@ -943,7 +943,7 @@ export default function QuanLyLopHocPhanPage() {
                                                 <TableCell className="px-5 py-4 text-gray-800 dark:text-white/90">
                                                     {lhp.nganh.maNganh}
                                                 </TableCell>
-                                                <TableCell className="px-5 py-4 text-gray-800 dark: text-white/90">
+                                                <TableCell className="px-5 py-4 text-gray-800 dark:text-white/90">
                                                     {lhp.monHoc.maMonHoc}
                                                 </TableCell>
                                                 <TableCell className="px-5 py-4 text-gray-800 dark:text-white/90">

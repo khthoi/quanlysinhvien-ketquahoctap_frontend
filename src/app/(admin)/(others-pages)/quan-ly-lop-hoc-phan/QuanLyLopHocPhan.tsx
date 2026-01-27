@@ -45,6 +45,7 @@ import { FaAngleDown } from "react-icons/fa6";
 import Checkbox from "@/components/form/input/Checkbox";
 import Switch from "@/components/form/switch/Switch";
 import { useDropzone } from "react-dropzone";
+import { useRouter } from "next/navigation";
 
 type TrangThai = "DANG_HOC" | "DA_KET_THUC" | "CHUA_BAT_DAU";
 
@@ -115,7 +116,7 @@ interface LopHocPhan {
     ghiChu: string | null;
     ngayTao: string;
     khoaDiem: boolean;
-    giangVien: GiangVien;
+    giangVien: GiangVien | null;
     nienKhoa: NienKhoa;
     nganh: Nganh;
     monHoc: MonHoc;
@@ -269,12 +270,12 @@ const ViewLopHocPhanModal: React.FC<ViewLopHocPhanModalProps> = ({
                         <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Giảng viên</p>
                             <p className="font-medium text-gray-800 dark:text-white">
-                                {lopHocPhan.giangVien.maGiangVien} - {lopHocPhan.giangVien.hoTen}
+                                {lopHocPhan.giangVien?.maGiangVien ?? "Chưa có giảng viên"} - {lopHocPhan.giangVien?.hoTen ?? "Chưa có giảng viên"}
                             </p>
                         </div>
                         <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Email giảng viên</p>
-                            <p className="font-medium text-gray-800 dark:text-white">{lopHocPhan.giangVien.email}</p>
+                            <p className="font-medium text-gray-800 dark:text-white">{lopHocPhan.giangVien?.email ?? "Chưa có email"}</p>
                         </div>
                         <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Ngành</p>
@@ -1673,7 +1674,7 @@ const DownloadBangDiemModal: React.FC<DownloadBangDiemModalProps> = ({
                         <div className="flex justify-between items-center">
                             <span className="text-sm text-gray-500 dark:text-gray-400">Giảng viên:</span>
                             <span className="font-medium text-gray-700 dark:text-gray-300">
-                                {lopHocPhan.giangVien.hoTen}
+                                {lopHocPhan.giangVien?.hoTen ?? "Chưa có giảng viên"}
                             </span>
                         </div>
                         <div className="flex justify-between items-center">
@@ -2004,6 +2005,174 @@ const ThongKeSVTruotMonModal: React.FC<ThongKeSVTruotMonModalProps> = ({
     );
 };
 
+// ==================== MODAL TẠO LỚP HỌC PHẦN ====================
+interface CreateLHPModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    namHocOptions: NamHocOption[];
+}
+
+const CreateLHPModal: React.FC<CreateLHPModalProps> = ({
+    isOpen,
+    onClose,
+    namHocOptions,
+}) => {
+    const router = useRouter();
+    const [selectedNamHocId, setSelectedNamHocId] = useState("");
+    const [selectedHocKy, setSelectedHocKy] = useState("");
+    const [errors, setErrors] = useState({ namHoc: false, hocKy: false });
+
+    // Lấy danh sách học kỳ từ năm học đã chọn
+    const selectedNamHoc = namHocOptions.find(nh => nh.id.toString() === selectedNamHocId);
+    const hocKyOptions = selectedNamHoc?.hocKys || [];
+
+    const handleClose = () => {
+        setSelectedNamHocId("");
+        setSelectedHocKy("");
+        setErrors({ namHoc: false, hocKy: false });
+        onClose();
+    };
+
+    const validateForm = () => {
+        const newErrors = {
+            namHoc: !selectedNamHocId,
+            hocKy: !selectedHocKy,
+        };
+        setErrors(newErrors);
+        return !newErrors.namHoc && !newErrors.hocKy;
+    };
+
+    const handleSubmit = () => {
+        if (!validateForm()) return;
+
+        // Sửa lại logic tìm kiếm
+        const selectedNamHocData = namHocOptions.find(nh => nh.id.toString() === selectedNamHocId);
+        const selectedHocKyData = hocKyOptions.find(hk => hk.id.toString() === selectedHocKy);
+
+        if (!selectedNamHocData || !selectedHocKyData) return;
+
+        // Chuyển trang sử dụng maNamHoc và hocKy làm params
+        router.push(
+            `/them-lop-hoc-phan/${selectedNamHocData.maNamHoc}/hoc-ky/${selectedHocKyData.hocKy}`
+        );
+        handleClose();
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <Modal isOpen={isOpen} onClose={handleClose} className="max-w-lg">
+            <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
+                {/* Header */}
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400">
+                        <FontAwesomeIcon icon={faFileImport} className="text-xl" />
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-semibold text-gray-800 dark:text-white/90">
+                            Tạo Lớp Học Phần
+                        </h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                            Chọn năm học và học kỳ để tạo lớp học phần mới
+                        </p>
+                    </div>
+                </div>
+
+                {/* Thông tin hướng dẫn */}
+                <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <div className="flex gap-3">
+                        <FontAwesomeIcon
+                            icon={faCircleInfo}
+                            className="text-blue-500 dark:text-blue-400 mt-0.5 flex-shrink-0"
+                        />
+                        <div className="text-sm text-blue-700 dark:text-blue-300">
+                            <p className="font-medium mb-1">Hướng dẫn sử dụng:</p>
+                            <ul className="list-disc list-inside space-y-1 text-blue-600 dark:text-blue-400">
+                                <li>Chọn năm học</li>
+                                <li>Chọn học kỳ cần tạo lớp học phần</li>
+                                <li>Bấm xác nhận để tiếp tục</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Form chọn năm học và học kỳ */}
+                <div className="space-y-4 mb-6">
+                    {/* Năm học */}
+                    <div>
+                        <Label className="block mb-2">
+                            Năm học <span className="text-red-500">*</span>
+                        </Label>
+                        <SearchableSelect
+                            options={namHocOptions.map((nh) => ({
+                                value: nh.id.toString(),
+                                label: nh.maNamHoc,
+                                secondary: nh.tenNamHoc,
+                            }))}
+                            placeholder="Chọn năm học"
+                            onChange={(value) => {
+                                setSelectedNamHocId(value);
+                                setSelectedHocKy(""); // Reset học kỳ khi đổi năm học
+                                setErrors(prev => ({ ...prev, namHoc: false }));
+                            }}
+                            defaultValue={selectedNamHocId}
+                            showSecondary={true}
+                            maxDisplayOptions={10}
+                            searchPlaceholder="Tìm năm học..."
+                        />
+                        {errors.namHoc && (
+                            <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
+                                <FontAwesomeIcon icon={faTriangleExclamation} className="text-xs" />
+                                Vui lòng chọn năm học
+                            </p>
+                        )}
+                    </div>
+
+                    {/* Học kỳ */}
+                    <div>
+                        <Label className="block mb-2">
+                            Học kỳ <span className="text-red-500">*</span>
+                        </Label>
+                        <SearchableSelect
+                            options={hocKyOptions.map((hk) => ({
+                                value: hk.id.toString(),
+                                label: `Học kỳ ${hk.hocKy}`,
+                                secondary: `${new Date(hk.ngayBatDau).toLocaleDateString("vi-VN")} - ${new Date(hk.ngayKetThuc).toLocaleDateString("vi-VN")}`,
+                            }))}
+                            placeholder={selectedNamHocId ? "Chọn học kỳ" : "Vui lòng chọn năm học trước"}
+                            onChange={(value) => {
+                                setSelectedHocKy(value);
+                                setErrors(prev => ({ ...prev, hocKy: false }));
+                            }}
+                            defaultValue={selectedHocKy}
+                            showSecondary={true}
+                            maxDisplayOptions={10}
+                            searchPlaceholder="Tìm học kỳ..."
+                            disabled={!selectedNamHocId}
+                        />
+                        {errors.hocKy && (
+                            <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
+                                <FontAwesomeIcon icon={faTriangleExclamation} className="text-xs" />
+                                Vui lòng chọn học kỳ
+                            </p>
+                        )}
+                    </div>
+                </div>
+
+                {/* Buttons */}
+                <div className="flex justify-end gap-3">
+                    <Button variant="outline" onClick={handleClose}>
+                        Hủy
+                    </Button>
+                    <Button onClick={handleSubmit}>
+                        Xác nhận
+                    </Button>
+                </div>
+            </div>
+        </Modal>
+    );
+};
+
 // ==================== ITEMS COUNT INFO COMPONENT ====================
 interface ItemsCountInfoProps {
     pagination: PaginationData;
@@ -2089,6 +2258,9 @@ export default function QuanLyLopHocPhanPage() {
 
     // State để theo dõi dropdown ĐANG MỞ
     const [activeDropdownId, setActiveDropdownId] = useState<number | null>(null);
+    const [isCreateLHPModalOpen, setIsCreateLHPModalOpen] = useState(false);
+    const [isHeaderDropdownOpen, setIsHeaderDropdownOpen] = useState(false); // ← THÊM DÒNG NÀY
+    // State để theo dõi dropdown ĐANG MỞ
 
     const toggleDropdown = (lopHocPhanId: number) => {
         setActiveDropdownId((prev) =>
@@ -2099,6 +2271,16 @@ export default function QuanLyLopHocPhanPage() {
     const closeDropdown = () => {
         setActiveDropdownId(null);
     };
+
+    // THÊM 2 FUNCTION NÀY:
+    const toggleHeaderDropdown = () => {
+        setIsHeaderDropdownOpen((prev) => !prev);
+    };
+
+    const closeHeaderDropdown = () => {
+        setIsHeaderDropdownOpen(false);
+    };
+
 
     const [errors, setErrors] = useState({
         maLopHocPhan: false,
@@ -2170,6 +2352,8 @@ export default function QuanLyLopHocPhanPage() {
             console.error("Không thể tải danh sách môn học:", err);
         }
     };
+
+
 
     // Fetch danh sách giảng viên (có thể lọc theo môn học)
     const fetchGiangVien = async (monHocIdParam?: string) => {
@@ -2510,36 +2694,91 @@ export default function QuanLyLopHocPhanPage() {
                             />
                         </div>
                     </div>
-                    {/* Thay thế phần này trong JSX */}
-                    <div className="flex gap-2 mr-1 ml-auto">
+                    {/* Dropdown thao tác chính */}
+                    <div className="relative inline-block">
                         <Button
-                            variant="primary"
-                            onClick={() => setIsThongKeLHPModalOpen(true)}
-                            startIcon={<FontAwesomeIcon icon={faChartBar} />}
+                            variant="outline"
+                            onClick={toggleHeaderDropdown}  // ← ĐỔI TỪ toggleDropdown(-1)
+                            className="dropdown-toggle"
+                            endIcon={<FaAngleDown
+                                className={`text-gray-500 transition-transform duration-300 ease-in-out ${isHeaderDropdownOpen ? "rotate-180" : "rotate-0"}`}  // ← ĐỔI
+                            />}
                         >
-                            TK LHP đề xuất
+                            Thao tác
                         </Button>
-                        <Button
-                            variant="primary"
-                            onClick={() => setIsThongKeSVTruotMonModalOpen(true)}
-                            startIcon={<FontAwesomeIcon icon={faUserXmark} />}
+
+                        <Dropdown
+                            isOpen={isHeaderDropdownOpen}  // ← ĐỔI TỪ activeDropdownId === -1
+                            onClose={closeHeaderDropdown}  // ← ĐỔI TỪ closeDropdown
+                            className="w-56 mt-2 right-0 border-2 border-gray-300 dark:border-gray-700 shadow-lg rounded-lg"
                         >
-                            TK SV Trượt môn
-                        </Button>
-                        <Button
-                            variant="primary"
-                            onClick={() => setIsImportLHPExcelModalOpen(true)}
-                            startIcon={<FontAwesomeIcon icon={faFileImport} />}
-                        >
-                            Nhập LHP
-                        </Button>
-                        <Button
-                            variant="primary"
-                            onClick={() => setIsImportSinhVienExcelModalOpen(true)}
-                            startIcon={<FontAwesomeIcon icon={faFileExcel} />}
-                        >
-                            Thêm SV vào LHP
-                        </Button>
+                            <div className="py-1">
+                                <DropdownItem
+                                    tag="button"
+                                    onClick={() => {
+                                        setIsCreateLHPModalOpen(true);
+                                        closeHeaderDropdown();  // ← ĐỔI
+                                    }}
+                                    className="flex items-center gap-2"
+                                >
+                                    <FontAwesomeIcon icon={faFileImport} className="w-4" />
+                                    Tạo Lớp Học Phần
+                                </DropdownItem>
+
+                                <DropdownItem
+                                    tag="button"
+                                    onClick={() => {
+                                        setIsImportLHPExcelModalOpen(true);
+                                        closeHeaderDropdown();  // ← ĐỔI
+                                    }}
+                                    className="flex items-center gap-2"
+                                >
+                                    <FontAwesomeIcon icon={faFileImport} className="w-4" />
+                                    Nhập LHP từ Excel
+                                </DropdownItem>
+
+                                <DropdownItem
+                                    tag="button"
+                                    onClick={() => {
+                                        setIsImportSinhVienExcelModalOpen(true);
+                                        closeHeaderDropdown();  // ← ĐỔI
+                                    }}
+                                    className="flex items-center gap-2"
+                                >
+                                    <FontAwesomeIcon icon={faFileExcel} className="w-4" />
+                                    Thêm SV vào LHP
+                                </DropdownItem>
+
+                                <div className="my-1 border-t border-gray-100 dark:border-gray-700" />
+
+                                <DropdownItem
+                                    tag="button"
+                                    onClick={() => {
+                                        setIsThongKeLHPModalOpen(true);
+                                        closeHeaderDropdown();
+                                    }}
+                                    className="flex items-center gap-2 px-3 py-2 rounded-md"
+                                >
+                                    <FontAwesomeIcon icon={faChartBar} className="w-4" />
+                                    TK LHP đề xuất
+                                </DropdownItem>
+
+                                <DropdownItem
+                                    tag="button"
+                                    onClick={() => {
+                                        setIsThongKeSVTruotMonModalOpen(true);
+                                        closeHeaderDropdown();
+                                    }}
+                                    className="flex items-center gap-2 px-3 py-2 rounded-md
+               transition-colors duration-200
+               hover:bg-red-100 hover:text-red-700
+               dark:hover:bg-red-900/30 dark:hover:text-red-300"
+                                >
+                                    <FontAwesomeIcon icon={faUserXmark} className="w-4" />
+                                    TK SV Trượt môn
+                                </DropdownItem>
+                            </div>
+                        </Dropdown>
                     </div>
                 </div>
 
@@ -2728,7 +2967,12 @@ export default function QuanLyLopHocPhanPage() {
                                                 <TableCell className="px-5 py-4 text-gray-800 dark:text-white/90">
                                                     {lhp.maLopHocPhan}
                                                 </TableCell>
-                                                <TableCell className="px-5 py-4 text-gray-800 dark:text-white/90">
+                                                <TableCell
+                                                    className={`px-5 py-4 font-medium ${lhp.giangVien?.hoTen
+                                                            ? "text-gray-800 dark:text-white/90"
+                                                            : "text-red-600 dark:text-red-400"
+                                                        }`}
+                                                >
                                                     {lhp.giangVien?.hoTen ?? "Chưa có giảng viên"}
                                                 </TableCell>
                                                 <TableCell className="px-5 py-4 text-gray-800 dark:text-white/90">
@@ -2768,8 +3012,11 @@ export default function QuanLyLopHocPhanPage() {
                                                             <div className="py-1">
                                                                 <DropdownItem
                                                                     tag="button"
-                                                                    onItemClick={closeDropdown}
-                                                                    onClick={() => openViewModal(lhp)}
+                                                                    onClick={() => {
+                                                                        openViewModal(lhp);
+                                                                        closeDropdown();
+                                                                    }}
+
                                                                 >
                                                                     <FontAwesomeIcon icon={faEye} className="mr-2 w-4" />
                                                                     Xem chi tiết
@@ -2777,16 +3024,16 @@ export default function QuanLyLopHocPhanPage() {
 
                                                                 <DropdownItem
                                                                     tag="button"
-                                                                    onItemClick={closeDropdown}
                                                                     onClick={() => openEditModal(lhp)}
+                                                                    onItemClick={closeDropdown}
                                                                 >
                                                                     <FontAwesomeIcon icon={faEdit} className="mr-2 w-4" />
                                                                     Chỉnh sửa
                                                                 </DropdownItem>
+
                                                                 <DropdownItem
                                                                     tag="a"
                                                                     href={`http://localhost:3001/quan-ly-lop-hoc-phan/quan-ly-sv-lhp/${lhp.id}`}
-                                                                    onItemClick={closeDropdown}
                                                                 >
                                                                     <FontAwesomeIcon icon={faInfoCircle} className="mr-2 w-4" />
                                                                     Chi tiết lớp
@@ -2794,8 +3041,8 @@ export default function QuanLyLopHocPhanPage() {
 
                                                                 <DropdownItem
                                                                     tag="button"
+                                                                    onClick={() => { openDownloadModal(lhp) }}
                                                                     onItemClick={closeDropdown}
-                                                                    onClick={() => openDownloadModal(lhp)}
                                                                 >
                                                                     <FontAwesomeIcon icon={faFileArrowDown} className="mr-2 w-4" />
                                                                     Tải xuống Excel
@@ -2806,8 +3053,8 @@ export default function QuanLyLopHocPhanPage() {
                                                                 <DropdownItem
                                                                     tag="button"
                                                                     className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/30"
-                                                                    onItemClick={closeDropdown}
                                                                     onClick={() => openDeleteModal(lhp)}
+                                                                    onItemClick={closeDropdown}
                                                                 >
                                                                     <FontAwesomeIcon icon={faTrash} className="mr-2 w-4" />
                                                                     Xóa
@@ -2922,6 +3169,13 @@ export default function QuanLyLopHocPhanPage() {
                 onClose={() => setIsThongKeSVTruotMonModalOpen(false)}
                 namHocOptions={namHocOptions}
                 showAlert={showAlert}
+            />
+
+            {/* Modal Tạo Lớp Học Phần */}
+            <CreateLHPModal
+                isOpen={isCreateLHPModalOpen}
+                onClose={() => setIsCreateLHPModalOpen(false)}
+                namHocOptions={namHocOptions}
             />
         </div>
     );
