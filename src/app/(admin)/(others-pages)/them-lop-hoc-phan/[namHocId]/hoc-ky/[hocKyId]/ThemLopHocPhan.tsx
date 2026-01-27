@@ -37,6 +37,7 @@ import SearchableSelect from "@/components/form/SelectCustom";
 import { Dropdown } from "@/components/ui/dropdown/Dropdown";
 import { DropdownItem } from "@/components/ui/dropdown/DropdownItem";
 import { FaAngleDown } from "react-icons/fa6";
+import Switch from "@/components/form/switch/Switch";
 
 // ==================== INTERFACES ====================
 interface MonHoc {
@@ -180,6 +181,7 @@ export default function ThemLopHocPhanPage() {
         maLopHocPhan: "",
         ghiChu: "",
         maGiangVien: "",
+        soSinhVienThamGia: 0,
     });
 
     // State cho dropdown hành động
@@ -210,6 +212,237 @@ export default function ThemLopHocPhanPage() {
 
     // State cho cảnh báo tín chỉ giảng viên trong modal edit
     const [giangVienTinChiWarning, setGiangVienTinChiWarning] = useState<string | null>(null);
+    // State cho cảnh báo số lượng sinh viên trong modal edit
+    const [sinhVienWarning, setSinhVienWarning] = useState<{
+        type: "warning" | "error";
+        message: string;
+    } | null>(null);
+
+    // State cho modal tạo lớp học phần mới
+    const [isCreateLopModalOpen, setIsCreateLopModalOpen] = useState(false);
+    const [createFormData, setCreateFormData] = useState({
+        maLopHocPhan: "",
+        maNganh: "",
+        maNienKhoa: "",
+        maMonHoc: "",
+        maGiangVien: "",
+        soSinhVienThamGia: 40,
+        ghiChu: "",
+        phanBoLaiSinhVien: false,
+    });
+    const [createGiangVienWarning, setCreateGiangVienWarning] = useState<string | null>(null);
+    const [createSinhVienWarning, setCreateSinhVienWarning] = useState<{
+        type: "warning" | "error";
+        message: string;
+    } | null>(null);
+    const [phanBoPreview, setPhanBoPreview] = useState<{
+        danhSachLop: { maLopHocPhan: string; soSinhVien: number }[];
+        lopMoi: { maLopHocPhan: string; soSinhVien: number };
+        isValid: boolean;
+        message?: string;
+    } | null>(null);
+
+    // Map lưu số lượng sinh viên gốc theo ngành + niên khóa + môn học (từ API)
+    const [originalSinhVienMap, setOriginalSinhVienMap] = useState<Map<string, number>>(new Map());
+
+    // Tạo key cho map sinh viên
+    const getSinhVienMapKey = (maNganh: string, maNienKhoa: string, maMonHoc: string) => {
+        return `${maNganh}_${maNienKhoa}_${maMonHoc}`;
+    };
+
+    // Lấy danh sách unique ngành từ data cho modal tạo
+    const uniqueNganhsForCreate = useMemo(() => {
+        const nganhs = [...new Set(lopHocPhans.map(lhp => lhp.maNganh))];
+        return nganhs.map(nganh => ({ value: nganh, label: nganh }));
+    }, [lopHocPhans]);
+
+    // Lấy danh sách unique niên khóa từ data cho modal tạo
+    const uniqueNienKhoasForCreate = useMemo(() => {
+        const nienKhoas = [...new Set(lopHocPhans.map(lhp => lhp.maNienKhoa))];
+        return nienKhoas.map(nk => ({ value: nk, label: nk }));
+    }, [lopHocPhans]);
+
+    // Lấy danh sách unique môn học từ data cho modal tạo
+    const uniqueMonHocsForCreate = useMemo(() => {
+        const monHocs = [...new Set(lopHocPhans.map(lhp => lhp.maMonHoc))];
+        return monHocs.map(mh => {
+            const lhp = lopHocPhans.find(l => l.maMonHoc === mh);
+            return {
+                value: mh,
+                label: mh,
+                soTinChi: lhp?.soTinChi || 0,
+            };
+        });
+    }, [lopHocPhans]);
+
+    // Hàm tạo mã lớp học phần tự động
+    const generateMaLopHocPhan = (maNganh: string, maNienKhoa: string, maMonHoc: string): string => {
+        if (!maNganh || !maNienKhoa || !maMonHoc) return "";
+
+        // Lọc các lớp học phần cùng ngành, niên khóa, môn học
+        const existingLops = lopHocPhans.filter(
+            lhp => lhp.maNganh === maNganh && lhp.maNienKhoa === maNienKhoa && lhp.maMonHoc === maMonHoc
+        );
+
+        // Tìm số thứ tự lớp phù hợp
+        let soThuTu = 1;
+        while (true) {
+            const maLopMoi = `${maMonHoc}_${maNienKhoa}_${maNganh}_${soThuTu}`;
+            const isExist = existingLops.some(lhp => lhp.maLopHocPhan === maLopMoi);
+            if (!isExist) {
+                return maLopMoi;
+            }
+            soThuTu++;
+        }
+    };
+
+    // Hàm lấy số tín chỉ của môn học
+    const getSoTinChiMonHoc = (maMonHoc: string): number => {
+        const lhp = lopHocPhans.find(l => l.maMonHoc === maMonHoc);
+        return lhp?.soTinChi || 0;
+    };
+
+    // Hàm tính phân bổ sinh viên
+    const calculatePhanBoSinhVien = (
+        maNganh: string,
+        maNienKhoa: string,
+        maMonHoc: string,
+        maLopMoi: string
+    ): {
+        danhSachLop: { maLopHocPhan: string; soSinhVien: number }[];
+        lopMoi: { maLopHocPhan: string; soSinhVien: number };
+        isValid: boolean;
+        message?: string;
+    } => {
+        const MIN_SINH_VIEN = 20;
+
+        // Lấy tổng sinh viên gốc của nhóm
+        const key = getSinhVienMapKey(maNganh, maNienKhoa, maMonHoc);
+        const tongSinhVienGoc = originalSinhVienMap.get(key) || 0;
+
+        // Lấy danh sách lớp hiện tại của nhóm
+        const existingLops = lopHocPhans.filter(
+            lhp => lhp.maNganh === maNganh && lhp.maNienKhoa === maNienKhoa && lhp.maMonHoc === maMonHoc
+        );
+
+        // Tổng số lớp bao gồm cả lớp mới
+        const tongSoLop = existingLops.length + 1;
+
+        // Chia đều số sinh viên
+        const soSinhVienMoiLop = Math.floor(tongSinhVienGoc / tongSoLop);
+        const soDu = tongSinhVienGoc % tongSoLop;
+
+        // Kiểm tra nếu số sinh viên mỗi lớp không đủ tối thiểu
+        if (soSinhVienMoiLop < MIN_SINH_VIEN) {
+            return {
+                danhSachLop: [],
+                lopMoi: { maLopHocPhan: maLopMoi, soSinhVien: 0 },
+                isValid: false,
+                message: `Không thể phân bổ! Số sinh viên mỗi lớp (${soSinhVienMoiLop} SV) thấp hơn mức tối thiểu ${MIN_SINH_VIEN} SV/lớp.`,
+            };
+        }
+
+        // Phân bổ sinh viên cho các lớp hiện tại
+        const danhSachLop: { maLopHocPhan: string; soSinhVien: number }[] = [];
+
+        // Sắp xếp các lớp theo số thứ tự
+        const sortedLops = [...existingLops].sort((a, b) => {
+            const numA = parseInt(a.maLopHocPhan.split('_').pop() || '0');
+            const numB = parseInt(b.maLopHocPhan.split('_').pop() || '0');
+            return numA - numB;
+        });
+
+        let duDaChia = 0;
+        sortedLops.forEach((lhp, index) => {
+            const soSinhVien = soSinhVienMoiLop + (duDaChia < soDu ? 1 : 0);
+            danhSachLop.push({
+                maLopHocPhan: lhp.maLopHocPhan,
+                soSinhVien,
+            });
+            duDaChia++;
+        });
+
+        // Sinh viên cho lớp mới
+        const soSinhVienLopMoi = soSinhVienMoiLop + (duDaChia < soDu ? 1 : 0);
+
+        return {
+            danhSachLop,
+            lopMoi: { maLopHocPhan: maLopMoi, soSinhVien: soSinhVienLopMoi },
+            isValid: true,
+        };
+    };
+
+    // Lấy danh sách giảng viên phù hợp cho môn học (dùng cho modal tạo)
+    const getGiangVienOptionsForCreate = (maMonHoc: string) => {
+        if (!maMonHoc) return [];
+        const gvsForMonHoc = giangViens.filter(gv =>
+            gv.monHocGiangViens.some(mhgv => mhgv.monHoc.maMonHoc === maMonHoc)
+        );
+        return gvsForMonHoc.map(gv => ({
+            value: gv.maGiangVien,
+            label: gv.maGiangVien,
+            secondary: gv.hoTen,
+        }));
+    };
+
+    // Map tính tổng sinh viên hiện tại theo ngành + niên khóa + môn học
+    const currentSinhVienMap = useMemo(() => {
+        const map = new Map<string, { tongSinhVien: number; danhSachLop: { maLopHocPhan: string; soSinhVien: number }[] }>();
+
+        lopHocPhans.forEach((lhp) => {
+            const key = getSinhVienMapKey(lhp.maNganh, lhp.maNienKhoa, lhp.maMonHoc);
+            if (map.has(key)) {
+                const current = map.get(key)!;
+                map.set(key, {
+                    tongSinhVien: current.tongSinhVien + lhp.soSinhVienThamGia,
+                    danhSachLop: [...current.danhSachLop, { maLopHocPhan: lhp.maLopHocPhan, soSinhVien: lhp.soSinhVienThamGia }],
+                });
+            } else {
+                map.set(key, {
+                    tongSinhVien: lhp.soSinhVienThamGia,
+                    danhSachLop: [{ maLopHocPhan: lhp.maLopHocPhan, soSinhVien: lhp.soSinhVienThamGia }],
+                });
+            }
+        });
+
+        return map;
+    }, [lopHocPhans]);
+
+    // Hàm kiểm tra số lượng sinh viên khi thay đổi
+    const checkSinhVienLimit = (
+        maNganh: string,
+        maNienKhoa: string,
+        maMonHoc: string,
+        maLopHocPhanHienTai: string,
+        soSinhVienMoi: number,
+        soSinhVienCu: number
+    ): { type: "ok" | "warning" | "error"; tongHienTai: number; tongGoc: number; chenh: number } => {
+        const key = getSinhVienMapKey(maNganh, maNienKhoa, maMonHoc);
+        const tongGoc = originalSinhVienMap.get(key) || 0;
+
+        // Tính tổng hiện tại (không bao gồm lớp đang edit)
+        const currentData = currentSinhVienMap.get(key);
+        let tongKhongBaoGomLopHienTai = 0;
+
+        if (currentData) {
+            currentData.danhSachLop.forEach((lop) => {
+                if (lop.maLopHocPhan !== maLopHocPhanHienTai) {
+                    tongKhongBaoGomLopHienTai += lop.soSinhVien;
+                }
+            });
+        }
+
+        const tongMoi = tongKhongBaoGomLopHienTai + soSinhVienMoi;
+        const chenh = tongGoc - tongMoi;
+
+        if (tongMoi > tongGoc) {
+            return { type: "error", tongHienTai: tongMoi, tongGoc, chenh };
+        } else if (tongMoi < tongGoc) {
+            return { type: "warning", tongHienTai: tongMoi, tongGoc, chenh };
+        }
+
+        return { type: "ok", tongHienTai: tongMoi, tongGoc, chenh };
+    };
 
     // ==================== COMPUTED VALUES ====================
 
@@ -370,6 +603,218 @@ export default function ThemLopHocPhanPage() {
         }));
     };
 
+    // Mở modal tạo lớp học phần mới
+    const openCreateLopModal = () => {
+        setCreateFormData({
+            maLopHocPhan: "",
+            maNganh: "",
+            maNienKhoa: "",
+            maMonHoc: "",
+            maGiangVien: "",
+            soSinhVienThamGia: 40,
+            ghiChu: "",
+            phanBoLaiSinhVien: false,
+        });
+        setCreateGiangVienWarning(null);
+        setCreateSinhVienWarning(null);
+        setPhanBoPreview(null);
+        setIsCreateLopModalOpen(true);
+    };
+
+    // Đóng modal tạo lớp học phần mới
+    const closeCreateLopModal = () => {
+        setIsCreateLopModalOpen(false);
+        setCreateFormData({
+            maLopHocPhan: "",
+            maNganh: "",
+            maNienKhoa: "",
+            maMonHoc: "",
+            maGiangVien: "",
+            soSinhVienThamGia: 40,
+            ghiChu: "",
+            phanBoLaiSinhVien: false,
+        });
+        setCreateGiangVienWarning(null);
+        setCreateSinhVienWarning(null);
+        setPhanBoPreview(null);
+    };
+
+    // Xử lý thay đổi form tạo lớp học phần
+    const handleCreateFormChange = (field: string, value: string | number | boolean) => {
+        setCreateFormData((prev) => {
+            const newData = { ...prev, [field]: value };
+
+            // Tự động tạo mã lớp học phần khi có đủ thông tin
+            if (field === "maNganh" || field === "maNienKhoa" || field === "maMonHoc") {
+                const maNganh = field === "maNganh" ? (value as string) : prev.maNganh;
+                const maNienKhoa = field === "maNienKhoa" ? (value as string) : prev.maNienKhoa;
+                const maMonHoc = field === "maMonHoc" ? (value as string) : prev.maMonHoc;
+
+                if (maNganh && maNienKhoa && maMonHoc) {
+                    newData.maLopHocPhan = generateMaLopHocPhan(maNganh, maNienKhoa, maMonHoc);
+
+                    // Tính phân bổ nếu đang bật chế độ phân bổ
+                    if (newData.phanBoLaiSinhVien) {
+                        const preview = calculatePhanBoSinhVien(maNganh, maNienKhoa, maMonHoc, newData.maLopHocPhan);
+                        setPhanBoPreview(preview);
+                        if (preview.isValid) {
+                            newData.soSinhVienThamGia = preview.lopMoi.soSinhVien;
+                        }
+                    }
+                }
+
+                // Reset giảng viên khi đổi môn học
+                if (field === "maMonHoc") {
+                    newData.maGiangVien = "";
+                    setCreateGiangVienWarning(null);
+                }
+            }
+
+            return newData;
+        });
+
+        // Kiểm tra tín chỉ giảng viên
+        if (field === "maGiangVien" && value) {
+            const maMonHoc = createFormData.maMonHoc;
+            const soTinChi = getSoTinChiMonHoc(maMonHoc);
+
+            const currentTinChi = giangVienTinChiMap.get(value as string)?.tongTinChi || 0;
+            const newTinChi = currentTinChi + soTinChi;
+
+            if (newTinChi > 12) {
+                const gv = giangViens.find(g => g.maGiangVien === value);
+                const tenGV = gv ? gv.hoTen : value;
+                setCreateGiangVienWarning(
+                    `Giảng viên "${tenGV}" hiện đang có ${currentTinChi} tín chỉ. ` +
+                    `Nếu thêm lớp này (${soTinChi} TC), tổng sẽ là ${newTinChi} TC, vượt quá giới hạn 12 tín chỉ!`
+                );
+            } else {
+                setCreateGiangVienWarning(null);
+            }
+        }
+
+        // Kiểm tra số lượng sinh viên
+        if (field === "soSinhVienThamGia") {
+            const soSinhVien = value as number;
+            const MIN_SINH_VIEN = 20;
+            const MAX_SINH_VIEN = 40;
+
+            if (soSinhVien < MIN_SINH_VIEN) {
+                setCreateSinhVienWarning({
+                    type: "error",
+                    message: `Số lượng sinh viên tối thiểu của một lớp học phần phải là ${MIN_SINH_VIEN} SV. Hiện tại: ${soSinhVien} SV.`,
+                });
+            } else if (soSinhVien > MAX_SINH_VIEN) {
+                setCreateSinhVienWarning({
+                    type: "error",
+                    message: `Vượt quá số lượng sinh viên tối đa của một lớp học phần (${MAX_SINH_VIEN} SV). Hiện tại: ${soSinhVien} SV.`,
+                });
+            } else {
+                setCreateSinhVienWarning(null);
+            }
+        }
+
+        // Xử lý khi bật/tắt phân bổ lại sinh viên
+        if (field === "phanBoLaiSinhVien") {
+            const isPhanBo = value as boolean;
+            if (isPhanBo && createFormData.maNganh && createFormData.maNienKhoa && createFormData.maMonHoc) {
+                const preview = calculatePhanBoSinhVien(
+                    createFormData.maNganh,
+                    createFormData.maNienKhoa,
+                    createFormData.maMonHoc,
+                    createFormData.maLopHocPhan
+                );
+                setPhanBoPreview(preview);
+
+                if (preview.isValid) {
+                    setCreateFormData(prev => ({
+                        ...prev,
+                        soSinhVienThamGia: preview.lopMoi.soSinhVien,
+                        phanBoLaiSinhVien: true,
+                    }));
+                    setCreateSinhVienWarning(null);
+                } else {
+                    setCreateSinhVienWarning({
+                        type: "error",
+                        message: preview.message || "Không thể phân bổ sinh viên",
+                    });
+                }
+            } else {
+                setPhanBoPreview(null);
+            }
+        }
+    };
+
+    // Xử lý tạo lớp học phần mới
+    const handleCreateLop = () => {
+        const { maLopHocPhan, maNganh, maNienKhoa, maMonHoc, maGiangVien, soSinhVienThamGia, ghiChu, phanBoLaiSinhVien } = createFormData;
+
+        // Validate
+        if (!maLopHocPhan || !maNganh || !maNienKhoa || !maMonHoc || !maGiangVien) {
+            showAlert("error", "Lỗi", "Vui lòng điền đầy đủ thông tin");
+            return;
+        }
+
+        const soTinChi = getSoTinChiMonHoc(maMonHoc);
+
+        // Tạo lớp học phần mới
+        const newLop: LopHocPhanDeXuat = {
+            stt: lopHocPhans.length + 1,
+            maLopHocPhan,
+            ghiChu,
+            maNganh,
+            maNienKhoa,
+            maMonHoc,
+            maNamHoc: namHocId,
+            hocKy: parseInt(hocKyId),
+            soTinChi,
+            maGiangVien,
+            soSinhVienThamGia,
+        };
+
+        // Nếu bật phân bổ lại, cập nhật số sinh viên các lớp khác
+        if (phanBoLaiSinhVien && phanBoPreview && phanBoPreview.isValid) {
+            setLopHocPhans(prev => {
+                const updated = prev.map(lhp => {
+                    const found = phanBoPreview.danhSachLop.find(p => p.maLopHocPhan === lhp.maLopHocPhan);
+                    if (found) {
+                        return { ...lhp, soSinhVienThamGia: found.soSinhVien };
+                    }
+                    return lhp;
+                });
+                return [...updated, newLop];
+            });
+        } else {
+            setLopHocPhans(prev => [...prev, newLop]);
+        }
+
+        closeCreateLopModal();
+        showAlert("success", "Thành công", `Đã thêm lớp học phần ${maLopHocPhan}`);
+    };
+
+    // Kiểm tra có thể tạo lớp hay không
+    const canCreateLop = (): boolean => {
+        const { maLopHocPhan, maNganh, maNienKhoa, maMonHoc, maGiangVien, soSinhVienThamGia, phanBoLaiSinhVien } = createFormData;
+
+        if (!maLopHocPhan || !maNganh || !maNienKhoa || !maMonHoc || !maGiangVien) {
+            return false;
+        }
+
+        if (createGiangVienWarning) {
+            return false;
+        }
+
+        if (createSinhVienWarning?.type === "error") {
+            return false;
+        }
+
+        if (phanBoLaiSinhVien && phanBoPreview && !phanBoPreview.isValid) {
+            return false;
+        }
+
+        return true;
+    };
+
     // ==================== API CALLS ====================
     const fetchGiangViens = async () => {
         try {
@@ -408,6 +853,18 @@ export default function ThemLopHocPhanPage() {
             const json = await res.json();
             if (json.data) {
                 setLopHocPhans(json.data);
+
+                // Tạo map lưu số lượng sinh viên gốc theo ngành + niên khóa + môn học
+                const sinhVienMap = new Map<string, number>();
+                json.data.forEach((lhp: LopHocPhanDeXuat) => {
+                    const key = getSinhVienMapKey(lhp.maNganh, lhp.maNienKhoa, lhp.maMonHoc);
+                    if (sinhVienMap.has(key)) {
+                        sinhVienMap.set(key, sinhVienMap.get(key)! + lhp.soSinhVienThamGia);
+                    } else {
+                        sinhVienMap.set(key, lhp.soSinhVienThamGia);
+                    }
+                });
+                setOriginalSinhVienMap(sinhVienMap);
             }
         } catch (err) {
             showAlert("error", "Lỗi", "Không thể tải kế hoạch tạo lớp học phần");
@@ -463,26 +920,27 @@ export default function ThemLopHocPhanPage() {
         setSelectedFilterMonHoc("");
     };
 
-    // Edit handlers
     const openEditModal = (lhp: LopHocPhanDeXuat) => {
         setEditingLopHocPhan(lhp);
         setEditFormData({
             maLopHocPhan: lhp.maLopHocPhan,
             ghiChu: lhp.ghiChu,
             maGiangVien: lhp.maGiangVien,
+            soSinhVienThamGia: lhp.soSinhVienThamGia,
         });
         setGiangVienTinChiWarning(null); // Reset warning khi mở modal
+        setSinhVienWarning(null); // Reset warning sinh viên khi mở modal
         setIsEditModalOpen(true);
         closeDropdown();
     };
 
-    const handleEditFormChange = (field: string, value: string) => {
+    const handleEditFormChange = (field: string, value: string | number) => {
         setEditFormData((prev) => ({ ...prev, [field]: value }));
 
         // Kiểm tra tín chỉ khi thay đổi giảng viên
         if (field === "maGiangVien" && editingLopHocPhan) {
             const result = checkGiangVienTinChi(
-                value,
+                value as string,
                 editingLopHocPhan.soTinChi,
                 editingLopHocPhan.maGiangVien,
                 editingLopHocPhan.maLopHocPhan
@@ -499,6 +957,55 @@ export default function ThemLopHocPhanPage() {
                 setGiangVienTinChiWarning(null);
             }
         }
+
+        // Kiểm tra số lượng sinh viên khi thay đổi
+        if (field === "soSinhVienThamGia" && editingLopHocPhan) {
+            const soSinhVienMoi = typeof value === "number" ? value : parseInt(value as string) || 0;
+
+            const MIN_SINH_VIEN = 20;
+            const MAX_SINH_VIEN = 40;
+
+            // Kiểm tra số lượng sinh viên tối thiểu
+            if (soSinhVienMoi < MIN_SINH_VIEN) {
+                setSinhVienWarning({
+                    type: "error",
+                    message: `Số lượng sinh viên tối thiểu của một lớp học phần phải là ${MIN_SINH_VIEN} SV. Hiện tại: ${soSinhVienMoi} SV.`,
+                });
+                return;
+            }
+
+            // Kiểm tra số lượng sinh viên tối đa
+            if (soSinhVienMoi > MAX_SINH_VIEN) {
+                setSinhVienWarning({
+                    type: "error",
+                    message: `Vượt quá số lượng sinh viên tối đa của một lớp học phần (${MAX_SINH_VIEN} SV). Hiện tại: ${soSinhVienMoi} SV.`,
+                });
+                return;
+            }
+
+            const result = checkSinhVienLimit(
+                editingLopHocPhan.maNganh,
+                editingLopHocPhan.maNienKhoa,
+                editingLopHocPhan.maMonHoc,
+                editingLopHocPhan.maLopHocPhan,
+                soSinhVienMoi,
+                editingLopHocPhan.soSinhVienThamGia
+            );
+
+            if (result.type === "error") {
+                setSinhVienWarning({
+                    type: "error",
+                    message: `Vượt quá số lượng sinh viên cho phép! Tổng sinh viên của ngành "${editingLopHocPhan.maNganh}" - niên khóa "${editingLopHocPhan.maNienKhoa}" - môn "${editingLopHocPhan.maMonHoc}" sẽ là ${result.tongHienTai} SV, vượt quá giới hạn ${result.tongGoc} SV (thừa ${Math.abs(result.chenh)} SV).`,
+                });
+            } else if (result.type === "warning") {
+                setSinhVienWarning({
+                    type: "warning",
+                    message: `Lưu ý: Tổng sinh viên của ngành "${editingLopHocPhan.maNganh}" - niên khóa "${editingLopHocPhan.maNienKhoa}" - môn "${editingLopHocPhan.maMonHoc}" sẽ là ${result.tongHienTai} SV, thiếu ${result.chenh} SV so với số lượng dự kiến (${result.tongGoc} SV).`,
+                });
+            } else {
+                setSinhVienWarning(null);
+            }
+        }
     };
     const handleSaveEdit = () => {
         if (!editingLopHocPhan) return;
@@ -511,6 +1018,7 @@ export default function ThemLopHocPhanPage() {
                         maLopHocPhan: editFormData.maLopHocPhan,
                         ghiChu: editFormData.ghiChu,
                         maGiangVien: editFormData.maGiangVien,
+                        soSinhVienThamGia: editFormData.soSinhVienThamGia,
                     }
                     : lhp
             )
@@ -518,6 +1026,8 @@ export default function ThemLopHocPhanPage() {
 
         setIsEditModalOpen(false);
         setEditingLopHocPhan(null);
+        setSinhVienWarning(null);
+        setGiangVienTinChiWarning(null);
         showAlert("success", "Thành công", "Đã cập nhật thông tin lớp học phần");
     };
 
@@ -657,9 +1167,16 @@ export default function ThemLopHocPhanPage() {
                     <div className="flex gap-3">
                         <Button
                             variant="primary"
+                            onClick={openCreateLopModal}
+                            startIcon={<FontAwesomeIcon icon={faPlus} />}
+                        >
+                            Thêm lớp học phần
+                        </Button>
+                        <Button
+                            variant="primary"
                             onClick={() => setIsConfirmCreateModalOpen(true)}
                             disabled={lopHocPhans.length === 0}
-                            startIcon={<FontAwesomeIcon icon={faPlus} />}
+                            startIcon={<FontAwesomeIcon icon={faCheck} />}
                         >
                             Xác nhận tạo lớp học phần ({lopHocPhans.length})
                         </Button>
@@ -919,6 +1436,8 @@ export default function ThemLopHocPhanPage() {
                 onClose={() => {
                     setIsEditModalOpen(false);
                     setEditingLopHocPhan(null);
+                    setGiangVienTinChiWarning(null);
+                    setSinhVienWarning(null);
                 }}
                 className="max-w-xl"
             >
@@ -948,11 +1467,32 @@ export default function ThemLopHocPhanPage() {
                                         <span className="text-gray-500 dark:text-gray-400">Số tín chỉ:</span>
                                         <p className="font-medium text-gray-800 dark:text-white">{editingLopHocPhan.soTinChi}</p>
                                     </div>
-                                    <div>
-                                        <span className="text-gray-500 dark:text-gray-400">Số SV tham gia:</span>
-                                        <p className="font-medium text-gray-800 dark:text-white">{editingLopHocPhan.soSinhVienThamGia}</p>
-                                    </div>
                                 </div>
+
+                                {/* Hiển thị thông tin số lượng sinh viên của ngành + niên khóa + môn học */}
+                                {(() => {
+                                    const key = getSinhVienMapKey(editingLopHocPhan.maNganh, editingLopHocPhan.maNienKhoa, editingLopHocPhan.maMonHoc);
+                                    const tongGoc = originalSinhVienMap.get(key) || 0;
+                                    const currentData = currentSinhVienMap.get(key);
+                                    const tongHienTai = currentData?.tongSinhVien || 0;
+                                    const soLop = currentData?.danhSachLop.length || 0;
+
+                                    return (
+                                        <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                                                Thông tin sinh viên cho nhóm này:
+                                            </p>
+                                            <div className="flex flex-wrap gap-2">
+                                                <Badge variant="light" color="info">
+                                                    Tổng sinh viên: {tongGoc} SV
+                                                </Badge>
+                                                <Badge variant="light" color="primary">
+                                                    Số lớp: {soLop}
+                                                </Badge>
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
                             </div>
 
                             {/* Form sửa */}
@@ -973,6 +1513,43 @@ export default function ThemLopHocPhanPage() {
                                         defaultValue={editFormData.ghiChu}
                                         onChange={(value) => handleEditFormChange("ghiChu", value)}
                                     />
+                                </div>
+                                {/* Số lượng sinh viên */}
+                                <div>
+                                    <Label>Số lượng sinh viên</Label>
+                                    <Input
+                                        type="number"
+                                        min={20}
+                                        max={40}
+                                        defaultValue={editFormData.soSinhVienThamGia.toString()}
+                                        onChange={(e) => handleEditFormChange("soSinhVienThamGia", parseInt(e.target.value) || 0)}
+                                    />
+                                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                        Số lượng sinh viên ban đầu: {editingLopHocPhan.soSinhVienThamGia} | Giới hạn: 20 - 40 SV/lớp
+                                    </p>
+                                    {/* Cảnh báo số lượng sinh viên */}
+                                    {sinhVienWarning && (
+                                        <div className={`mt-2 p-3 rounded-lg border ${sinhVienWarning.type === "error"
+                                            ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
+                                            : "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800"
+                                            }`}>
+                                            <div className="flex items-start gap-2">
+                                                <FontAwesomeIcon
+                                                    icon={sinhVienWarning.type === "error" ? faCircleExclamation : faTriangleExclamation}
+                                                    className={`mt-0.5 ${sinhVienWarning.type === "error"
+                                                        ? "text-red-500 dark:text-red-400"
+                                                        : "text-amber-500 dark:text-amber-400"
+                                                        }`}
+                                                />
+                                                <p className={`text-sm ${sinhVienWarning.type === "error"
+                                                    ? "text-red-700 dark:text-red-300"
+                                                    : "text-amber-700 dark:text-amber-300"
+                                                    }`}>
+                                                    {sinhVienWarning.message}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div>
@@ -1024,11 +1601,17 @@ export default function ThemLopHocPhanPage() {
                                     onClick={() => {
                                         setIsEditModalOpen(false);
                                         setEditingLopHocPhan(null);
+                                        setGiangVienTinChiWarning(null);
+                                        setSinhVienWarning(null);
                                     }}
                                 >
                                     Hủy
                                 </Button>
-                                <Button onClick={handleSaveEdit}>
+                                <Button
+                                    onClick={handleSaveEdit}
+                                    disabled={!!giangVienTinChiWarning || sinhVienWarning?.type === "error"}
+                                    className={(giangVienTinChiWarning || sinhVienWarning?.type === "error") ? "opacity-50 cursor-not-allowed" : ""}
+                                >
                                     Lưu thay đổi
                                 </Button>
                             </div>
@@ -1432,6 +2015,287 @@ export default function ThemLopHocPhanPage() {
                                 Đóng
                             </Button>
                         )}
+                    </div>
+                </div>
+            </Modal>
+            {/* Modal Tạo Lớp Học Phần Mới */}
+            <Modal
+                isOpen={isCreateLopModalOpen}
+                onClose={closeCreateLopModal}
+                className="max-w-4xl"
+            >
+                <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
+                    {/* Header */}
+                    <div className="flex items-center gap-4 mb-6">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30">
+                            <FontAwesomeIcon icon={faPlus} className="text-xl text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-semibold text-gray-800 dark:text-white/90">
+                                Thêm Lớp Học Phần Mới
+                            </h3>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                                Năm học: {namHocId} - Học kỳ: {hocKyId}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Form */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Cột trái */}
+                        <div className="space-y-5">
+                            {/* Ngành */}
+                            <div>
+                                <Label>Ngành <span className="text-red-500">*</span></Label>
+                                <SearchableSelect
+                                    options={uniqueNganhsForCreate}
+                                    placeholder="Chọn ngành"
+                                    onChange={(value) => handleCreateFormChange("maNganh", value)}
+                                    defaultValue={createFormData.maNganh}
+                                    searchPlaceholder="Tìm mã ngành..."
+                                />
+                            </div>
+
+                            {/* Niên khóa */}
+                            <div>
+                                <Label>Niên khóa <span className="text-red-500">*</span></Label>
+                                <SearchableSelect
+                                    options={uniqueNienKhoasForCreate}
+                                    placeholder="Chọn niên khóa"
+                                    onChange={(value) => handleCreateFormChange("maNienKhoa", value)}
+                                    defaultValue={createFormData.maNienKhoa}
+                                    searchPlaceholder="Tìm mã niên khóa..."
+                                />
+                            </div>
+
+                            {/* Môn học */}
+                            <div>
+                                <Label>Môn học <span className="text-red-500">*</span></Label>
+                                <SearchableSelect
+                                    options={uniqueMonHocsForCreate}
+                                    placeholder="Chọn môn học"
+                                    onChange={(value) => handleCreateFormChange("maMonHoc", value)}
+                                    defaultValue={createFormData.maMonHoc}
+                                    searchPlaceholder="Tìm mã môn học..."
+                                />
+                                {createFormData.maMonHoc && (
+                                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                        Số tín chỉ: {getSoTinChiMonHoc(createFormData.maMonHoc)} TC
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Mã lớp học phần (tự động) */}
+                            <div>
+                                <Label>Mã Lớp Học Phần</Label>
+                                <Input
+                                    defaultValue={createFormData.maLopHocPhan}
+                                    onChange={(e) => handleCreateFormChange("maLopHocPhan", e.target.value)}
+                                    placeholder="Tự động tạo khi chọn ngành, niên khóa, môn học"
+                                />
+                                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                    Mã lớp được tự động tạo, có thể chỉnh sửa nếu cần
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Cột phải */}
+                        <div className="space-y-5">
+                            {/* Giảng viên */}
+                            <div>
+                                <Label>Giảng viên <span className="text-red-500">*</span></Label>
+                                <SearchableSelect
+                                    options={getGiangVienOptionsForCreate(createFormData.maMonHoc)}
+                                    placeholder={createFormData.maMonHoc ? "Chọn giảng viên" : "Vui lòng chọn môn học trước"}
+                                    onChange={(value) => handleCreateFormChange("maGiangVien", value)}
+                                    defaultValue={createFormData.maGiangVien}
+                                    showSecondary={true}
+                                    searchPlaceholder="Tìm mã hoặc tên GV..."
+                                />
+                                {!createFormData.maMonHoc && (
+                                    <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                                        Vui lòng chọn môn học để xem danh sách giảng viên phụ trách
+                                    </p>
+                                )}
+
+                                {/* Hiển thị thông tin tín chỉ hiện tại của giảng viên */}
+                                {createFormData.maGiangVien && giangVienTinChiMap.has(createFormData.maGiangVien) && (
+                                    <div className="mt-2 p-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                                        <p className="text-xs text-blue-700 dark:text-blue-300">
+                                            <FontAwesomeIcon icon={faInfoCircle} className="mr-1" />
+                                            Giảng viên này hiện đang có{" "}
+                                            <strong>{giangVienTinChiMap.get(createFormData.maGiangVien)?.tongTinChi || 0}</strong> tín chỉ
+                                            trong học kỳ này
+                                        </p>
+                                    </div>
+                                )}
+
+                                {/* Cảnh báo vượt quá tín chỉ */}
+                                {createGiangVienWarning && (
+                                    <div className="mt-2 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+                                        <div className="flex items-start gap-2">
+                                            <FontAwesomeIcon
+                                                icon={faTriangleExclamation}
+                                                className="text-red-500 dark:text-red-400 mt-0.5"
+                                            />
+                                            <p className="text-sm text-red-700 dark:text-red-300">
+                                                {createGiangVienWarning}
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Số lượng sinh viên */}
+                            <div>
+                                <Label>Số lượng sinh viên <span className="text-red-500">*</span></Label>
+                                <Input
+                                    type="number"
+                                    min={20}
+                                    max={40}
+                                    defaultValue={createFormData.soSinhVienThamGia.toString()}
+                                    onChange={(e) => handleCreateFormChange("soSinhVienThamGia", parseInt(e.target.value) || 0)}
+                                    disabled={createFormData.phanBoLaiSinhVien}
+                                />
+                                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                    Giới hạn: 20 - 40 SV/lớp
+                                </p>
+
+                                {/* Cảnh báo số lượng sinh viên */}
+                                {createSinhVienWarning && (
+                                    <div className={`mt-2 p-3 rounded-lg border ${createSinhVienWarning.type === "error"
+                                            ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
+                                            : "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800"
+                                        }`}>
+                                        <div className="flex items-start gap-2">
+                                            <FontAwesomeIcon
+                                                icon={createSinhVienWarning.type === "error" ? faCircleExclamation : faTriangleExclamation}
+                                                className={`mt-0.5 ${createSinhVienWarning.type === "error"
+                                                        ? "text-red-500 dark:text-red-400"
+                                                        : "text-amber-500 dark:text-amber-400"
+                                                    }`}
+                                            />
+                                            <p className={`text-sm ${createSinhVienWarning.type === "error"
+                                                    ? "text-red-700 dark:text-red-300"
+                                                    : "text-amber-700 dark:text-amber-300"
+                                                }`}>
+                                                {createSinhVienWarning.message}
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Ghi chú */}
+                            <div>
+                                <Label>Ghi chú</Label>
+                                <TextArea
+                                    placeholder="Nhập ghi chú (nếu có)"
+                                    rows={3}
+                                    value={createFormData.ghiChu}
+                                    onChange={(value) => handleCreateFormChange("ghiChu", value)}
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Phân bổ lại sinh viên */}
+                    <div className="mt-6 p-4 rounded-xl border border-gray-200 bg-gray-50/50 dark:border-gray-700 dark:bg-gray-800/50">
+                        <div className="flex items-center justify-between mb-4">
+                            <div>
+                                <h4 className="font-medium text-gray-800 dark:text-white">Phân bổ lại sinh viên</h4>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                    Tự động chia đều số sinh viên cho tất cả các lớp cùng ngành, niên khóa, môn học
+                                </p>
+                            </div>
+                            <Switch
+                                label=""
+                                defaultChecked={createFormData.phanBoLaiSinhVien}
+                                disabled={!createFormData.maNganh || !createFormData.maNienKhoa || !createFormData.maMonHoc}
+                                onChange={(checked) => handleCreateFormChange("phanBoLaiSinhVien", checked)}
+                            />
+                        </div>
+
+                        {/* Preview phân bổ */}
+                        {createFormData.phanBoLaiSinhVien && phanBoPreview && (
+                            <div className={`mt-4 p-4 rounded-lg border ${phanBoPreview.isValid
+                                    ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+                                    : "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
+                                }`}>
+                                {phanBoPreview.isValid ? (
+                                    <>
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <FontAwesomeIcon icon={faCircleCheck} className="text-green-500" />
+                                            <h5 className="font-medium text-green-800 dark:text-green-300">
+                                                Kết quả phân bổ dự kiến
+                                            </h5>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                            {phanBoPreview.danhSachLop.map((lop, index) => (
+                                                <div
+                                                    key={index}
+                                                    className="p-2 rounded bg-white dark:bg-gray-800 border border-green-100 dark:border-green-900/30"
+                                                >
+                                                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                                        {lop.maLopHocPhan}
+                                                    </p>
+                                                    <p className="font-semibold text-green-700 dark:text-green-300">
+                                                        {lop.soSinhVien} SV
+                                                    </p>
+                                                </div>
+                                            ))}
+
+                                            {/* Lớp mới */}
+                                            <div className="p-2 rounded bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700">
+                                                <p className="text-xs text-blue-600 dark:text-blue-400 truncate">
+                                                    {phanBoPreview.lopMoi.maLopHocPhan} (Mới)
+                                                </p>
+                                                <p className="font-semibold text-blue-700 dark:text-blue-300">
+                                                    {phanBoPreview.lopMoi.soSinhVien} SV
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <p className="mt-3 text-xs text-green-600 dark:text-green-400">
+                                            Tổng sinh viên: {
+                                                phanBoPreview.danhSachLop.reduce((acc, l) => acc + l.soSinhVien, 0) +
+                                                phanBoPreview.lopMoi.soSinhVien
+                                            } SV / {phanBoPreview.danhSachLop.length + 1} lớp
+                                        </p>
+                                    </>
+                                ) : (
+                                    <div className="flex items-start gap-2">
+                                        <FontAwesomeIcon icon={faCircleExclamation} className="text-red-500 mt-0.5" />
+                                        <p className="text-sm text-red-700 dark:text-red-300">
+                                            {phanBoPreview.message}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {!createFormData.maNganh || !createFormData.maNienKhoa || !createFormData.maMonHoc ? (
+                            <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+                                <FontAwesomeIcon icon={faInfoCircle} className="mr-1" />
+                                Vui lòng chọn ngành, niên khóa và môn học để sử dụng tính năng này
+                            </p>
+                        ) : null}
+                    </div>
+
+                    {/* Buttons */}
+                    <div className="flex justify-end gap-3 mt-8">
+                        <Button variant="outline" onClick={closeCreateLopModal}>
+                            Hủy
+                        </Button>
+                        <Button
+                            onClick={handleCreateLop}
+                            disabled={!canCreateLop()}
+                            className={!canCreateLop() ? "opacity-50 cursor-not-allowed" : ""}
+                            startIcon={<FontAwesomeIcon icon={faPlus} />}
+                        >
+                            Tạo lớp học phần
+                        </Button>
                     </div>
                 </div>
             </Modal>
