@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import {
     Table,
@@ -457,6 +458,8 @@ const ApDungModal: React.FC<ApDungModalProps> = ({
 
 // ==================== TRANG CHÍNH QUẢN LÝ CHƯƠNG TRÌNH ĐÀO TẠO ====================
 export default function QuanLyChuongTrinhDaoTaoPage() {
+    const router = useRouter();
+    
     // State cho danh sách và pagination
     const [chuongTrinhs, setChuongTrinhs] = useState<ChuongTrinhDaoTao[]>([]);
     const [pagination, setPagination] = useState<PaginationData>({
@@ -484,7 +487,6 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
     const [searchKeyword, setSearchKeyword] = useState("");
 
     // State cho modals
-    const [isCreateChuongTrinhModalOpen, setIsCreateChuongTrinhModalOpen] = useState(false);
     const [isEditChuongTrinhModalOpen, setIsEditChuongTrinhModalOpen] = useState(false);
     const [isDeleteChuongTrinhModalOpen, setIsDeleteChuongTrinhModalOpen] = useState(false);
     const [isApDungModalOpen, setIsApDungModalOpen] = useState(false);
@@ -806,41 +808,6 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
         return !Object.values(newErrors).some((e) => e);
     };
 
-    // Create Chương trình
-    const handleCreateChuongTrinh = async () => {
-        if (!validateChuongTrinhForm()) return;
-
-        try {
-            const accessToken = getCookie("access_token");
-            const res = await fetch("http://localhost:3000/dao-tao/chuong-trinh", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${accessToken}`,
-                },
-                body: JSON.stringify({
-                    maChuongTrinh: chuongTrinhFormData.maChuongTrinh.trim(),
-                    tenChuongTrinh: chuongTrinhFormData.tenChuongTrinh.trim(),
-                    thoiGianDaoTao: Number(chuongTrinhFormData.thoiGianDaoTao),
-                    nganhId: Number(chuongTrinhFormData.nganhId),
-                }),
-            });
-
-            setIsCreateChuongTrinhModalOpen(false);
-            if (res.ok) {
-                showAlert("success", "Thành công", "Thêm chương trình đào tạo thành công");
-                resetChuongTrinhForm();
-                fetchChuongTrinhs(currentPage, searchKeyword.trim(), filterNganhId, filterNienKhoaId);
-            } else {
-                const err = await res.json();
-                showAlert("error", "Lỗi", err.message || "Thêm chương trình thất bại");
-            }
-        } catch (err) {
-            setIsCreateChuongTrinhModalOpen(false);
-            showAlert("error", "Lỗi", "Có lỗi xảy ra khi thêm chương trình");
-        }
-    };
-
     // Update Chương trình
     const handleUpdateChuongTrinh = async () => {
         if (!editingChuongTrinh || !validateChuongTrinhForm()) return;
@@ -1094,12 +1061,6 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
         setIsDeleteApDungModalOpen(true);
     };
 
-    const openCreateChuongTrinhModal = () => {
-        resetChuongTrinhForm();
-        fetchNganhsForModal("");
-        setIsCreateChuongTrinhModalOpen(true);
-    };
-
     const openApDungModal = () => {
         resetApDungForm();
         setIsApDungModalOpen(true);
@@ -1158,7 +1119,7 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
                             Áp dụng Chương trình
                         </Button>
                         <Button
-                            onClick={openCreateChuongTrinhModal}
+                            onClick={() => router.push("/them-ctdt-moi")}
                         >
                             Tạo Chương trình
                         </Button>
@@ -1534,27 +1495,6 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
                     </div>
                 </div>
             </div>
-
-            {/* Modal Thêm Chương trình */}
-            <ChuongTrinhModal
-                isOpen={isCreateChuongTrinhModalOpen}
-                onClose={() => {
-                    setIsCreateChuongTrinhModalOpen(false);
-                    resetChuongTrinhForm();
-                }}
-                isEdit={false}
-                formData={chuongTrinhFormData}
-                nganhOptions={modalNganhOptions}
-                khoaOptions={khoaOptions}
-                selectedKhoaId={modalKhoaId}
-                onKhoaChange={(value) => {
-                    setModalKhoaId(value);
-                    setChuongTrinhFormData((prev) => ({ ...prev, nganhId: "" }));
-                }}
-                onFormChange={handleChuongTrinhFormChange}
-                onSubmit={handleCreateChuongTrinh}
-                errors={chuongTrinhErrors}
-            />
 
             {/* Modal Sửa Chương trình */}
             <ChuongTrinhModal
