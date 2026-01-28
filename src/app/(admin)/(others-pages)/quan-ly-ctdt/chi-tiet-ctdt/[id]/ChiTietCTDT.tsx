@@ -25,6 +25,7 @@ import {
     faArrowLeft,
     faMagnifyingGlassPlus,
     faEllipsisV,
+    faPlus,
 } from "@fortawesome/free-solid-svg-icons";
 import SearchableSelect from "@/components/form/SelectCustom";
 import { DropdownItem } from "@/components/ui/dropdown/DropdownItem";
@@ -1975,9 +1976,6 @@ export default function QuanLyMonHocChuongTrinhPage() {
                         >
                             Nhập từ Excel
                         </Button>
-                        <Button onClick={openThemModal}>
-                            Thêm Môn học
-                        </Button>
                     </div>
                 </div>
 
@@ -2290,6 +2288,16 @@ export default function QuanLyMonHocChuongTrinhPage() {
                 }}
                 chuongTrinhId={chuongTrinhId}
             />
+
+            {/* Sticky Add Mon Hoc Button */}
+            <div className="fixed bottom-8 right-8 z-50">
+                <Button
+                    onClick={openThemModal}
+                    className="shadow-lg hover:shadow-xl transition-shadow rounded-full w-14 h-14 flex items-center justify-center"
+                >
+                    <FontAwesomeIcon icon={faPlus} className="w-6 h-6" />
+                </Button>
+            </div>
         </div>
     );
 }

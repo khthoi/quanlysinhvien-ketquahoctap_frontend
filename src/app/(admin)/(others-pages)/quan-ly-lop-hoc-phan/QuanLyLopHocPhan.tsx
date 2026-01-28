@@ -361,6 +361,12 @@ interface EditLopHocPhanModalProps {
         maLopHocPhan: boolean;
         giangVienId: boolean;
     };
+    // Thông tin tín chỉ
+    tinChiInfo: {
+        currentCredits: number;
+        newCredits: number;
+        isLoading: boolean;
+    };
 }
 
 const EditLopHocPhanModal: React.FC<EditLopHocPhanModalProps> = ({
@@ -376,6 +382,7 @@ const EditLopHocPhanModal: React.FC<EditLopHocPhanModalProps> = ({
     onGhiChuChange,
     onSubmit,
     errors,
+    tinChiInfo,
 }) => {
     if (!isOpen || !lopHocPhan) return null;
 
@@ -383,6 +390,10 @@ const EditLopHocPhanModal: React.FC<EditLopHocPhanModalProps> = ({
     const giangVienFilteredOptions = giangVienOptions.filter(gv =>
         gv.monHocGiangViens.some(mhgv => mhgv.monHoc.id === lopHocPhan.monHoc.id)
     );
+    
+    // Kiểm tra vượt quá giới hạn tín chỉ
+    const exceedsLimit = tinChiInfo.newCredits > 12;
+    const selectedGiangVien = giangVienOptions.find(gv => gv.id.toString() === giangVienId);
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} className="max-w-2xl">
@@ -494,6 +505,112 @@ const EditLopHocPhanModal: React.FC<EditLopHocPhanModalProps> = ({
                         )}
                     </div>
 
+                    {/* Thông tin tín chỉ giảng dạy */}
+                    {giangVienId && selectedGiangVien && (
+                        <div className={`transition-all duration-300 ease-in-out ${
+                            exceedsLimit 
+                                ? 'border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20' 
+                                : 'border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20'
+                        } border-2 rounded-xl p-4 space-y-3`}>
+                            <div className="flex items-start gap-3">
+                                <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+                                    exceedsLimit 
+                                        ? 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400' 
+                                        : 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400'
+                                }`}>
+                                    <FontAwesomeIcon 
+                                        icon={exceedsLimit ? faTriangleExclamation : faCircleInfo} 
+                                        className="text-lg"
+                                    />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <h4 className={`font-semibold text-sm mb-2 ${
+                                        exceedsLimit 
+                                            ? 'text-red-800 dark:text-red-300' 
+                                            : 'text-blue-800 dark:text-blue-300'
+                                    }`}>
+                                        Thông tin tín chỉ giảng dạy của GV
+                                    </h4>
+                                    
+                                    {tinChiInfo.isLoading ? (
+                                        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                                            <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
+                                            <span>Đang tính toán tín chỉ...</span>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between text-sm">
+                                                <span className="text-gray-600 dark:text-gray-400">
+                                                    Tín chỉ hiện tại của GV trong học kỳ này:
+                                                </span>
+                                                <span className="font-semibold text-gray-800 dark:text-white">
+                                                    {tinChiInfo.currentCredits} tín chỉ
+                                                </span>
+                                            </div>
+                                            
+                                            <div className="flex items-center justify-between text-sm">
+                                                <span className="text-gray-600 dark:text-gray-400">
+                                                    Tín chỉ của lớp học phần này:
+                                                </span>
+                                                <span className="font-semibold text-gray-800 dark:text-white">
+                                                    +{lopHocPhan.monHoc.soTinChi} tín chỉ
+                                                </span>
+                                            </div>
+                                            
+                                            <div className="border-t border-gray-300 dark:border-gray-600 pt-2 mt-2">
+                                                <div className="flex items-center justify-between">
+                                                    <span className={`font-semibold ${
+                                                        exceedsLimit 
+                                                            ? 'text-red-700 dark:text-red-400' 
+                                                            : 'text-gray-700 dark:text-gray-300'
+                                                    }`}>
+                                                        Tổng tín chỉ của GV sau khi cập nhật:
+                                                    </span>
+                                                    <span className={`text-lg font-bold ${
+                                                        exceedsLimit 
+                                                            ? 'text-red-600 dark:text-red-400' 
+                                                            : 'text-blue-600 dark:text-blue-400'
+                                                    }`}>
+                                                        {tinChiInfo.newCredits} / 12 tín chỉ
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            
+                                            {exceedsLimit && (
+                                                <div className="mt-3 p-3 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg animate-pulse">
+                                                    <div className="flex items-start gap-2">
+                                                        <FontAwesomeIcon 
+                                                            icon={faTriangleExclamation} 
+                                                            className="text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0"
+                                                        />
+                                                        <div className="flex-1">
+                                                            <p className="text-sm font-semibold text-red-800 dark:text-red-300 mb-1">
+                                                                Cảnh báo: Vượt quá giới hạn tín chỉ
+                                                            </p>
+                                                            <p className="text-xs text-red-700 dark:text-red-400">
+                                                                Số tín chỉ giảng dạy của một giảng viên trong một học kỳ không được quá 12 tín chỉ. 
+                                                                Hiện tại tổng tín chỉ là <strong>{tinChiInfo.newCredits} tín chỉ</strong>, vượt quá giới hạn cho phép.
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            
+                                            {!exceedsLimit && tinChiInfo.newCredits > 0 && (
+                                                <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                                                    <span className="inline-flex items-center gap-1">
+                                                        <FontAwesomeIcon icon={faCheckCircle} className="text-green-500" />
+                                                        Số tín chỉ trong giới hạn cho phép
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Ghi chú */}
                     <div>
                         <Label>Ghi chú</Label>
@@ -511,8 +628,19 @@ const EditLopHocPhanModal: React.FC<EditLopHocPhanModalProps> = ({
                     <Button variant="outline" onClick={onClose}>
                         Hủy
                     </Button>
-                    <Button onClick={onSubmit}>
-                        Cập nhật
+                    <Button 
+                        onClick={onSubmit}
+                        disabled={exceedsLimit || tinChiInfo.isLoading}
+                        className={exceedsLimit ? "opacity-50 cursor-not-allowed" : ""}
+                    >
+                        {tinChiInfo.isLoading ? (
+                            <>
+                                <FontAwesomeIcon icon={faSpinner} className="animate-spin mr-2" />
+                                Đang kiểm tra...
+                            </>
+                        ) : (
+                            "Cập nhật"
+                        )}
                     </Button>
                 </div>
             </div>
@@ -2239,6 +2367,17 @@ export default function QuanLyLopHocPhanPage() {
     const [maLopHocPhan, setMaLopHocPhan] = useState("");
     const [giangVienId, setGiangVienId] = useState("");
     const [ghiChu, setGhiChu] = useState("");
+    
+    // State cho thông tin tín chỉ giảng dạy
+    const [tinChiInfo, setTinChiInfo] = useState<{
+        currentCredits: number;
+        newCredits: number;
+        isLoading: boolean;
+    }>({
+        currentCredits: 0,
+        newCredits: 0,
+        isLoading: false,
+    });
 
     // State cho options
     const [monHocOptions, setMonHocOptions] = useState<MonHocOption[]>([]);
@@ -2506,12 +2645,69 @@ export default function QuanLyLopHocPhanPage() {
         });
     };
 
+    // Hàm tính tín chỉ giảng dạy hiện tại của giảng viên trong học kỳ
+    const calculateTeachingCredits = async (giangVienIdParam: string, hocKyId: number, excludeLopHocPhanId?: number) => {
+        if (!giangVienIdParam || !hocKyId) {
+            setTinChiInfo({ currentCredits: 0, newCredits: 0, isLoading: false });
+            return;
+        }
+
+        setTinChiInfo(prev => ({ ...prev, isLoading: true }));
+
+        try {
+            const accessToken = getCookie("access_token");
+            // Lấy tất cả lớp học phần của giảng viên trong học kỳ này
+            const res = await fetch(
+                `http://localhost:3000/giang-day/lop-hoc-phan?giangVienId=${giangVienIdParam}&hocKyId=${hocKyId}&limit=9999`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                    },
+                }
+            );
+            const json = await res.json();
+            
+            if (json.data && Array.isArray(json.data)) {
+                // Tính tổng tín chỉ, loại trừ lớp học phần đang sửa
+                let totalCredits = 0;
+                json.data.forEach((lhp: LopHocPhan) => {
+                    if (excludeLopHocPhanId && lhp.id === excludeLopHocPhanId) {
+                        return; // Bỏ qua lớp học phần đang sửa
+                    }
+                    totalCredits += lhp.monHoc.soTinChi;
+                });
+
+                // Tính tín chỉ mới (nếu đang sửa lớp học phần)
+                const newCredits = editingLopHocPhan 
+                    ? totalCredits + editingLopHocPhan.monHoc.soTinChi 
+                    : totalCredits;
+
+                setTinChiInfo({
+                    currentCredits: totalCredits,
+                    newCredits: newCredits,
+                    isLoading: false,
+                });
+            } else {
+                setTinChiInfo({ currentCredits: 0, newCredits: 0, isLoading: false });
+            }
+        } catch (err) {
+            console.error("Lỗi khi tính tín chỉ giảng dạy:", err);
+            setTinChiInfo({ currentCredits: 0, newCredits: 0, isLoading: false });
+        }
+    };
+
     const validateForm = () => {
         const newErrors = {
             maLopHocPhan: !maLopHocPhan.trim(),
             giangVienId: !giangVienId,
         };
         setErrors(newErrors);
+        
+        // Kiểm tra giới hạn tín chỉ
+        if (tinChiInfo.newCredits > 12) {
+            return false;
+        }
+        
         return !Object.values(newErrors).some((e) => e);
     };
 
@@ -2523,10 +2719,25 @@ export default function QuanLyLopHocPhanPage() {
             maLopHocPhan: false,
             giangVienId: false,
         });
+        setTinChiInfo({
+            currentCredits: 0,
+            newCredits: 0,
+            isLoading: false,
+        });
     };
 
     const handleUpdate = async () => {
         if (!editingLopHocPhan || !validateForm()) return;
+        
+        // Kiểm tra giới hạn tín chỉ
+        if (tinChiInfo.newCredits > 12) {
+            showAlert(
+                "error",
+                "Vượt quá giới hạn tín chỉ",
+                `Số tín chỉ giảng dạy của giảng viên trong học kỳ này không được quá 12 tín chỉ. Hiện tại tổng tín chỉ là ${tinChiInfo.newCredits} tín chỉ.`
+            );
+            return;
+        }
 
         try {
             const accessToken = getCookie("access_token");
@@ -2603,9 +2814,23 @@ export default function QuanLyLopHocPhanPage() {
     const openEditModal = (lopHocPhan: LopHocPhan) => {
         setEditingLopHocPhan(lopHocPhan);
         setMaLopHocPhan(lopHocPhan.maLopHocPhan);
-        setGiangVienId(lopHocPhan.giangVien?.id?.toString() || "");
+        const giangVienIdValue = lopHocPhan.giangVien?.id?.toString() || "";
+        setGiangVienId(giangVienIdValue);
         setGhiChu(lopHocPhan.ghiChu || "");
         setIsEditModalOpen(true);
+        
+        // Tính tín chỉ giảng dạy khi mở modal
+        if (giangVienIdValue && lopHocPhan.hocKy?.id) {
+            calculateTeachingCredits(giangVienIdValue, lopHocPhan.hocKy.id, lopHocPhan.id);
+        }
+    };
+    
+    // Handler khi thay đổi giảng viên
+    const handleGiangVienIdChange = (value: string) => {
+        setGiangVienId(value);
+        if (editingLopHocPhan && editingLopHocPhan.hocKy?.id) {
+            calculateTeachingCredits(value, editingLopHocPhan.hocKy.id, editingLopHocPhan.id);
+        }
     };
 
     const openViewModal = (lopHocPhan: LopHocPhan) => {
@@ -3102,10 +3327,11 @@ export default function QuanLyLopHocPhanPage() {
                 giangVienId={giangVienId}
                 ghiChu={ghiChu}
                 onMaLopHocPhanChange={setMaLopHocPhan}
-                onGiangVienIdChange={setGiangVienId}
+                onGiangVienIdChange={handleGiangVienIdChange}
                 onGhiChuChange={setGhiChu}
                 onSubmit={handleUpdate}
                 errors={errors}
+                tinChiInfo={tinChiInfo}
             />
             {/* Modal Xem chi tiết */}
             <ViewLopHocPhanModal

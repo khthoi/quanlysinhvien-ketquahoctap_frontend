@@ -56,7 +56,7 @@ const Checkbox: React.FC<CheckboxProps> = ({
             }
             ${isAnimating ? "scale-95" : "scale-100"}
             disabled:opacity-60 disabled:cursor-not-allowed
-            focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:ring-offset-1
+            focus:outline-none focus:ring-0 focus:ring-offset-0
             ${className}
           `}
           checked={checked}

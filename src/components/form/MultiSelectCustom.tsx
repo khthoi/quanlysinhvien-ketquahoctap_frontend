@@ -458,11 +458,13 @@ const MultiSelectCustom: React.FC<MultiSelectProps> = ({
       <div
         ref={triggerRef}
         onClick={handleToggle}
-        className={`min-h-[44px] w-full appearance-none rounded-lg border border-gray-300 px-3 py-2 pr-11 text-left text-sm shadow-theme-xs focus:border-brand-300 focus:outline-none focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:focus:border-brand-800 ${
+        className={`min-h-[44px] w-full flex items-center appearance-none rounded-lg border border-gray-300 px-3 py-2 pr-11 text-left text-sm shadow-theme-xs focus:border-brand-300 focus:outline-none focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:focus:border-brand-800 ${
           disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"
         }`}
       >
-        {renderSelectedTags()}
+        <div className="flex items-center flex-1 min-w-0">
+          {renderSelectedTags()}
+        </div>
 
         {/* Icons */}
         <span className="absolute inset-y-0 right-0 flex items-center gap-1 pr-3">

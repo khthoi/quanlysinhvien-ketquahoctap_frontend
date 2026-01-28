@@ -27,6 +27,7 @@ import {
     faCheckCircle,
     faTimesCircle,
     faExclamationTriangle,
+    faMagnifyingGlass,
 } from "@fortawesome/free-solid-svg-icons";
 import SearchableSelect from "@/components/form/SelectCustom";
 import MultiSelectCustom from "@/components/form/MultiSelectCustom";
@@ -197,12 +198,15 @@ export default function TaoCTDT() {
 
     // Create CTDT process
     const [createProcess, setCreateProcess] = useState({
-        step: 0, // 0: chưa bắt đầu, 1: bước 1, 2: bước 2, 3: bước 3
+        step: 0, // 0: màn xác nhận, 1: bước 1, 2: bước 2, 3: bước 3
         isProcessing: false,
         step1Result: null as any,
-        step2Results: [] as Array<{ success: boolean; data?: any; error?: string }>,
+        step2Results: [] as Array<{ success: boolean; data?: any; error?: string; nienKhoaId?: string }>,
         step3Results: [] as Array<{ success: boolean; data?: any; error?: string; monHoc?: string }>,
     });
+
+    // Tìm kiếm môn học trong table
+    const [monHocTableSearchKeyword, setMonHocTableSearchKeyword] = useState("");
 
     // ==================== COMPUTED VALUES ====================
     // Filter available nien khoas based on selected nganh
@@ -233,6 +237,17 @@ export default function TaoCTDT() {
     const sortedMonHocTrongCTDT = useMemo(() => {
         return [...monHocTrongCTDT].sort((a, b) => a.thuTuHocKy - b.thuTuHocKy);
     }, [monHocTrongCTDT]);
+
+    // Môn học đã lọc theo ô tìm kiếm (mã hoặc tên)
+    const filteredMonHocTrongCTDT = useMemo(() => {
+        const kw = monHocTableSearchKeyword.trim().toLowerCase();
+        if (!kw) return sortedMonHocTrongCTDT;
+        return sortedMonHocTrongCTDT.filter(
+            (mh) =>
+                mh.monHoc.maMonHoc.toLowerCase().includes(kw) ||
+                mh.monHoc.tenMonHoc.toLowerCase().includes(kw)
+        );
+    }, [sortedMonHocTrongCTDT, monHocTableSearchKeyword]);
 
     // Filter chuong trinhs for load modal
     const filteredChuongTrinhs = useMemo(() => {
@@ -496,20 +511,27 @@ export default function TaoCTDT() {
         setActiveDropdownId(null);
     };
 
-    const handleCreateCTDT = async () => {
-        if (!validateForm()) {
-            setIsCreateCTDTModalOpen(true);
-            return;
-        }
-
+    const handleCreateCTDT = () => {
+        if (!validateForm()) return;
         setIsCreateCTDTModalOpen(true);
         setCreateProcess({
+            step: 0,
+            isProcessing: false,
+            step1Result: null,
+            step2Results: [],
+            step3Results: [],
+        });
+    };
+
+    const confirmAndCreateCTDT = async () => {
+        setCreateProcess((prev) => ({
+            ...prev,
             step: 1,
             isProcessing: true,
             step1Result: null,
             step2Results: [],
             step3Results: [],
-        });
+        }));
 
         const accessToken = getCookie("access_token");
 
@@ -572,11 +594,13 @@ export default function TaoCTDT() {
                         success: step2Res.ok,
                         data: step2Res.ok ? step2Data : undefined,
                         error: step2Res.ok ? undefined : step2Data.message || "Lỗi không xác định",
+                        nienKhoaId: nienKhoaId,
                     };
                 } catch (err: any) {
                     return {
                         success: false,
                         error: err.message || "Lỗi không xác định",
+                        nienKhoaId: nienKhoaId,
                     };
                 }
             });
@@ -624,7 +648,7 @@ export default function TaoCTDT() {
             });
 
             const step3Results = await Promise.all(step3Promises);
-            
+
             // Check if all steps succeeded
             // Step 1 already succeeded (we're here), so we only check step 2 and 3
             const allStep2Success = step2Results.length === 0 || step2Results.every((r) => r.success);
@@ -639,6 +663,17 @@ export default function TaoCTDT() {
             // If all steps succeeded, show success message
             if (step1Result.success && allStep2Success && allStep3Success) {
                 showAlert("success", "Thành công", "Đã tạo chương trình đào tạo thành công");
+                // Reset form và table để chuẩn bị cho lần tạo tiếp theo
+                setFormData({
+                    maChuongTrinh: "",
+                    tenChuongTrinh: "",
+                    thoiGianDaoTao: "",
+                    nganhId: "",
+                    nienKhoaIds: [],
+                    ghiChu: "",
+                });
+                setMonHocTrongCTDT([]);
+                setMonHocTableSearchKeyword("");
             }
         } catch (err: any) {
             setCreateProcess((prev) => ({
@@ -689,9 +724,31 @@ export default function TaoCTDT() {
 
                 {/* Header Form */}
                 <div className="mb-8 p-6 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
-                    <h3 className="mb-6 text-lg font-semibold text-gray-800 dark:text-white/90">
+                    <h3
+                        className={`text-lg font-semibold text-gray-800 dark:text-white/90 ${formData.nienKhoaIds.length > 0 ? "mb-2" : "mb-6"
+                            }`}
+                    >
                         Thông tin Chương trình Đào tạo
                     </h3>
+                    {formData.nienKhoaIds.length > 0 && (
+                        <div className="mb-6 flex flex-wrap items-center gap-2">
+                            <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                                Niên khóa đã chọn:
+                            </span>
+                            {nienKhoas
+                                .filter((nk) => formData.nienKhoaIds.includes(nk.id.toString()))
+                                .map((nk) => (
+                                    <Badge
+                                        key={nk.id}
+                                        variant="solid"
+                                        color="info"
+                                        className="inline-flex items-center gap-1"
+                                    >
+                                        {nk.maNienKhoa} – {nk.tenNienKhoa}
+                                    </Badge>
+                                ))}
+                        </div>
+                    )}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Mã Chương trình */}
                         <div>
@@ -806,12 +863,38 @@ export default function TaoCTDT() {
 
                 {/* Table Môn học */}
                 <div className="mb-6">
-                    <div className="mb-4 flex items-center justify-between">
+                    <div className="mb-4 flex flex-col gap-3">
+                        {/* Search - nằm trên & bên trái */}
+                        <div className="w-full max-w-md">
+                            <div className="relative">
+                                <button
+                                    type="button"
+                                    className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-auto"
+                                    aria-label="Tìm kiếm"
+                                >
+                                    <FontAwesomeIcon
+                                        icon={faMagnifyingGlass}
+                                        className="h-5 w-5 text-gray-500 dark:text-gray-400"
+                                    />
+                                </button>
+                                <input
+                                    type="text"
+                                    placeholder="Tìm kiếm môn học theo tên hoặc mã môn học..."
+                                    value={monHocTableSearchKeyword}
+                                    onChange={(e) => setMonHocTableSearchKeyword(e.target.value)}
+                                    onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+                                    className="h-11 w-full rounded-lg border border-gray-200 bg-transparent py-2.5 pl-12 pr-4 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 
+                focus:border-brand-300 focus:outline-none focus:ring-3 focus:ring-brand-500/10 
+                dark:border-gray-800 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Title */}
                         <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
                             Danh sách Môn học ({monHocTrongCTDT.length})
                         </h3>
                     </div>
-
                     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
                         <div className="max-w-full overflow-x-auto">
                             <div className="min-w-[900px]">
@@ -863,17 +946,19 @@ export default function TaoCTDT() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05] text-theme-sm">
-                                        {sortedMonHocTrongCTDT.length === 0 ? (
+                                        {filteredMonHocTrongCTDT.length === 0 ? (
                                             <TableRow>
                                                 <TableCell
                                                     cols={7}
                                                     className="px-5 py-8 text-center text-gray-500 dark:text-gray-400"
                                                 >
-                                                    Chưa có môn học nào. Hãy thêm môn học vào chương trình đào tạo.
+                                                    {monHocTableSearchKeyword.trim()
+                                                        ? "Không tìm thấy môn học nào phù hợp với từ khóa tìm kiếm."
+                                                        : "Chưa có môn học nào. Hãy thêm môn học vào chương trình đào tạo."}
                                                 </TableCell>
                                             </TableRow>
                                         ) : (
-                                            sortedMonHocTrongCTDT.map((mh, index) => (
+                                            filteredMonHocTrongCTDT.map((mh, index) => (
                                                 <TableRow
                                                     key={`${mh.monHoc.id}-${index}`}
                                                     className="grid grid-cols-[6%_14%_23%_10%_15%_20%_12%] items-center hover:bg-gray-50 dark:hover:bg-white/[0.02]"
@@ -1013,7 +1098,7 @@ export default function TaoCTDT() {
                     <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
                         Thêm Môn học vào Chương trình Đào tạo
                     </h3>
-                    
+
                     {/* Error Alert */}
                     {addMonHocError && (
                         <div className="mb-6">
@@ -1245,247 +1330,362 @@ export default function TaoCTDT() {
                 className="max-w-4xl"
             >
                 <div className="p-6 sm:p-8">
-                    <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
-                        Xác nhận Tạo Chương trình Đào tạo
-                    </h3>
+                    {/* Màn xác nhận (step 0): hiển thị thông tin tóm tắt trước khi tạo */}
+                    {createProcess.step === 0 && !createProcess.isProcessing && (
+                        <>
+                            <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
+                                Xác nhận Tạo Chương trình Đào tạo
+                            </h3>
+                            <p className="mb-6 text-sm text-gray-600 dark:text-gray-400">
+                                Vui lòng kiểm tra thông tin dưới đây trước khi xác nhận tạo chương trình đào tạo.
+                            </p>
 
-                    {/* Tabs */}
-                    <div className="mb-6 border-b border-gray-200 dark:border-gray-700">
-                        <div className="flex gap-4">
-                            <button
-                                onClick={() => setCreateProcess((prev) => ({ ...prev, step: 1 }))}
-                                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${createProcess.step === 1
-                                        ? "border-brand-500 text-brand-600 dark:text-brand-400"
-                                        : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-                                    }`}
-                            >
-                                Bước 1: Tạo CTĐT
-                            </button>
-                            <button
-                                onClick={() => {
-                                    // Allow navigation if step 1 is completed or step 2 has results
-                                    if (createProcess.step1Result?.success || createProcess.step2Results.length > 0) {
-                                        setCreateProcess((prev) => ({ ...prev, step: 2 }));
-                                    }
-                                }}
-                                disabled={!createProcess.step1Result?.success && createProcess.step2Results.length === 0}
-                                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${createProcess.step === 2
-                                        ? "border-brand-500 text-brand-600 dark:text-brand-400"
-                                        : (createProcess.step1Result?.success || createProcess.step2Results.length > 0)
-                                            ? "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-                                            : "border-transparent text-gray-300 dark:text-gray-600 cursor-not-allowed"
-                                    }`}
-                            >
-                                Bước 2: Áp dụng Niên khóa
-                            </button>
-                            <button
-                                onClick={() => {
-                                    // Allow navigation if step 2 is completed or step 3 has results
-                                    if (createProcess.step2Results.length > 0 || createProcess.step3Results.length > 0) {
-                                        setCreateProcess((prev) => ({ ...prev, step: 3 }));
-                                    }
-                                }}
-                                disabled={createProcess.step2Results.length === 0 && createProcess.step3Results.length === 0}
-                                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${createProcess.step === 3
-                                        ? "border-brand-500 text-brand-600 dark:text-brand-400"
-                                        : (createProcess.step2Results.length > 0 || createProcess.step3Results.length > 0)
-                                            ? "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-                                            : "border-transparent text-gray-300 dark:text-gray-600 cursor-not-allowed"
-                                    }`}
-                            >
-                                Bước 3: Thêm Môn học
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Step 1 Content */}
-                    {createProcess.step === 1 && (
-                        <div className="space-y-4">
-                            {createProcess.isProcessing && !createProcess.step1Result && (
-                                <div className="flex items-center justify-center py-8">
-                                    <FontAwesomeIcon icon={faSpinner} className="w-6 h-6 text-brand-500 animate-spin mr-3" />
-                                    <span className="text-gray-600 dark:text-gray-400">Đang tạo chương trình đào tạo...</span>
-                                </div>
-                            )}
-
-                            {createProcess.step1Result && (
-                                <div
-                                    className={`p-4 rounded-lg border ${createProcess.step1Result.success
-                                            ? "bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800"
-                                            : "bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800"
-                                        }`}
-                                >
-                                    <div className="flex items-start gap-3">
-                                        <FontAwesomeIcon
-                                            icon={createProcess.step1Result.success ? faCheckCircle : faTimesCircle}
-                                            className={`w-5 h-5 mt-0.5 ${createProcess.step1Result.success ? "text-green-600" : "text-red-600"
-                                                }`}
-                                        />
-                                        <div className="flex-1">
-                                            <p
-                                                className={`font-medium ${createProcess.step1Result.success
-                                                        ? "text-green-900 dark:text-green-100"
-                                                        : "text-red-900 dark:text-red-100"
-                                                    }`}
-                                            >
-                                                {createProcess.step1Result.success
-                                                    ? "Tạo chương trình đào tạo thành công"
-                                                    : "Tạo chương trình đào tạo thất bại"}
-                                            </p>
-                                            {createProcess.step1Result.success && createProcess.step1Result.data && (
-                                                <div className="mt-2 text-sm text-green-700 dark:text-green-300">
-                                                    <p>Mã CTĐT: {createProcess.step1Result.data.maChuongTrinh}</p>
-                                                    <p>Tên CTĐT: {createProcess.step1Result.data.tenChuongTrinh}</p>
-                                                    <p>ID: {createProcess.step1Result.data.id}</p>
-                                                </div>
-                                            )}
-                                            {createProcess.step1Result.error && (
-                                                <p className="mt-2 text-sm text-red-700 dark:text-red-300">
-                                                    {createProcess.step1Result.error}
-                                                </p>
-                                            )}
-                                        </div>
+                            <div className="mb-8 space-y-4 rounded-xl border border-gray-200 bg-gray-50/50 p-5 dark:border-gray-700 dark:bg-gray-800/30">
+                                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                    <div>
+                                        <span className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                                            Mã chương trình
+                                        </span>
+                                        <p className="mt-1 font-medium text-gray-800 dark:text-white/90">
+                                            {formData.maChuongTrinh || "—"}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <span className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                                            Tên chương trình
+                                        </span>
+                                        <p className="mt-1 font-medium text-gray-800 dark:text-white/90">
+                                            {formData.tenChuongTrinh || "—"}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <span className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                                            Thời gian đào tạo
+                                        </span>
+                                        <p className="mt-1 font-medium text-gray-800 dark:text-white/90">
+                                            {formData.thoiGianDaoTao ? `${formData.thoiGianDaoTao} năm` : "—"}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <span className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                                            Ngành
+                                        </span>
+                                        <p className="mt-1 font-medium text-gray-800 dark:text-white/90">
+                                            {(() => {
+                                                const n = nganhs.find((x) => x.id.toString() === formData.nganhId);
+                                                return n ? `${n.maNganh} – ${n.tenNganh}` : "—";
+                                            })()}
+                                        </p>
                                     </div>
                                 </div>
-                            )}
-                        </div>
+                                <div>
+                                    <span className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                                        Niên khóa áp dụng
+                                    </span>
+                                    <div className="mt-2 flex flex-wrap gap-2">
+                                        {formData.nienKhoaIds.length === 0 ? (
+                                            <span className="text-gray-500 dark:text-gray-400">—</span>
+                                        ) : (
+                                            nienKhoas
+                                                .filter((nk) => formData.nienKhoaIds.includes(nk.id.toString()))
+                                                .map((nk) => (
+                                                    <Badge
+                                                        key={nk.id}
+                                                        variant="solid"
+                                                        color="info"
+                                                        className="inline-flex"
+                                                    >
+                                                        {nk.maNienKhoa} – {nk.tenNienKhoa}
+                                                    </Badge>
+                                                ))
+                                        )}
+                                    </div>
+                                </div>
+                                <div>
+                                    <span className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                                        Số môn học trong CTĐT
+                                    </span>
+                                    <p className="mt-1 font-medium text-gray-800 dark:text-white/90">
+                                        {monHocTrongCTDT.length} môn học
+                                    </p>
+                                </div>
+                                {formData.ghiChu && (
+                                    <div>
+                                        <span className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                                            Ghi chú
+                                        </span>
+                                        <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
+                                            {formData.ghiChu}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="flex justify-end gap-3">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                        setIsCreateCTDTModalOpen(false);
+                                        setCreateProcess({
+                                            step: 0,
+                                            isProcessing: false,
+                                            step1Result: null,
+                                            step2Results: [],
+                                            step3Results: [],
+                                        });
+                                    }}
+                                >
+                                    Hủy
+                                </Button>
+                                <Button onClick={confirmAndCreateCTDT}>Xác nhận tạo</Button>
+                            </div>
+                        </>
                     )}
 
-                    {/* Step 2 Content */}
-                    {createProcess.step === 2 && (
-                        <div className="space-y-4 max-h-96 overflow-y-auto">
-                            {createProcess.isProcessing && createProcess.step2Results.length === 0 && (
-                                <div className="flex items-center justify-center py-8">
-                                    <FontAwesomeIcon icon={faSpinner} className="w-6 h-6 text-brand-500 animate-spin mr-3" />
-                                    <span className="text-gray-600 dark:text-gray-400">Đang áp dụng niên khóa...</span>
-                                </div>
-                            )}
+                    {/* Tiến trình tạo (step 1/2/3): tabs + nội dung từng bước */}
+                    {createProcess.step > 0 && (
+                        <>
+                            <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
+                                Tiến trình Tạo Chương trình Đào tạo
+                            </h3>
 
-                            {createProcess.step2Results.length > 0 && (
-                                <div className="space-y-3">
-                                    {createProcess.step2Results.map((result, index) => {
-                                        const nienKhoa = nienKhoas.find(
-                                            (nk) => nk.id.toString() === formData.nienKhoaIds[index]
-                                        );
-                                        return (
-                                            <div
-                                                key={index}
-                                                className={`p-4 rounded-lg border ${result.success
-                                                        ? "bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800"
-                                                        : "bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800"
-                                                    }`}
-                                            >
-                                                <div className="flex items-start gap-3">
-                                                    <FontAwesomeIcon
-                                                        icon={result.success ? faCheckCircle : faTimesCircle}
-                                                        className={`w-5 h-5 mt-0.5 ${result.success ? "text-green-600" : "text-red-600"
-                                                            }`}
-                                                    />
-                                                    <div className="flex-1">
-                                                        <p
-                                                            className={`font-medium ${result.success
-                                                                    ? "text-green-900 dark:text-green-100"
-                                                                    : "text-red-900 dark:text-red-100"
-                                                                }`}
-                                                        >
-                                                            {nienKhoa
-                                                                ? `Niên khóa ${nienKhoa.maNienKhoa} - ${nienKhoa.tenNienKhoa}`
-                                                                : `Niên khóa #${index + 1}`}
-                                                        </p>
-                                                        {result.success && result.data && (
-                                                            <p className="mt-1 text-sm text-green-700 dark:text-green-300">
-                                                                Áp dụng thành công
-                                                            </p>
-                                                        )}
-                                                        {result.error && (
-                                                            <p className="mt-1 text-sm text-red-700 dark:text-red-300">
-                                                                {result.error}
-                                                            </p>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
+                            {/* Tabs */}
+                            <div className="mb-6 border-b border-gray-200 dark:border-gray-700">
+                                <div className="flex gap-4">
+                                    <button
+                                        onClick={() => setCreateProcess((prev) => ({ ...prev, step: 1 }))}
+                                        className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${createProcess.step === 1
+                                            ? "border-brand-500 text-brand-600 dark:text-brand-400"
+                                            : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                                            }`}
+                                    >
+                                        Bước 1: Tạo CTĐT
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            if (createProcess.step1Result?.success || createProcess.step2Results.length > 0) {
+                                                setCreateProcess((prev) => ({ ...prev, step: 2 }));
+                                            }
+                                        }}
+                                        disabled={!createProcess.step1Result?.success && createProcess.step2Results.length === 0}
+                                        className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${createProcess.step === 2
+                                            ? "border-brand-500 text-brand-600 dark:text-brand-400"
+                                            : (createProcess.step1Result?.success || createProcess.step2Results.length > 0)
+                                                ? "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                                                : "border-transparent text-gray-300 dark:text-gray-600 cursor-not-allowed"
+                                            }`}
+                                    >
+                                        Bước 2: Áp dụng Niên khóa
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            if (createProcess.step2Results.length > 0 || createProcess.step3Results.length > 0) {
+                                                setCreateProcess((prev) => ({ ...prev, step: 3 }));
+                                            }
+                                        }}
+                                        disabled={createProcess.step2Results.length === 0 && createProcess.step3Results.length === 0}
+                                        className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${createProcess.step === 3
+                                            ? "border-brand-500 text-brand-600 dark:text-brand-400"
+                                            : (createProcess.step2Results.length > 0 || createProcess.step3Results.length > 0)
+                                                ? "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                                                : "border-transparent text-gray-300 dark:text-gray-600 cursor-not-allowed"
+                                            }`}
+                                    >
+                                        Bước 3: Thêm Môn học
+                                    </button>
                                 </div>
-                            )}
-                        </div>
-                    )}
+                            </div>
 
-                    {/* Step 3 Content */}
-                    {createProcess.step === 3 && (
-                        <div className="space-y-4 max-h-96 overflow-y-auto">
-                            {createProcess.isProcessing && createProcess.step3Results.length === 0 && (
-                                <div className="flex items-center justify-center py-8">
-                                    <FontAwesomeIcon icon={faSpinner} className="w-6 h-6 text-brand-500 animate-spin mr-3" />
-                                    <span className="text-gray-600 dark:text-gray-400">Đang thêm môn học...</span>
-                                </div>
-                            )}
+                            {/* Step 1 Content */}
+                            {createProcess.step === 1 && (
+                                <div className="space-y-4">
+                                    {createProcess.isProcessing && !createProcess.step1Result && (
+                                        <div className="flex items-center justify-center py-8">
+                                            <FontAwesomeIcon icon={faSpinner} className="w-6 h-6 text-brand-500 animate-spin mr-3" />
+                                            <span className="text-gray-600 dark:text-gray-400">Đang tạo chương trình đào tạo...</span>
+                                        </div>
+                                    )}
 
-                            {createProcess.step3Results.length > 0 && (
-                                <div className="space-y-3">
-                                    {createProcess.step3Results.map((result, index) => (
+                                    {createProcess.step1Result && (
                                         <div
-                                            key={index}
-                                            className={`p-4 rounded-lg border ${result.success
-                                                    ? "bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800"
-                                                    : "bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800"
+                                            className={`p-4 rounded-lg border ${createProcess.step1Result.success
+                                                ? "bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800"
+                                                : "bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800"
                                                 }`}
                                         >
                                             <div className="flex items-start gap-3">
                                                 <FontAwesomeIcon
-                                                    icon={result.success ? faCheckCircle : faTimesCircle}
-                                                    className={`w-5 h-5 mt-0.5 ${result.success ? "text-green-600" : "text-red-600"
+                                                    icon={createProcess.step1Result.success ? faCheckCircle : faTimesCircle}
+                                                    className={`w-5 h-5 mt-0.5 ${createProcess.step1Result.success ? "text-green-600" : "text-red-600"
                                                         }`}
                                                 />
                                                 <div className="flex-1">
                                                     <p
-                                                        className={`font-medium ${result.success
-                                                                ? "text-green-900 dark:text-green-100"
-                                                                : "text-red-900 dark:text-red-100"
+                                                        className={`font-medium ${createProcess.step1Result.success
+                                                            ? "text-green-900 dark:text-green-100"
+                                                            : "text-red-900 dark:text-red-100"
                                                             }`}
                                                     >
-                                                        {result.monHoc || `Môn học #${index + 1}`}
+                                                        {createProcess.step1Result.success
+                                                            ? "Tạo chương trình đào tạo thành công"
+                                                            : "Tạo chương trình đào tạo thất bại"}
                                                     </p>
-                                                    {result.success && (
-                                                        <p className="mt-1 text-sm text-green-700 dark:text-green-300">
-                                                            Thêm thành công
-                                                        </p>
+                                                    {createProcess.step1Result.success && createProcess.step1Result.data && (
+                                                        <div className="mt-2 text-sm text-green-700 dark:text-green-300">
+                                                            <p>Mã CTĐT: {createProcess.step1Result.data.maChuongTrinh}</p>
+                                                            <p>Tên CTĐT: {createProcess.step1Result.data.tenChuongTrinh}</p>
+                                                            <p>ID: {createProcess.step1Result.data.id}</p>
+                                                        </div>
                                                     )}
-                                                    {result.error && (
-                                                        <p className="mt-1 text-sm text-red-700 dark:text-red-300">
-                                                            {result.error}
+                                                    {createProcess.step1Result.error && (
+                                                        <p className="mt-2 text-sm text-red-700 dark:text-red-300">
+                                                            {createProcess.step1Result.error}
                                                         </p>
                                                     )}
                                                 </div>
                                             </div>
                                         </div>
-                                    ))}
+                                    )}
                                 </div>
                             )}
-                        </div>
-                    )}
 
-                    <div className="mt-8 flex justify-end gap-3">
-                        <Button
-                            variant="outline"
-                            onClick={() => {
-                                if (!createProcess.isProcessing) {
-                                    setIsCreateCTDTModalOpen(false);
-                                    setCreateProcess({
-                                        step: 0,
-                                        isProcessing: false,
-                                        step1Result: null,
-                                        step2Results: [],
-                                        step3Results: [],
-                                    });
-                                }
-                            }}
-                            disabled={createProcess.isProcessing}
-                        >
-                            {createProcess.isProcessing ? "Đang xử lý..." : "Đóng"}
-                        </Button>
-                    </div>
+                            {/* Step 2 Content */}
+                            {createProcess.step === 2 && (
+                                <div className="space-y-4 max-h-96 overflow-y-auto">
+                                    {createProcess.isProcessing && createProcess.step2Results.length === 0 && (
+                                        <div className="flex items-center justify-center py-8">
+                                            <FontAwesomeIcon icon={faSpinner} className="w-6 h-6 text-brand-500 animate-spin mr-3" />
+                                            <span className="text-gray-600 dark:text-gray-400">Đang áp dụng niên khóa...</span>
+                                        </div>
+                                    )}
+
+                                    {createProcess.step2Results.length > 0 && (
+                                        <div className="space-y-3">
+                                            {createProcess.step2Results.map((result, index) => {
+                                                const nienKhoa = result.nienKhoaId
+                                                    ? nienKhoas.find((nk) => nk.id.toString() === result.nienKhoaId)
+                                                    : null;
+                                                return (
+                                                    <div
+                                                        key={index}
+                                                        className={`p-4 rounded-lg border ${result.success
+                                                            ? "bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800"
+                                                            : "bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800"
+                                                            }`}
+                                                    >
+                                                        <div className="flex items-start gap-3">
+                                                            <FontAwesomeIcon
+                                                                icon={result.success ? faCheckCircle : faTimesCircle}
+                                                                className={`w-5 h-5 mt-0.5 ${result.success ? "text-green-600" : "text-red-600"
+                                                                    }`}
+                                                            />
+                                                            <div className="flex-1">
+                                                                <p
+                                                                    className={`font-medium ${result.success
+                                                                        ? "text-green-900 dark:text-green-100"
+                                                                        : "text-red-900 dark:text-red-100"
+                                                                        }`}
+                                                                >
+                                                                    {nienKhoa
+                                                                        ? `Niên khóa ${nienKhoa.maNienKhoa} - ${nienKhoa.tenNienKhoa}`
+                                                                        : `Niên khóa #${index + 1}`}
+                                                                </p>
+                                                                {result.success && result.data && (
+                                                                    <p className="mt-1 text-sm text-green-700 dark:text-green-300">
+                                                                        Áp dụng thành công
+                                                                    </p>
+                                                                )}
+                                                                {result.error && (
+                                                                    <p className="mt-1 text-sm text-red-700 dark:text-red-300">
+                                                                        {result.error}
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Step 3 Content */}
+                            {createProcess.step === 3 && (
+                                <div className="space-y-4 max-h-96 overflow-y-auto">
+                                    {createProcess.isProcessing && createProcess.step3Results.length === 0 && (
+                                        <div className="flex items-center justify-center py-8">
+                                            <FontAwesomeIcon icon={faSpinner} className="w-6 h-6 text-brand-500 animate-spin mr-3" />
+                                            <span className="text-gray-600 dark:text-gray-400">Đang thêm môn học...</span>
+                                        </div>
+                                    )}
+
+                                    {createProcess.step3Results.length > 0 && (
+                                        <div className="space-y-3">
+                                            {createProcess.step3Results.map((result, index) => (
+                                                <div
+                                                    key={index}
+                                                    className={`p-4 rounded-lg border ${result.success
+                                                        ? "bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800"
+                                                        : "bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800"
+                                                        }`}
+                                                >
+                                                    <div className="flex items-start gap-3">
+                                                        <FontAwesomeIcon
+                                                            icon={result.success ? faCheckCircle : faTimesCircle}
+                                                            className={`w-5 h-5 mt-0.5 ${result.success ? "text-green-600" : "text-red-600"
+                                                                }`}
+                                                        />
+                                                        <div className="flex-1">
+                                                            <p
+                                                                className={`font-medium ${result.success
+                                                                    ? "text-green-900 dark:text-green-100"
+                                                                    : "text-red-900 dark:text-red-100"
+                                                                    }`}
+                                                            >
+                                                                {result.monHoc || `Môn học #${index + 1}`}
+                                                            </p>
+                                                            {result.success && (
+                                                                <p className="mt-1 text-sm text-green-700 dark:text-green-300">
+                                                                    Thêm thành công
+                                                                </p>
+                                                            )}
+                                                            {result.error && (
+                                                                <p className="mt-1 text-sm text-red-700 dark:text-red-300">
+                                                                    {result.error}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            <div className="mt-8 flex justify-end gap-3">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                        if (!createProcess.isProcessing) {
+                                            setIsCreateCTDTModalOpen(false);
+                                            setCreateProcess({
+                                                step: 0,
+                                                isProcessing: false,
+                                                step1Result: null,
+                                                step2Results: [],
+                                                step3Results: [],
+                                            });
+                                        }
+                                    }}
+                                    disabled={createProcess.isProcessing}
+                                >
+                                    {createProcess.isProcessing ? "Đang xử lý..." : "Đóng"}
+                                </Button>
+                            </div>
+                        </>
+                    )}
                 </div>
             </Modal>
 
