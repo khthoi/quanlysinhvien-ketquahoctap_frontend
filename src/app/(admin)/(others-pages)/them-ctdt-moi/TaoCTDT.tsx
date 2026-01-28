@@ -1096,7 +1096,7 @@ export default function TaoCTDT() {
             >
                 <div className="p-6 sm:p-8">
                     <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
-                        Thêm Môn học vào Chương trình Đào tạo
+                        Thêm Môn học vào CTĐT
                     </h3>
 
                     {/* Error Alert */}
