@@ -348,7 +348,7 @@ const ConfirmAddResultModal: React.FC<ConfirmAddResultModalProps> = ({
                                             <TableBody className="divide-y divide-gray-100 dark:divide-gray-700/80 bg-white dark:bg-gray-900/50">
                                                 {successList.map((row, idx) => (
                                                     <TableRow key={idx} className="grid grid-cols-[13%_22%_35%_30%] hover:bg-green-50/50 dark:hover:bg-green-900/10 transition-colors">
-                                                        <TableCell className="px-4 py-3 font-mono text-sm text-gray-800 dark:text-gray-200">{row.maSinhVien}</TableCell>
+                                                          <TableCell className="px-4 py-3 font-mono text-sm text-gray-800 dark:text-gray-200">{row.maSinhVien}</TableCell>
                                                         <TableCell className="px-4 py-3 font-mono text-sm text-gray-800 dark:text-gray-200">{row.hoTen}</TableCell>
                                                         <TableCell className="px-4 py-3 font-mono text-sm text-gray-800 dark:text-gray-200">{row.maLopHocPhan}</TableCell>
                                                         <TableCell className="px-4 py-3 font-mono text-sm text-green-600 dark:text-green-400 font-medium">Đã thêm vào LHP</TableCell>
