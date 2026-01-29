@@ -2393,7 +2393,6 @@ export default function QuanLyLopHocPhanPage() {
     // Thêm sau dòng:  const [isImportLHPExcelModalOpen, setIsImportLHPExcelModalOpen] = useState(false);
     const [isDownloadBangDiemModalOpen, setIsDownloadBangDiemModalOpen] = useState(false);
     const [downloadingLopHocPhan, setDownloadingLopHocPhan] = useState<LopHocPhan | null>(null);
-    const [isThongKeSVTruotMonModalOpen, setIsThongKeSVTruotMonModalOpen] = useState(false);
 
     // State để theo dõi dropdown ĐANG MỞ
     const [activeDropdownId, setActiveDropdownId] = useState<number | null>(null);
@@ -2988,20 +2987,7 @@ export default function QuanLyLopHocPhanPage() {
                                     TK LHP đề xuất
                                 </DropdownItem>
 
-                                <DropdownItem
-                                    tag="button"
-                                    onClick={() => {
-                                        setIsThongKeSVTruotMonModalOpen(true);
-                                        closeHeaderDropdown();
-                                    }}
-                                    className="flex items-center gap-2 px-3 py-2 rounded-md
-               transition-colors duration-200
-               hover:bg-red-100 hover:text-red-700
-               dark:hover:bg-red-900/30 dark:hover:text-red-300"
-                                >
-                                    <FontAwesomeIcon icon={faUserXmark} className="w-4" />
-                                    TK SV Trượt môn
-                                </DropdownItem>
+                                {/* Thống kê SV trượt môn đã được chuyển sang trang Quản lý Sinh viên */}
                             </div>
                         </Dropdown>
                     </div>
@@ -3386,14 +3372,6 @@ export default function QuanLyLopHocPhanPage() {
                     setDownloadingLopHocPhan(null);
                 }}
                 lopHocPhan={downloadingLopHocPhan}
-                showAlert={showAlert}
-            />
-
-            {/* Modal Thống kê SV Trượt môn */}
-            <ThongKeSVTruotMonModal
-                isOpen={isThongKeSVTruotMonModalOpen}
-                onClose={() => setIsThongKeSVTruotMonModalOpen(false)}
-                namHocOptions={namHocOptions}
                 showAlert={showAlert}
             />
 

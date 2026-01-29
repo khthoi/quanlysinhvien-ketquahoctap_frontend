@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import {
     Table,
@@ -18,19 +19,34 @@ import Label from "@/components/form/Label";
 import Badge from "@/components/ui/badge/Badge";
 import SearchableSelect from "@/components/form/SelectCustom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faMagnifyingGlass, faEye, faPenToSquare, faTrash, faEdit, faGlassCheers, faMedal, faGraduationCap, faUserPlus } from "@fortawesome/free-solid-svg-icons";
+import {
+    faMagnifyingGlass,
+    faEye,
+    faPenToSquare,
+    faTrash,
+    faEdit,
+    faGlassCheers,
+    faMedal,
+    faGraduationCap,
+    faUserPlus,
+} from "@fortawesome/free-solid-svg-icons";
 import TextArea from "@/components/form/input/TextArea";
 import { DropdownItem } from "@/components/ui/dropdown/DropdownItem";
 import { Dropdown } from "@/components/ui/dropdown/Dropdown";
 import { FaAngleDown } from "react-icons/fa6";
 import { useDropzone } from "react-dropzone";
 import {
-    faCloudArrowUp, faDownload, faFileExcel,
+    faCloudArrowUp,
+    faDownload,
+    faFileExcel,
     faUsersGear,
     faCircleCheck,
     faCircleExclamation,
     faSpinner,
-    faFileInvoice  // THÊM MỚI - icon cho xuất phiếu điểm
+    faFileInvoice,  // THÊM MỚI - icon cho xuất phiếu điểm
+    faUserXmark,
+    faCircleInfo,
+    faTriangleExclamation,
 } from "@fortawesome/free-solid-svg-icons";
 
 type TinhTrang = "DANG_HOC" | "THOI_HOC" | "DA_TOT_NGHIEP" | "BAO_LUU";
@@ -101,6 +117,18 @@ interface LopOption {
     id: number;
     maLop: string;
     tenLop: string;
+}
+
+interface NamHocOption {
+    id: number;
+    maNamHoc: string;
+    tenNamHoc: string;
+    hocKys: {
+        id: number;
+        hocKy: number;
+        ngayBatDau: string;
+        ngayKetThuc: string;
+    }[];
 }
 
 interface ThanhTich {
@@ -236,6 +264,10 @@ const SinhVienModal: React.FC<SinhVienModalProps> = ({
 
     if (!isOpen) return null;
 
+    const isDaTotNghiepReadOnly = isEdit && tinhTrang === "DA_TOT_NGHIEP";
+    const selectedLop = lopOptions.find((o) => o.id.toString() === lopId);
+    const lopDisplayText = selectedLop ? `${selectedLop.maLop} - ${selectedLop.tenLop}` : lopId || "—";
+
     const gioiTinhOptions = [
         { value: "NAM", label: "Nam" },
         { value: "NU", label: "Nữ" },
@@ -246,6 +278,81 @@ const SinhVienModal: React.FC<SinhVienModalProps> = ({
         { value: "THOI_HOC", label: "Thôi học" },
         { value: "BAO_LUU", label: "Bảo lưu" },
     ];
+
+    // Modal sửa nhưng sinh viên đã tốt nghiệp → chỉ hiển thị thông tin, không cho sửa
+    if (isDaTotNghiepReadOnly) {
+        return (
+            <Modal isOpen={isOpen} onClose={onClose} className="max-w-3xl">
+                <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
+                    <h3 className="mb-4 text-xl font-semibold text-gray-800 dark:text-white/90">
+                        Thông tin Sinh viên (đã tốt nghiệp)
+                    </h3>
+                    <div className="mb-6">
+                        <Alert
+                            variant="warning"
+                            title="Không thể sửa"
+                            message="Thông tin về sinh viên đã tốt nghiệp có giá trị về mặt pháp lý, không thể sửa."
+                        />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Mã Sinh viên</p>
+                            <p className="font-medium text-gray-800 dark:text-white">{maSinhVien || "—"}</p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Họ và Tên</p>
+                            <p className="font-medium text-gray-800 dark:text-white">{hoTen || "—"}</p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Ngày sinh</p>
+                            <p className="font-medium text-gray-800 dark:text-white">
+                                {ngaySinh ? new Date(ngaySinh).toLocaleDateString("vi-VN") : "—"}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Giới tính</p>
+                            <p className="font-medium text-gray-800 dark:text-white">
+                                {gioiTinh ? getGioiTinhLabel(gioiTinh as GioiTinh) : "—"}
+                            </p>
+                        </div>
+                        <div className="md:col-span-2">
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Địa chỉ</p>
+                            <p className="font-medium text-gray-800 dark:text-white">{diaChi || "—"}</p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Email</p>
+                            <p className="font-medium text-gray-800 dark:text-white">{email || "—"}</p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Số điện thoại</p>
+                            <p className="font-medium text-gray-800 dark:text-white">{sdt || "—"}</p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Ngày nhập học</p>
+                            <p className="font-medium text-gray-800 dark:text-white">
+                                {ngayNhapHoc ? new Date(ngayNhapHoc).toLocaleDateString("vi-VN") : "—"}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Tình trạng</p>
+                            <p className="font-medium text-gray-800 dark:text-white">
+                                {tinhTrang ? getTinhTrangLabel(tinhTrang as TinhTrang) : "—"}
+                            </p>
+                        </div>
+                        <div className="md:col-span-2">
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Lớp</p>
+                            <p className="font-medium text-gray-800 dark:text-white">{lopDisplayText}</p>
+                        </div>
+                    </div>
+                    <div className="mt-8 flex justify-end">
+                        <Button variant="outline" onClick={onClose}>
+                            Đóng
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
+        );
+    }
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} className="max-w-3xl">
@@ -1403,6 +1510,262 @@ const XetTotNghiepModal: React.FC<XetTotNghiepModalProps> = ({
     );
 };
 
+// ==================== MODAL THỐNG KÊ SINH VIÊN TRƯỢT MÔN ====================
+interface ThongKeSVTruotMonModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    namHocOptions: NamHocOption[];
+    showAlert: (variant: "success" | "error" | "warning" | "info", title: string, message: string) => void;
+}
+
+const ThongKeSVTruotMonModal: React.FC<ThongKeSVTruotMonModalProps> = ({
+    isOpen,
+    onClose,
+    namHocOptions,
+    showAlert,
+}) => {
+    const router = useRouter();
+    const [selectedNamHocId, setSelectedNamHocId] = useState("");
+    const [selectedHocKy, setSelectedHocKy] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
+    const [errors, setErrors] = useState({ namHoc: false, hocKy: false });
+
+    const selectedNamHoc = namHocOptions.find((nh) => nh.id.toString() === selectedNamHocId);
+    const hocKyOptions = selectedNamHoc?.hocKys || [];
+
+    const handleClose = () => {
+        setSelectedNamHocId("");
+        setSelectedHocKy("");
+        setErrors({ namHoc: false, hocKy: false });
+        onClose();
+    };
+
+    const validateForm = () => {
+        const newErrors = {
+            namHoc: !selectedNamHocId,
+            hocKy: !selectedHocKy,
+        };
+        setErrors(newErrors);
+        return !newErrors.namHoc && !newErrors.hocKy;
+    };
+
+    const handleSubmit = async () => {
+        if (!validateForm()) return;
+
+        setIsLoading(true);
+
+        try {
+            const accessToken = getCookie("access_token");
+            const selectedNamHocData = namHocOptions.find((nh) => nh.id.toString() === selectedNamHocId);
+            const selectedHocKyData = hocKyOptions.find((hk) => hk.id.toString() === selectedHocKy);
+
+            if (!selectedNamHocData || !selectedHocKyData) {
+                showAlert("error", "Lỗi", "Không tìm thấy thông tin năm học hoặc học kỳ");
+                setIsLoading(false);
+                return;
+            }
+
+            const res = await fetch("http://localhost:3000/bao-cao/de-xuat-hoc-lai", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${accessToken}`,
+                },
+                body: JSON.stringify({
+                    maNamHoc: selectedNamHocData.maNamHoc,
+                    hocKy: selectedHocKyData.hocKy,
+                }),
+            });
+
+            if (res.ok) {
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = `thong-ke-sv-truot-mon-${selectedNamHocData.maNamHoc}-HK${selectedHocKyData.hocKy}.xlsx`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+
+                showAlert(
+                    "success",
+                    "Thành công",
+                    "Đã xuất file thống kê sinh viên trượt môn và đề xuất học lại"
+                );
+                handleClose();
+            } else {
+                const err = await res.json();
+                handleClose();
+                showAlert("error", "Lỗi", err.message || "Không thể xuất thống kê");
+            }
+        } catch (err) {
+            console.error("Lỗi xuất thống kê SV trượt môn:", err);
+            showAlert("error", "Lỗi", "Có lỗi xảy ra khi xuất thống kê");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleViewUI = () => {
+        if (!validateForm()) return;
+
+        const selectedNamHocData = namHocOptions.find((nh) => nh.id.toString() === selectedNamHocId);
+        const selectedHocKyData = hocKyOptions.find((hk) => hk.id.toString() === selectedHocKy);
+
+        if (!selectedNamHocData || !selectedHocKyData) {
+            showAlert("error", "Lỗi", "Không tìm thấy thông tin năm học hoặc học kỳ");
+            return;
+        }
+
+        // Điều hướng sang giao diện theo maNamHoc và hocKy, dùng Next router để chuyển trang nhanh
+        const url = `http://localhost:3001/them-sinh-vien-hoc-lai/${selectedNamHocData.maNamHoc}/hoc-ky/${selectedHocKyData.hocKy}`;
+        router.push(url);
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <Modal isOpen={isOpen} onClose={handleClose} className="max-w-2xl">
+            <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
+                {/* Header */}
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">
+                        <FontAwesomeIcon icon={faUserXmark} className="text-xl" />
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-semibold text-gray-800 dark:text:white/90 dark:text-white">
+                            Thống kê SV trượt môn
+                        </h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                            Xuất danh sách sinh viên trượt và đề xuất học lại
+                        </p>
+                    </div>
+                </div>
+
+                {/* Thông tin hướng dẫn */}
+                <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <div className="flex gap-3">
+                        <FontAwesomeIcon
+                            icon={faCircleInfo}
+                            className="text-blue-500 dark:text-blue-400 mt-0.5 flex-shrink-0"
+                        />
+                        <div className="space-y-1.5 text-sm text-blue-800 dark:text-blue-100">
+                            <p>
+                                Chọn <strong>Năm học</strong> và <strong>Học kỳ</strong> để hệ thống thống kê
+                                sinh viên trượt môn và đề xuất học lại.
+                            </p>
+                            <p className="text-blue-700/80 dark:text-blue-200/80">
+                                Sau khi chọn xong, bạn có thể:
+                            </p>
+                            <ul className="list-disc list-inside text-blue-700/80 dark:text-blue-200/80 space-y-0.5">
+                                <li>
+                                    Nhấn <strong>Xuất thống kê</strong> để tải file Excel, bao gồm thông tin SV và các môn học bị trượt.
+                                </li>
+                                <li>
+                                    Hoặc nhấn <strong>Xem</strong> để chuyển sang giao diện hệ thống hỗ trợ quản
+                                    lý đề xuất học lại theo năm học và học kỳ đã chọn.
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Form chọn Năm học và Học kỳ */}
+                <div className="space-y-4 mb-6">
+                    <div>
+                        <Label className="mb-2 block text-sm font-medium">
+                            Năm học <span className="text-red-500">*</span>
+                        </Label>
+                        <SearchableSelect
+                            options={namHocOptions.map((nh) => ({
+                                value: nh.id.toString(),
+                                label: nh.maNamHoc,
+                                secondary: nh.tenNamHoc,
+                            }))}
+                            placeholder="Chọn năm học"
+                            onChange={(value) => {
+                                setSelectedNamHocId(value);
+                                setSelectedHocKy("");
+                                setErrors((prev) => ({ ...prev, namHoc: false }));
+                            }}
+                            defaultValue={selectedNamHocId}
+                            showSecondary={true}
+                            maxDisplayOptions={10}
+                            searchPlaceholder="Tìm năm học..."
+                        />
+                        {errors.namHoc && (
+                            <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
+                                <FontAwesomeIcon icon={faTriangleExclamation} className="text-xs" />
+                                Vui lòng chọn năm học
+                            </p>
+                        )}
+                    </div>
+
+                    <div>
+                        <Label className="mb-2 block text-sm font-medium">
+                            Học kỳ <span className="text-red-500">*</span>
+                        </Label>
+                        <SearchableSelect
+                            options={hocKyOptions.map((hk) => ({
+                                value: hk.id.toString(),
+                                label: `Học kỳ ${hk.hocKy}`,
+                                secondary: `${new Date(hk.ngayBatDau).toLocaleDateString(
+                                    "vi-VN"
+                                )} - ${new Date(hk.ngayKetThuc).toLocaleDateString("vi-VN")}`,
+                            }))}
+                            placeholder={selectedNamHocId ? "Chọn học kỳ" : "Vui lòng chọn năm học trước"}
+                            onChange={(value) => {
+                                setSelectedHocKy(value);
+                                setErrors((prev) => ({ ...prev, hocKy: false }));
+                            }}
+                            defaultValue={selectedHocKy}
+                            showSecondary={true}
+                            maxDisplayOptions={10}
+                            searchPlaceholder="Tìm học kỳ..."
+                            disabled={!selectedNamHocId}
+                        />
+                        {errors.hocKy && (
+                            <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
+                                <FontAwesomeIcon icon={faTriangleExclamation} className="text-xs" />
+                                Vui lòng chọn học kỳ
+                            </p>
+                        )}
+                    </div>
+                </div>
+
+                {/* Buttons */}
+                <div className="flex justify-end gap-3">
+                    <Button variant="outline" onClick={handleClose} disabled={isLoading}>
+                        Hủy
+                    </Button>
+                    <Button
+                        variant="outline"
+                        onClick={handleViewUI}
+                        disabled={isLoading || !selectedNamHocId || !selectedHocKy}
+                        startIcon={<FontAwesomeIcon icon={faEye} />}
+                    >
+                        Xem
+                    </Button>
+                    <Button
+                        onClick={handleSubmit}
+                        disabled={isLoading}
+                        startIcon={
+                            isLoading ? (
+                                <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
+                            ) : (
+                                <FontAwesomeIcon icon={faDownload} />
+                            )
+                        }
+                    >
+                        {isLoading ? "Đang xuất..." : "Xuất thống kê"}
+                    </Button>
+                </div>
+            </div>
+        </Modal>
+    );
+};
+
 // ==================== ITEMS COUNT INFO COMPONENT ====================
 interface ItemsCountInfoProps {
     pagination: PaginationData;
@@ -1478,6 +1841,7 @@ export default function QuanLySinhVienPage() {
     const [nganhOptions, setNganhOptions] = useState<NganhOption[]>([]);
     const [nienKhoaOptions, setNienKhoaOptions] = useState<NienKhoaOption[]>([]);
     const [lopOptionsForModal, setLopOptionsForModal] = useState<LopOption[]>([]);
+    const [namHocOptions, setNamHocOptions] = useState<NamHocOption[]>([]);
 
     // State cho modal khen thưởng/kỷ luật
     const [isThanhTichModalOpen, setIsThanhTichModalOpen] = useState(false);
@@ -1508,6 +1872,7 @@ export default function QuanLySinhVienPage() {
     const [isXetTotNghiepModalOpen, setIsXetTotNghiepModalOpen] = useState(false);
     // State để theo dõi dropdown ĐANG MỞ (chỉ 1 cái duy nhất)
     const [activeDropdownId, setActiveDropdownId] = useState<number | null>(null);
+    const [isHeaderDropdownOpen, setIsHeaderDropdownOpen] = useState(false);
 
     // State cho modal xuất phiếu điểm
     const [isExportPhieuDiemModalOpen, setIsExportPhieuDiemModalOpen] = useState(false);
@@ -1529,6 +1894,9 @@ export default function QuanLySinhVienPage() {
         }>;
     } | null>(null);
 
+    // State cho modal thống kê sinh viên trượt môn
+    const [isThongKeSVTruotMonModalOpen, setIsThongKeSVTruotMonModalOpen] = useState(false);
+
     // Toggle: nếu click vào dropdown đang mở → đóng nó, ngược lại mở nó và đóng cái khác
     const toggleDropdown = (sinhVienId: number) => {
         setActiveDropdownId((prev) =>
@@ -1539,6 +1907,14 @@ export default function QuanLySinhVienPage() {
     // Close dropdown (gọi khi chọn item hoặc click ngoài)
     const closeDropdown = () => {
         setActiveDropdownId(null);
+    };
+
+    const toggleHeaderDropdown = () => {
+        setIsHeaderDropdownOpen((prev) => !prev);
+    };
+
+    const closeHeaderDropdown = () => {
+        setIsHeaderDropdownOpen(false);
     };
 
     const [errors, setErrors] = useState({
@@ -1654,6 +2030,31 @@ export default function QuanLySinhVienPage() {
         }
     };
 
+    // Fetch danh sách năm học (phục vụ thống kê SV trượt môn)
+    const fetchNamHoc = async () => {
+        try {
+            const accessToken = getCookie("access_token");
+            const res = await fetch("http://localhost:3000/dao-tao/nam-hoc?page=1&limit=9999", {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+            });
+            const json = await res.json();
+            if (json.data && Array.isArray(json.data)) {
+                setNamHocOptions(
+                    json.data.map((nh: any) => ({
+                        id: nh.id,
+                        maNamHoc: nh.maNamHoc,
+                        tenNamHoc: nh.tenNamHoc,
+                        hocKys: nh.hocKys || [],
+                    }))
+                );
+            }
+        } catch (err) {
+            console.error("Không thể tải danh sách năm học:", err);
+        }
+    };
+
     // Fetch lớp cho modal
     const fetchLopForModal = async (search: string = "") => {
         try {
@@ -1688,6 +2089,7 @@ export default function QuanLySinhVienPage() {
 
     useEffect(() => {
         fetchLopAndFilters();
+        fetchNamHoc();
     }, []);
 
     const handleSearch = () => {
@@ -2370,34 +2772,89 @@ export default function QuanLySinhVienPage() {
                         </div>
                     </div>
 
-                    <div className="flex gap-3">
-                        {/* Thêm button này */}
+                    <div className="relative inline-block">
                         <Button
-                            variant="primary"
-                            onClick={() => setIsXetTotNghiepModalOpen(true)}
-                            startIcon={<FontAwesomeIcon icon={faGraduationCap} />}
+                            variant="outline"
+                            onClick={toggleHeaderDropdown}
+                            className="dropdown-toggle"
+                            endIcon={
+                                <FaAngleDown
+                                    className={`text-gray-500 transition-transform duration-300 ease-in-out ${isHeaderDropdownOpen ? "rotate-180" : "rotate-0"}`}
+                                />
+                            }
                         >
-                            Xét Tốt Nghiệp
+                            Thao tác
                         </Button>
-                        <Button
-                            variant="primary"
-                            onClick={() => setIsBulkCreateAccountModalOpen(true)}
-                            startIcon={<FontAwesomeIcon icon={faUsersGear} />}
+
+                        <Dropdown
+                            isOpen={isHeaderDropdownOpen}
+                            onClose={closeHeaderDropdown}
+                            className="w-64 mt-2 right-0 border-2 border-gray-300 dark:border-gray-700 shadow-lg rounded-lg"
                         >
-                            Cấp tài khoản hàng loạt
-                        </Button>
-                        <Button
-                            variant="primary"
-                            onClick={() => setIsImportExcelModalOpen(true)}
-                            startIcon={<FontAwesomeIcon icon={faFileExcel} />}
-                        >
-                            Nhập từ Excel
-                        </Button>
-                        <Button
-                            onClick={openCreateModal}
-                        >
-                            Tạo mới Sinh viên
-                        </Button>
+                            <div className="py-1">
+                                <DropdownItem
+                                    tag="button"
+                                    onClick={() => {
+                                        openCreateModal();
+                                        closeHeaderDropdown();
+                                    }}
+                                    className="flex items-center gap-2 px-3 py-2 rounded-md"
+                                >
+                                    <FontAwesomeIcon icon={faUserPlus} className="w-4" />
+                                    Tạo mới Sinh viên
+                                </DropdownItem>
+
+                                <DropdownItem
+                                    tag="button"
+                                    onClick={() => {
+                                        setIsImportExcelModalOpen(true);
+                                        closeHeaderDropdown();
+                                    }}
+                                    className="flex items-center gap-2 px-3 py-2 rounded-md"
+                                >
+                                    <FontAwesomeIcon icon={faFileExcel} className="w-4" />
+                                    Nhập từ Excel
+                                </DropdownItem>
+
+                                <DropdownItem
+                                    tag="button"
+                                    onClick={() => {
+                                        setIsBulkCreateAccountModalOpen(true);
+                                        closeHeaderDropdown();
+                                    }}
+                                    className="flex items-center gap-2 px-3 py-2 rounded-md"
+                                >
+                                    <FontAwesomeIcon icon={faUsersGear} className="w-4" />
+                                    Cấp tài khoản hàng loạt
+                                </DropdownItem>
+
+                                <DropdownItem
+                                    tag="button"
+                                    onClick={() => {
+                                        setIsXetTotNghiepModalOpen(true);
+                                        closeHeaderDropdown();
+                                    }}
+                                    className="flex items-center gap-2 px-3 py-2 rounded-md"
+                                >
+                                    <FontAwesomeIcon icon={faGraduationCap} className="w-4" />
+                                    Xét tốt nghiệp
+                                </DropdownItem>
+
+                                <div className="my-1 border-t border-gray-100 dark:border-gray-700" />
+
+                                <DropdownItem
+                                    tag="button"
+                                    onClick={() => {
+                                        setIsThongKeSVTruotMonModalOpen(true);
+                                        closeHeaderDropdown();
+                                    }}
+                                    className="flex items-center gap-2 px-3 py-2 rounded-md transition-colors duration-200 hover:bg-red-100 hover:text-red-700 dark:hover:bg-red-900/30 dark:hover:text-red-300"
+                                >
+                                    <FontAwesomeIcon icon={faUserXmark} className="w-4" />
+                                    TK SV trượt môn
+                                </DropdownItem>
+                            </div>
+                        </Dropdown>
                     </div>
                 </div>
 
@@ -2929,6 +3386,14 @@ export default function QuanLySinhVienPage() {
                 isOpen={isXetTotNghiepModalOpen}
                 onClose={() => setIsXetTotNghiepModalOpen(false)}
                 nienKhoaOptions={nienKhoaOptions}
+            />
+
+            {/* Modal Thống kê SV trượt môn */}
+            <ThongKeSVTruotMonModal
+                isOpen={isThongKeSVTruotMonModalOpen}
+                onClose={() => setIsThongKeSVTruotMonModalOpen(false)}
+                namHocOptions={namHocOptions}
+                showAlert={showAlert}
             />
 
             {/* Modal Tạo tài khoản */}

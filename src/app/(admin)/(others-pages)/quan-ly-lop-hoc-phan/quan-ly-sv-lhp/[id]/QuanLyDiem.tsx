@@ -33,8 +33,17 @@ import {
     faCircleExclamation   // THÊM MỚI
 } from "@fortawesome/free-solid-svg-icons";
 import Checkbox from "@/components/form/input/Checkbox"; // THÊM MỚI
+import SearchableSelect from "@/components/form/SelectCustom";
 
 type LoaiThamGia = "CHINH_QUY" | "HOC_LAI" | "HOC_CAI_THIEN" | "HOC_BO_SUNG";
+
+// Options cho bộ lọc loại tham gia
+const LOAI_THAM_GIA_FILTER_OPTIONS: { value: LoaiThamGia; label: string }[] = [
+    { value: "CHINH_QUY", label: "Chính quy" },
+    { value: "HOC_LAI", label: "Học lại" },
+    { value: "HOC_CAI_THIEN", label: "Học cải thiện" },
+    { value: "HOC_BO_SUNG", label: "Học bổ sung" },
+];
 
 interface LopHocPhanInfo {
     id: number;
@@ -106,7 +115,7 @@ const getLoaiThamGiaLabel = (loaiThamGia: LoaiThamGia): string => {
         case "HOC_LAI":
             return "Học lại";
         case "HOC_CAI_THIEN":
-            return "Học cải thiện";
+            return "Cải thiện";
         case "HOC_BO_SUNG":
             return "Học bổ sung";
         default:
@@ -326,6 +335,7 @@ export default function ChiTietLopHocPhanPage() {
     });
     const [currentPage, setCurrentPage] = useState(1);
     const [searchKeyword, setSearchKeyword] = useState("");
+    const [filterLoaiThamGia, setFilterLoaiThamGia] = useState<string>("");
 
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -336,8 +346,9 @@ export default function ChiTietLopHocPhanPage() {
     const [deletingSinhVien, setDeletingSinhVien] = useState<SinhVienDiem | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
-    // State cho checkbox và xóa hàng loạt
+    // State cho checkbox và xóa hàng loạt (giữ selection khi chuyển trang)
     const [selectedSinhVienIds, setSelectedSinhVienIds] = useState<number[]>([]);
+    const [selectedSinhVienMap, setSelectedSinhVienMap] = useState<Record<number, { maSinhVien: string; hoTen: string; malop?: string }>>({});
     const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
     const [isBulkDeleting, setIsBulkDeleting] = useState(false);
     const [bulkDeleteResults, setBulkDeleteResults] = useState<Array<{
@@ -370,11 +381,12 @@ export default function ChiTietLopHocPhanPage() {
 
 
     // Fetch danh sách sinh viên và điểm
-    const fetchDanhSachSinhVien = async (page: number = 1, search: string = "") => {
+    const fetchDanhSachSinhVien = async (page: number = 1, search: string = "", loaiThamGia: string = "") => {
         try {
             const accessToken = getCookie("access_token");
             let url = `http://localhost:3000/giang-day/lop-hoc-phan/danh-sach-sinh-vien/${lopHocPhanId}?page=${page}&limit=10`;
             if (search) url += `&search=${encodeURIComponent(search)}`;
+            if (loaiThamGia) url += `&loaiThamGia=${encodeURIComponent(loaiThamGia)}`;
 
             const res = await fetch(url, {
                 headers: {
@@ -399,13 +411,13 @@ export default function ChiTietLopHocPhanPage() {
 
     useEffect(() => {
         if (lopHocPhanId) {
-            fetchDanhSachSinhVien(currentPage, searchKeyword);
+            fetchDanhSachSinhVien(currentPage, searchKeyword, filterLoaiThamGia);
         }
-    }, [lopHocPhanId, currentPage]);
+    }, [lopHocPhanId, currentPage, filterLoaiThamGia]);
 
     const handleSearch = () => {
         setCurrentPage(1);
-        fetchDanhSachSinhVien(1, searchKeyword.trim());
+        fetchDanhSachSinhVien(1, searchKeyword.trim(), filterLoaiThamGia);
     };
 
     const showAlert = (
@@ -459,7 +471,7 @@ export default function ChiTietLopHocPhanPage() {
                     "Thành công",
                     `Đã xóa sinh viên ${deletingSinhVien.sinhVien.maSinhVien} - ${deletingSinhVien.sinhVien.hoTen} khỏi lớp học phần`
                 );
-                fetchDanhSachSinhVien(currentPage, searchKeyword);
+                fetchDanhSachSinhVien(currentPage, searchKeyword, filterLoaiThamGia);
             } else {
                 const err = await res.json();
                 showAlert("error", "Lỗi", err.message || "Xóa sinh viên thất bại");
@@ -486,35 +498,69 @@ export default function ChiTietLopHocPhanPage() {
     const isAllSelected = deletableSinhViens.length > 0 &&
         deletableSinhViens.every(item => selectedSinhVienIds.includes(item.sinhVien.id));
 
-    // Kiểm tra trạng thái indeterminate
-    const isIndeterminate = selectedSinhVienIds.length > 0 &&
-        selectedSinhVienIds.length < deletableSinhViens.length;
+    // Kiểm tra trạng thái indeterminate (trên trang hiện tại)
+    const currentPageDeletableIds = deletableSinhViens.map(item => item.sinhVien.id);
+    const selectedOnCurrentPage = selectedSinhVienIds.filter(id => currentPageDeletableIds.includes(id));
+    const isIndeterminate = selectedOnCurrentPage.length > 0 &&
+        selectedOnCurrentPage.length < deletableSinhViens.length;
 
-    // Toggle chọn tất cả (chỉ chọn những sinh viên chưa có điểm)
+    // Toggle chọn tất cả trên trang hiện tại (merge với selection đã có từ trang khác)
     const handleSelectAll = (checked: boolean) => {
         if (checked) {
-            setSelectedSinhVienIds(deletableSinhViens.map(item => item.sinhVien.id));
+            const idsToAdd = deletableSinhViens.map(item => item.sinhVien.id);
+            const newMap: Record<number, { maSinhVien: string; hoTen: string; malop?: string }> = { ...selectedSinhVienMap };
+            deletableSinhViens.forEach(item => {
+                newMap[item.sinhVien.id] = {
+                    maSinhVien: item.sinhVien.maSinhVien,
+                    hoTen: item.sinhVien.hoTen,
+                    malop: item.sinhVien.malop,
+                };
+            });
+            setSelectedSinhVienIds(prev => [...new Set([...prev, ...idsToAdd])]);
+            setSelectedSinhVienMap(newMap);
         } else {
-            setSelectedSinhVienIds([]);
+            const idsToRemove = new Set(currentPageDeletableIds);
+            setSelectedSinhVienIds(prev => prev.filter(id => !idsToRemove.has(id)));
+            setSelectedSinhVienMap(prev => {
+                const next = { ...prev };
+                idsToRemove.forEach(id => delete next[id]);
+                return next;
+            });
         }
     };
 
     // Toggle chọn một sinh viên
-    const handleSelectOne = (sinhVienId: number, checked: boolean) => {
+    const handleSelectOne = (sinhVienId: number, checked: boolean, item?: SinhVienDiem) => {
         if (checked) {
-            setSelectedSinhVienIds(prev => [...prev, sinhVienId]);
+            setSelectedSinhVienIds(prev => (prev.includes(sinhVienId) ? prev : [...prev, sinhVienId]));
+            if (item) {
+                setSelectedSinhVienMap(prev => ({
+                    ...prev,
+                    [sinhVienId]: {
+                        maSinhVien: item.sinhVien.maSinhVien,
+                        hoTen: item.sinhVien.hoTen,
+                        malop: item.sinhVien.malop,
+                    },
+                }));
+            }
         } else {
             setSelectedSinhVienIds(prev => prev.filter(id => id !== sinhVienId));
+            setSelectedSinhVienMap(prev => {
+                const next = { ...prev };
+                delete next[sinhVienId];
+                return next;
+            });
         }
     };
 
     // Kiểm tra một sinh viên có được chọn không
     const isSelected = (sinhVienId: number) => selectedSinhVienIds.includes(sinhVienId);
 
-    // Reset selection khi chuyển trang hoặc search
-    useEffect(() => {
+    // Clear toàn bộ selection (gọi sau khi xóa hàng loạt xong)
+    const clearSelection = () => {
         setSelectedSinhVienIds([]);
-    }, [currentPage, searchKeyword]);
+        setSelectedSinhVienMap({});
+    };
 
     // Mở modal xóa hàng loạt
     const openBulkDeleteModal = () => {
@@ -532,8 +578,8 @@ export default function ChiTietLopHocPhanPage() {
         setBulkDeleteResults(null);
         // Nếu đã xóa xong, reset selection và refresh data
         if (bulkDeleteResults) {
-            setSelectedSinhVienIds([]);
-            fetchDanhSachSinhVien(currentPage, searchKeyword);
+            clearSelection();
+            fetchDanhSachSinhVien(currentPage, searchKeyword, filterLoaiThamGia);
         }
     };
 
@@ -552,10 +598,8 @@ export default function ChiTietLopHocPhanPage() {
 
         const accessToken = getCookie("access_token");
 
-        // Lấy thông tin các sinh viên được chọn
-        const selectedSinhViens = danhSachSinhVien.filter(
-            item => selectedSinhVienIds.includes(item.sinhVien.id)
-        );
+        // Xóa theo danh sách ID đã chọn (giữ selection khi chuyển trang)
+        const displayInfo = (id: number) => selectedSinhVienMap[id] ?? { maSinhVien: `#${id}`, hoTen: "N/A" };
 
         // 👉 Cuộn lên đầu trang
         window.scrollTo({
@@ -563,10 +607,11 @@ export default function ChiTietLopHocPhanPage() {
             behavior: "smooth",
         });
 
-        for (const item of selectedSinhViens) {
+        for (const sinhVienId of selectedSinhVienIds) {
+            const { maSinhVien, hoTen } = displayInfo(sinhVienId);
             try {
                 const res = await fetch(
-                    `http://localhost:3000/giang-day/lop-hoc-phan/${lopHocPhanId}/sinh-vien-dang-ky/${item.sinhVien.id}`,
+                    `http://localhost:3000/giang-day/lop-hoc-phan/${lopHocPhanId}/sinh-vien-dang-ky/${sinhVienId}`,
                     {
                         method: "DELETE",
                         headers: {
@@ -577,27 +622,27 @@ export default function ChiTietLopHocPhanPage() {
 
                 if (res.ok) {
                     results.push({
-                        id: item.sinhVien.id,
-                        maSinhVien: item.sinhVien.maSinhVien,
-                        hoTen: item.sinhVien.hoTen,
+                        id: sinhVienId,
+                        maSinhVien,
+                        hoTen,
                         status: "success",
                         message: "Xóa thành công",
                     });
                 } else {
                     const err = await res.json();
                     results.push({
-                        id: item.sinhVien.id,
-                        maSinhVien: item.sinhVien.maSinhVien,
-                        hoTen: item.sinhVien.hoTen,
+                        id: sinhVienId,
+                        maSinhVien,
+                        hoTen,
                         status: "failed",
                         message: err.message || "Xóa thất bại",
                     });
                 }
             } catch (err) {
                 results.push({
-                    id: item.sinhVien.id,
-                    maSinhVien: item.sinhVien.maSinhVien,
-                    hoTen: item.sinhVien.hoTen,
+                    id: sinhVienId,
+                    maSinhVien,
+                    hoTen,
                     status: "failed",
                     message: "Lỗi kết nối",
                 });
@@ -700,9 +745,11 @@ export default function ChiTietLopHocPhanPage() {
                     </div>
                 )}
 
-                {/* Tìm kiếm và Button xóa hàng loạt */}
-                <div className="flex flex-col gap-4 mb-6 lg:flex-row lg:items-center lg:justify-between">
+                {/* Bộ lọc Loại tham gia + Tìm kiếm + Button xóa hàng loạt */}
+                <div className="flex flex-col gap-4 mb-6">
+                    {/* Ô tìm kiếm */}
                     <div className="w-full lg:max-w-md">
+                        <Label className="block mb-2 text-sm">Tìm kiếm</Label>
                         <div className="relative">
                             <button
                                 onClick={handleSearch}
@@ -719,22 +766,42 @@ export default function ChiTietLopHocPhanPage() {
                                 value={searchKeyword}
                                 onChange={(e) => setSearchKeyword(e.target.value)}
                                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                                className="h-11 w-full rounded-lg border border-gray-200 bg-transparent py-2. 5 pl-12 pr-4 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-800 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
+                                className="h-11 w-full rounded-lg border border-gray-200 bg-transparent py-2.5 pl-12 pr-4 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-800 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
                             />
                         </div>
                     </div>
 
-                    {/* Button Xóa hàng loạt - THÊM MỚI */}
-                    <div className="flex gap-3">
-                        {selectedSinhVienIds.length > 0 && (
-                            <Button
-                                variant="danger"
-                                onClick={openBulkDeleteModal}
-                                startIcon={<FontAwesomeIcon icon={faTrashCan} />}
-                            >
-                                Xóa khỏi lớp ({selectedSinhVienIds.length})
-                            </Button>
-                        )}
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                        {/* Bộ lọc theo Loại tham gia */}
+                        <div className="w-full sm:w-56">
+                            <Label className="block mb-2 text-sm">Loại tham gia</Label>
+                            <SearchableSelect
+                                options={[
+                                    ...LOAI_THAM_GIA_FILTER_OPTIONS.map((o) => ({ value: o.value, label: o.label })),
+                                ]}
+                                onChange={(value) => {
+                                    setFilterLoaiThamGia(value || "");
+                                    setCurrentPage(1);
+                                }}
+                                defaultValue={filterLoaiThamGia}
+                                placeholder="Chọn loại tham gia"
+                                showSecondary={false}
+                                searchPlaceholder="Tìm loại tham gia..."
+                            />
+                        </div>
+
+                        {/* Button Xóa hàng loạt */}
+                        <div className="flex gap-3">
+                            {selectedSinhVienIds.length > 0 && (
+                                <Button
+                                    variant="danger"
+                                    onClick={openBulkDeleteModal}
+                                    startIcon={<FontAwesomeIcon icon={faTrashCan} />}
+                                >
+                                    Xóa khỏi lớp ({selectedSinhVienIds.length})
+                                </Button>
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -744,7 +811,7 @@ export default function ChiTietLopHocPhanPage() {
                         <div className="min-w-[800px]">
                             <Table>
                                 <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
-                                    <TableRow className="grid grid-cols-[5%_18%_18%_18%_18%_23%]">
+                                    <TableRow className="grid grid-cols-[3%_12%_12%_10%_10%_10%_10%_10%_10%_12%]">
                                         {/* Checkbox chọn tất cả */}
                                         <TableCell isHeader className="px-3 py-3 font-medium text-gray-500 text-theme-xs flex items-center justify-center">
                                             <Checkbox
@@ -758,15 +825,27 @@ export default function ChiTietLopHocPhanPage() {
                                             Mã sinh viên
                                         </TableCell>
                                         <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-theme-xs">
-                                            Mã lớp niên chế
-                                        </TableCell>
-                                        <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-theme-xs">
                                             Loại tham gia
                                         </TableCell>
-                                        <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-theme-xs">
-                                            Có điểm
+                                        <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-theme-xs text-center">
+                                            Điểm 10%
                                         </TableCell>
-                                        <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-theme-xs">
+                                        <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-theme-xs text-center">
+                                            Điểm 30%
+                                        </TableCell>
+                                        <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-theme-xs text-center">
+                                            Điểm 60%
+                                        </TableCell>
+                                        <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-theme-xs text-center">
+                                            TBCHP
+                                        </TableCell>
+                                        <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-theme-xs text-center">
+                                            Điểm số
+                                        </TableCell>
+                                        <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-theme-xs text-center">
+                                            Điểm chữ
+                                        </TableCell>
+                                        <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-theme-xs text-center">
                                             Hành động
                                         </TableCell>
                                     </TableRow>
@@ -774,7 +853,7 @@ export default function ChiTietLopHocPhanPage() {
                                 <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05] text-theme-sm text-center">
                                     {danhSachSinhVien.length === 0 ? (
                                         <TableRow>
-                                            <TableCell className="px-5 py-8 text-center text-gray-500 dark: text-gray-400 col-span-6">
+                                            <TableCell className="px-5 py-8 text-center text-gray-500 dark:text-gray-400 col-span-10">
                                                 Không có dữ liệu sinh viên
                                             </TableCell>
                                         </TableRow>
@@ -782,32 +861,68 @@ export default function ChiTietLopHocPhanPage() {
                                         danhSachSinhVien.map((item) => (
                                             <TableRow
                                                 key={item.sinhVien.id}
-                                                className={`grid grid-cols-[5%_18%_18%_18%_18%_23%] items-center ${isSelected(item.sinhVien.id) ? "bg-brand-50 dark: bg-brand-900/10" : ""
+                                                className={`grid grid-cols-[3%_12%_12%_10%_10%_10%_10%_10%_10%_12%] items-center ${isSelected(item.sinhVien.id) ? "bg-brand-50 dark: bg-brand-900/10" : ""
                                                     }`}
                                             >
                                                 {/* Checkbox - disabled nếu đã có điểm */}
                                                 <TableCell className="px-3 py-4 flex items-center justify-center">
                                                     <Checkbox
                                                         checked={isSelected(item.sinhVien.id)}
-                                                        onChange={(checked) => handleSelectOne(item.sinhVien.id, checked)}
+                                                        onChange={(checked) => handleSelectOne(item.sinhVien.id, checked, item)}
                                                         disabled={!item.chuaCoDiem}
                                                     />
                                                 </TableCell>
                                                 <TableCell className="px-5 py-4 text-gray-800 dark:text-white/90">
                                                     {item.sinhVien.maSinhVien}
                                                 </TableCell>
-                                                <TableCell className="px-5 py-4 text-gray-800 dark:text-white/90">
-                                                    {item.sinhVien.malop}
-                                                </TableCell>
                                                 <TableCell className="px-5 py-4">
                                                     <Badge variant="solid" color={getLoaiThamGiaColor(item.loaiThamGia)}>
                                                         {getLoaiThamGiaLabel(item.loaiThamGia)}
                                                     </Badge>
                                                 </TableCell>
-                                                <TableCell className="px-5 py-4">
-                                                    <Badge variant="solid" color={item.chuaCoDiem ? "warning" : "success"}>
-                                                        {item.chuaCoDiem ? "Chưa có" : "Có"}
-                                                    </Badge>
+                                                <TableCell className="px-5 py-4 text-center text-gray-800 dark:text-white/90">
+                                                    {item.chuaCoDiem || !item.diem ? (
+                                                        <span className="text-gray-400 dark:text-gray-500">-</span>
+                                                    ) : (
+                                                        item.diem.diemQuaTrinh || "-"
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="px-5 py-4 text-center text-gray-800 dark:text-white/90">
+                                                    {item.chuaCoDiem || !item.diem ? (
+                                                        <span className="text-gray-400 dark:text-gray-500">-</span>
+                                                    ) : (
+                                                        item.diem.diemThanhPhan || "-"
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="px-5 py-4 text-center text-gray-800 dark:text-white/90">
+                                                    {item.chuaCoDiem || !item.diem ? (
+                                                        <span className="text-gray-400 dark:text-gray-500">-</span>
+                                                    ) : (
+                                                        item.diem.diemThi || "-"
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="px-5 py-4 text-center text-gray-800 dark:text-white/90">
+                                                    {item.chuaCoDiem || !item.diem ? (
+                                                        <span className="text-gray-400 dark:text-gray-500">-</span>
+                                                    ) : (
+                                                        item.diem.TBCHP ?? "-"
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="px-5 py-4 text-center text-gray-800 dark:text-white/90">
+                                                    {item.chuaCoDiem || !item.diem ? (
+                                                        <span className="text-gray-400 dark:text-gray-500">-</span>
+                                                    ) : (
+                                                        item.diem.DiemSo ?? "-"
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="px-5 py-4 text-center">
+                                                    {item.chuaCoDiem || !item.diem ? (
+                                                        <span className="text-gray-400 dark:text-gray-500">-</span>
+                                                    ) : (
+                                                        <Badge variant="solid" color="success">
+                                                            {item.diem.DiemChu || "-"}
+                                                        </Badge>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell className="px-5 py-4 text-center">
                                                     <div className="relative inline-block">
@@ -1082,10 +1197,10 @@ export default function ChiTietLopHocPhanPage() {
                                 </div>
                             )}
 
-                            {/* Danh sách sinh viên sẽ xóa */}
+                            {/* Danh sách sinh viên sẽ xóa (tất cả đã chọn, kể cả từ các trang khác) */}
                             <div className="mb-6">
                                 <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                                    Danh sách sinh viên sẽ bị xóa khỏi lớp:
+                                    Danh sách sinh viên sẽ bị xóa khỏi lớp ({selectedSinhVienIds.length}):
                                 </h4>
                                 <div className="max-h-48 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700">
                                     <table className="w-full text-sm">
@@ -1098,16 +1213,17 @@ export default function ChiTietLopHocPhanPage() {
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                                            {danhSachSinhVien
-                                                .filter(item => selectedSinhVienIds.includes(item.sinhVien.id))
-                                                .map((item, index) => (
-                                                    <tr key={item.sinhVien.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                                            {selectedSinhVienIds.map((sinhVienId, index) => {
+                                                const info = selectedSinhVienMap[sinhVienId] ?? { maSinhVien: `#${sinhVienId}`, hoTen: "N/A" };
+                                                return (
+                                                    <tr key={sinhVienId} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
                                                         <td className="px-4 py-2 text-gray-600 dark:text-gray-400">{index + 1}</td>
-                                                        <td className="px-4 py-2 text-gray-800 dark:text-white font-medium">{item.sinhVien.maSinhVien}</td>
-                                                        <td className="px-4 py-2 text-gray-800 dark:text-white">{item.sinhVien.hoTen}</td>
-                                                        <td className="px-4 py-2 text-gray-600 dark:text-gray-400">{item.sinhVien.malop}</td>
+                                                        <td className="px-4 py-2 text-gray-800 dark:text-white font-medium">{info.maSinhVien}</td>
+                                                        <td className="px-4 py-2 text-gray-800 dark:text-white">{info.hoTen}</td>
+                                                        <td className="px-4 py-2 text-gray-600 dark:text-gray-400">{info.malop ?? "—"}</td>
                                                     </tr>
-                                                ))}
+                                                );
+                                            })}
                                         </tbody>
                                     </table>
                                 </div>

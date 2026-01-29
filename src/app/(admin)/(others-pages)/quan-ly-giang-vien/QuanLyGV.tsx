@@ -1214,8 +1214,9 @@ export default function QuanLyGiangVienPage() {
         }>;
     } | null>(null);
 
-    // State cho checkbox và xóa hàng loạt
+    // State cho checkbox và xóa hàng loạt (giữ selection khi chuyển trang)
     const [selectedGiangVienIds, setSelectedGiangVienIds] = useState<number[]>([]);
+    const [selectedGiangVienMap, setSelectedGiangVienMap] = useState<Record<number, { maGiangVien: string; hoTen: string; email?: string }>>({});
     const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
     const [isBulkDeleting, setIsBulkDeleting] = useState(false);
     const [bulkDeleteResults, setBulkDeleteResults] = useState<Array<{
@@ -1649,37 +1650,58 @@ export default function QuanLyGiangVienPage() {
 
     // ==================== CHECKBOX & BULK DELETE HANDLERS ====================
 
-    // Kiểm tra xem tất cả giảng viên hiện tại có được chọn không
-    const isAllSelected = giangViens.length > 0 && selectedGiangVienIds.length === giangViens.length;
+    const currentPageIds = giangViens.map(gv => gv.id);
+    const selectedOnCurrentPage = selectedGiangVienIds.filter(id => currentPageIds.includes(id));
+    const isAllSelected = giangViens.length > 0 && selectedOnCurrentPage.length === giangViens.length;
+    const isIndeterminate = selectedOnCurrentPage.length > 0 && selectedOnCurrentPage.length < giangViens.length;
 
-    // Kiểm tra xem có một số (không phải tất cả) được chọn không - cho trạng thái indeterminate
-    const isIndeterminate = selectedGiangVienIds.length > 0 && selectedGiangVienIds.length < giangViens.length;
-
-    // Toggle chọn tất cả
+    // Toggle chọn tất cả trên trang hiện tại (merge với selection từ trang khác)
     const handleSelectAll = (checked: boolean) => {
         if (checked) {
-            setSelectedGiangVienIds(giangViens.map(gv => gv.id));
+            const idsToAdd = giangViens.map(gv => gv.id);
+            const newMap: Record<number, { maGiangVien: string; hoTen: string; email?: string }> = { ...selectedGiangVienMap };
+            giangViens.forEach(gv => {
+                newMap[gv.id] = { maGiangVien: gv.maGiangVien, hoTen: gv.hoTen, email: gv.email };
+            });
+            setSelectedGiangVienIds(prev => [...new Set([...prev, ...idsToAdd])]);
+            setSelectedGiangVienMap(newMap);
         } else {
-            setSelectedGiangVienIds([]);
+            const idsToRemove = new Set(currentPageIds);
+            setSelectedGiangVienIds(prev => prev.filter(id => !idsToRemove.has(id)));
+            setSelectedGiangVienMap(prev => {
+                const next = { ...prev };
+                idsToRemove.forEach(id => delete next[id]);
+                return next;
+            });
         }
     };
 
     // Toggle chọn một giảng viên
-    const handleSelectOne = (giangVienId: number, checked: boolean) => {
+    const handleSelectOne = (giangVienId: number, checked: boolean, gv?: GiangVien) => {
         if (checked) {
-            setSelectedGiangVienIds(prev => [...prev, giangVienId]);
+            setSelectedGiangVienIds(prev => (prev.includes(giangVienId) ? prev : [...prev, giangVienId]));
+            if (gv) {
+                setSelectedGiangVienMap(prev => ({
+                    ...prev,
+                    [giangVienId]: { maGiangVien: gv.maGiangVien, hoTen: gv.hoTen, email: gv.email },
+                }));
+            }
         } else {
             setSelectedGiangVienIds(prev => prev.filter(id => id !== giangVienId));
+            setSelectedGiangVienMap(prev => {
+                const next = { ...prev };
+                delete next[giangVienId];
+                return next;
+            });
         }
     };
 
-    // Kiểm tra một giảng viên có được chọn không
     const isSelected = (giangVienId: number) => selectedGiangVienIds.includes(giangVienId);
 
-    // Reset selection khi chuyển trang hoặc filter
-    useEffect(() => {
+    const clearSelection = () => {
         setSelectedGiangVienIds([]);
-    }, [currentPage, searchKeyword, selectedFilterMonHocId]);
+        setSelectedGiangVienMap({});
+    };
 
     // Mở modal xóa hàng loạt
     const openBulkDeleteModal = () => {
@@ -1695,14 +1717,13 @@ export default function QuanLyGiangVienPage() {
     const closeBulkDeleteModal = () => {
         setIsBulkDeleteModalOpen(false);
         setBulkDeleteResults(null);
-        // Nếu đã xóa xong, reset selection và refresh data
         if (bulkDeleteResults) {
-            setSelectedGiangVienIds([]);
+            clearSelection();
             fetchGiangViens(currentPage, searchKeyword.trim(), selectedFilterMonHocId);
         }
     };
 
-    // Xử lý xóa hàng loạt
+    // Xử lý xóa hàng loạt (theo danh sách đã chọn trên mọi trang)
     const handleBulkDelete = async () => {
         setIsBulkDeleting(true);
         const results: Array<{
@@ -1714,14 +1735,13 @@ export default function QuanLyGiangVienPage() {
         }> = [];
 
         const accessToken = getCookie("access_token");
+        const displayInfo = (id: number) => selectedGiangVienMap[id] ?? { maGiangVien: `#${id}`, hoTen: "N/A", email: "—" };
 
-        // Lấy thông tin các giảng viên được chọn
-        const selectedGiangViens = giangViens.filter(gv => selectedGiangVienIds.includes(gv.id));
-
-        for (const gv of selectedGiangViens) {
+        for (const giangVienId of selectedGiangVienIds) {
+            const { maGiangVien, hoTen } = displayInfo(giangVienId);
             try {
                 const res = await fetch(
-                    `http://localhost:3000/danh-muc/giang-vien/${gv.id}`,
+                    `http://localhost:3000/danh-muc/giang-vien/${giangVienId}`,
                     {
                         method: "DELETE",
                         headers: {
@@ -1732,27 +1752,27 @@ export default function QuanLyGiangVienPage() {
 
                 if (res.ok) {
                     results.push({
-                        id: gv.id,
-                        maGiangVien: gv.maGiangVien,
-                        hoTen: gv.hoTen,
+                        id: giangVienId,
+                        maGiangVien,
+                        hoTen,
                         status: "success",
                         message: "Xóa thành công",
                     });
                 } else {
                     const err = await res.json();
                     results.push({
-                        id: gv.id,
-                        maGiangVien: gv.maGiangVien,
-                        hoTen: gv.hoTen,
+                        id: giangVienId,
+                        maGiangVien,
+                        hoTen,
                         status: "failed",
                         message: err.message || "Xóa thất bại",
                     });
                 }
             } catch (err) {
                 results.push({
-                    id: gv.id,
-                    maGiangVien: gv.maGiangVien,
-                    hoTen: gv.hoTen,
+                    id: giangVienId,
+                    maGiangVien,
+                    hoTen,
                     status: "failed",
                     message: "Lỗi kết nối",
                 });
@@ -2010,7 +2030,7 @@ export default function QuanLyGiangVienPage() {
                                                 <TableCell className="px-3 py-4 flex items-center justify-center">
                                                     <Checkbox
                                                         checked={isSelected(gv.id)}
-                                                        onChange={(checked) => handleSelectOne(gv.id, checked)}
+                                                        onChange={(checked) => handleSelectOne(gv.id, checked, gv)}
                                                     />
                                                 </TableCell>
                                                 <TableCell className="px-3 py-4 flex items-center justify-center">
@@ -2713,10 +2733,10 @@ export default function QuanLyGiangVienPage() {
                     {/* Nội dung trước khi xóa */}
                     {!bulkDeleteResults && !isBulkDeleting && (
                         <>
-                            {/* Danh sách giảng viên sẽ xóa */}
+                            {/* Danh sách giảng viên sẽ xóa (tất cả đã chọn, kể cả từ các trang khác) */}
                             <div className="mb-6">
                                 <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                                    Danh sách giảng viên sẽ bị xóa:
+                                    Danh sách giảng viên sẽ bị xóa ({selectedGiangVienIds.length}):
                                 </h4>
                                 <div className="max-h-48 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700">
                                     <table className="w-full text-sm">
@@ -2729,16 +2749,17 @@ export default function QuanLyGiangVienPage() {
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                                            {giangViens
-                                                .filter(gv => selectedGiangVienIds.includes(gv.id))
-                                                .map((gv, index) => (
-                                                    <tr key={gv.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                                            {selectedGiangVienIds.map((giangVienId, index) => {
+                                                const info = selectedGiangVienMap[giangVienId] ?? { maGiangVien: `#${giangVienId}`, hoTen: "N/A", email: "—" };
+                                                return (
+                                                    <tr key={giangVienId} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
                                                         <td className="px-4 py-2 text-gray-600 dark:text-gray-400">{index + 1}</td>
-                                                        <td className="px-4 py-2 text-gray-800 dark:text-white font-medium">{gv.maGiangVien}</td>
-                                                        <td className="px-4 py-2 text-gray-800 dark:text-white">{gv.hoTen}</td>
-                                                        <td className="px-4 py-2 text-gray-600 dark:text-gray-400">{gv.email}</td>
+                                                        <td className="px-4 py-2 text-gray-800 dark:text-white font-medium">{info.maGiangVien}</td>
+                                                        <td className="px-4 py-2 text-gray-800 dark:text-white">{info.hoTen}</td>
+                                                        <td className="px-4 py-2 text-gray-600 dark:text-gray-400">{info.email ?? "—"}</td>
                                                     </tr>
-                                                ))}
+                                                );
+                                            })}
                                         </tbody>
                                     </table>
                                 </div>

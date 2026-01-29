@@ -1258,16 +1258,8 @@ export default function ThemLopHocPhanPage() {
                     </div>
                 </div>
 
-                {/* Loading State */}
-                {isLoading && (
-                    <div className="flex items-center justify-center py-12">
-                        <FontAwesomeIcon icon={faSpinner} className="animate-spin text-4xl text-brand-500" />
-                    </div>
-                )}
-
                 {/* Table */}
-                {!isLoading && (
-                    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
+                <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
                         <div className="max-w-full overflow-x-auto">
                             <div className="min-w-[1000px]">
                                 <Table>
@@ -1410,24 +1402,21 @@ export default function ThemLopHocPhanPage() {
                             </div>
                         </div>
                     </div>
-                )}
 
                 {/* Pagination và Items Count Info */}
-                {!isLoading && (
-                    <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                        <ItemsCountInfo pagination={pagination} />
+                <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <ItemsCountInfo pagination={pagination} />
 
-                        {pagination.totalPages > 1 && (
-                            <div className="flex justify-center sm:justify-end">
-                                <Pagination
-                                    currentPage={currentPage}
-                                    totalPages={pagination.totalPages}
-                                    onPageChange={(page) => setCurrentPage(page)}
-                                />
-                            </div>
-                        )}
-                    </div>
-                )}
+                    {pagination.totalPages > 1 && (
+                        <div className="flex justify-center sm:justify-end">
+                            <Pagination
+                                currentPage={currentPage}
+                                totalPages={pagination.totalPages}
+                                onPageChange={(page) => setCurrentPage(page)}
+                            />
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* Modal Sửa */}
