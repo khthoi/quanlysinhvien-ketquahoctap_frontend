@@ -26,11 +26,12 @@ export default function DatePicker({
   useEffect(() => {
     const flatPickr = flatpickr(`#${id}`, {
       mode: mode || "single",
-      static: true,
       monthSelectorType: "static",
       dateFormat: "Y-m-d",
       defaultDate,
       onChange,
+      // Render calendar vào body để không bị cắt bởi overflow của phần tử cha (modal, card...)
+      appendTo: document.body,
     });
 
     return () => {
