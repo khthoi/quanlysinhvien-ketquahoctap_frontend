@@ -1,6 +1,6 @@
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import { Metadata } from "next";
-import React from "react";
+import React, { Suspense } from "react";
 import QuanLyLopHocPhanPage from "./QuanLyLopHocPhan";
 
 export const metadata: Metadata = {
@@ -10,6 +10,8 @@ export const metadata: Metadata = {
 
 export default function BlankPage() {
     return (
-        <QuanLyLopHocPhanPage />
+        <Suspense fallback={<div className="flex min-h-[200px] items-center justify-center text-gray-500">Đang tải...</div>}>
+            <QuanLyLopHocPhanPage />
+        </Suspense>
     );
 }

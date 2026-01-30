@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import {
     Table,
@@ -519,6 +520,9 @@ const ImportNganhExcelModal: React.FC<ImportNganhExcelModalProps> = ({
 };
 // ==================== TRANG CHÍNH QUẢN LÝ NGÀNH ====================
 export default function QuanLyNganhPage() {
+    const searchParams = useSearchParams();
+    const pathname = usePathname();
+    const router = useRouter();
     const [nganhs, setNganhs] = useState<Nganh[]>([]);
     const [pagination, setPagination] = useState<PaginationData>({
         total: 0,
@@ -546,6 +550,18 @@ export default function QuanLyNganhPage() {
     const [khoaOptions, setKhoaOptions] = useState<KhoaOption[]>([]);
     // Thêm vào phần khai báo state trong QuanLyLopNienChePage
     const [isImportExcelModalOpen, setIsImportExcelModalOpen] = useState(false);
+
+    // Mở modal từ thanh search header (?modal=them-nganh | nhap-excel)
+    useEffect(() => {
+        const modal = searchParams.get("modal");
+        if (modal === "them-nganh") {
+            setIsCreateModalOpen(true);
+            router.replace(pathname, { scroll: false });
+        } else if (modal === "nhap-excel") {
+            setIsImportExcelModalOpen(true);
+            router.replace(pathname, { scroll: false });
+        }
+    }, [searchParams, pathname, router]);
 
     const [errors, setErrors] = useState({
         maNganh: false,

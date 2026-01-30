@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import {
     Table,
@@ -1171,6 +1172,9 @@ const ImportGiangVienExcelModal: React.FC<ImportGiangVienExcelModalProps> = ({
 
 // ==================== TRANG CHÍNH QUẢN LÝ GIẢNG VIÊN ====================
 export default function QuanLyGiangVienPage() {
+    const searchParams = useSearchParams();
+    const pathname = usePathname();
+    const router = useRouter();
     // State cho danh sách và pagination
     const [giangViens, setGiangViens] = useState<GiangVien[]>([]);
     const [monHocOptions, setMonHocOptions] = useState<MonHoc[]>([]);
@@ -1202,6 +1206,15 @@ export default function QuanLyGiangVienPage() {
     // State cho modal cấp tài khoản hàng loạt
     const [isBulkCreateAccountModalOpen, setIsBulkCreateAccountModalOpen] = useState(false);
     const [isBulkCreatingAccounts, setIsBulkCreatingAccounts] = useState(false);
+
+    // Mở modal từ thanh search header (?modal=cap-tk-hang-loat)
+    useEffect(() => {
+        const modal = searchParams.get("modal");
+        if (modal === "cap-tk-hang-loat") {
+            setIsBulkCreateAccountModalOpen(true);
+            router.replace(pathname, { scroll: false });
+        }
+    }, [searchParams, pathname, router]);
     const [bulkCreateResult, setBulkCreateResult] = useState<{
         message: string;
         totalGiangVien: number;

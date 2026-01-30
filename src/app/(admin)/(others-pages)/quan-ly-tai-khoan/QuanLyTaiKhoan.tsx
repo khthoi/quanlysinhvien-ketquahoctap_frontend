@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import {
     Table,
@@ -424,6 +425,9 @@ const ItemsCountInfo: React.FC<ItemsCountInfoProps> = ({ pagination }) => {
 
 // ==================== TRANG CHÍNH QUẢN LÝ NGƯỜI DÙNG ====================
 export default function QuanLyNguoiDungPage() {
+    const searchParams = useSearchParams();
+    const pathname = usePathname();
+    const router = useRouter();
     const [nguoiDungs, setNguoiDungs] = useState<NguoiDung[]>([]);
     const [pagination, setPagination] = useState<PaginationData>({
         total: 0,
@@ -464,6 +468,15 @@ export default function QuanLyNguoiDungPage() {
 
     // State để theo dõi dropdown ĐANG MỞ
     const [activeDropdownId, setActiveDropdownId] = useState<number | null>(null);
+
+    // Mở modal từ thanh search header (?modal=cap-tk-can-bo)
+    useEffect(() => {
+        const modal = searchParams.get("modal");
+        if (modal === "cap-tk-can-bo") {
+            setIsCreateCanBoModalOpen(true);
+            router.replace(pathname, { scroll: false });
+        }
+    }, [searchParams, pathname, router]);
 
     const toggleDropdown = (nguoiDungId: number) => {
         setActiveDropdownId((prev) =>
@@ -903,7 +916,7 @@ export default function QuanLyNguoiDungPage() {
                                                         {getVaiTroLabel(nd.vaiTro)}
                                                     </Badge>
                                                 </TableCell>
-                                                <TableCell className="px-5 py-4 text-gray-800 dark: text-white/90">
+                                                <TableCell className="px-5 py-4 text-gray-800 dark:text-white/90">
                                                     {new Date(nd.ngayTao).toLocaleDateString("vi-VN")}
                                                 </TableCell>
                                                 <TableCell className="px-5 py-4 text-center">

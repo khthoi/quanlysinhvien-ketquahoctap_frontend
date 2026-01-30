@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import {
     Table,
@@ -850,6 +851,9 @@ const ExportMonHocExcelModal: React.FC<ExportMonHocExcelModalProps> = ({
 
 // ==================== TRANG CHÍNH QUẢN LÝ MÔN HỌC ====================
 export default function QuanLyMonHocPage() {
+    const searchParams = useSearchParams();
+    const pathname = usePathname();
+    const router = useRouter();
     const [monHocs, setMonHocs] = useState<MonHoc[]>([]);
     const [pagination, setPagination] = useState<PaginationData>({
         total: 0,
@@ -888,6 +892,24 @@ export default function QuanLyMonHocPage() {
     const [isPhanCongLoading, setIsPhanCongLoading] = useState(false);
     // Thêm vào phần khai báo state trong QuanLyLopNienChePage
     const [isImportExcelModalOpen, setIsImportExcelModalOpen] = useState(false);
+
+    // Mở modal từ thanh search header (?modal=them-mon-hoc | nhap-excel | xuat-excel | phan-cong)
+    useEffect(() => {
+        const modal = searchParams.get("modal");
+        if (modal === "them-mon-hoc") {
+            setIsCreateModalOpen(true);
+            router.replace(pathname, { scroll: false });
+        } else if (modal === "nhap-excel") {
+            setIsImportExcelModalOpen(true);
+            router.replace(pathname, { scroll: false });
+        } else if (modal === "xuat-excel") {
+            setIsExportExcelModalOpen(true);
+            router.replace(pathname, { scroll: false });
+        } else if (modal === "phan-cong") {
+            setIsPhanCongModalOpen(true);
+            router.replace(pathname, { scroll: false });
+        }
+    }, [searchParams, pathname, router]);
 
     // Thêm state mới cho tiến trình phân công
     const [phanCongProgress, setPhanCongProgress] = useState<{

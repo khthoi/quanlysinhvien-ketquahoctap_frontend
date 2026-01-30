@@ -16,86 +16,58 @@ import {
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 
-// Danh sách tất cả route của website kèm nhãn tiếng Việt để tìm kiếm
-const SEARCH_ROUTES: { label: string; path: string; category?: string }[] = [
+type SearchItem = { label: string; path: string; category?: string; modal?: string };
+
+// Danh sách tất cả route + hành động (mở modal) để tìm kiếm
+const SEARCH_ROUTES: SearchItem[] = [
   { label: "Tổng quan hệ thống", path: "/", category: "Trang chủ" },
   { label: "Dashboard", path: "/", category: "Trang chủ" },
-  //{ label: "Calendar", path: "/calendar", category: "Trang chủ" },
   { label: "User Profile", path: "/profile", category: "Trang chủ" },
-  { label: "Tài khoản", path: "/quan-ly-tai-khoan", category: "Quản lý người dùng" },
-  { label: "Quản lý tài khoản", path: "/quan-ly-tai-khoan", category: "Quản lý người dùng" },
   { label: "Khoa", path: "/quan-ly-khoa", category: "Cơ cấu đào tạo" },
   { label: "Quản lý khoa", path: "/quan-ly-khoa", category: "Cơ cấu đào tạo" },
+  { label: "Thêm một khoa", path: "/quan-ly-khoa", category: "Cơ cấu đào tạo", modal: "them-khoa" },
   { label: "Ngành", path: "/quan-ly-nganh", category: "Cơ cấu đào tạo" },
   { label: "Quản lý ngành", path: "/quan-ly-nganh", category: "Cơ cấu đào tạo" },
+  { label: "Thêm một ngành", path: "/quan-ly-nganh", category: "Cơ cấu đào tạo", modal: "them-nganh" },
+  { label: "Nhập ngành bằng excel", path: "/quan-ly-nganh", category: "Cơ cấu đào tạo", modal: "nhap-excel" },
   { label: "Niên khoá", path: "/quan-ly-nien-khoa", category: "Cơ cấu đào tạo" },
   { label: "Quản lý niên khoá", path: "/quan-ly-nien-khoa", category: "Cơ cấu đào tạo" },
   { label: "Lớp niên chế", path: "/quan-ly-lop-nien-che", category: "Cơ cấu đào tạo" },
   { label: "Quản lý lớp niên chế", path: "/quan-ly-lop-nien-che", category: "Cơ cấu đào tạo" },
   { label: "Môn học", path: "/quan-ly-mon-hoc", category: "Cơ cấu đào tạo" },
   { label: "Quản lý môn học", path: "/quan-ly-mon-hoc", category: "Cơ cấu đào tạo" },
+  { label: "Thêm một môn học", path: "/quan-ly-mon-hoc", category: "Cơ cấu đào tạo", modal: "them-mon-hoc" },
+  { label: "Nhập môn học bằng excel", path: "/quan-ly-mon-hoc", category: "Cơ cấu đào tạo", modal: "nhap-excel" },
+  { label: "Xuất excel môn học", path: "/quan-ly-mon-hoc", category: "Cơ cấu đào tạo", modal: "xuat-excel" },
+  { label: "Phân công môn học", path: "/quan-ly-mon-hoc", category: "Cơ cấu đào tạo", modal: "phan-cong" },
   { label: "Giảng viên", path: "/quan-ly-giang-vien", category: "Cơ cấu đào tạo" },
   { label: "Quản lý giảng viên", path: "/quan-ly-giang-vien", category: "Cơ cấu đào tạo" },
   { label: "Năm học & Học kỳ", path: "/quan-ly-namhoc-hocky", category: "Cơ cấu đào tạo" },
   { label: "Quản lý năm học học kỳ", path: "/quan-ly-namhoc-hocky", category: "Cơ cấu đào tạo" },
   { label: "Chương trình đào tạo", path: "/quan-ly-ctdt", category: "Quản lý CTDT" },
   { label: "Quản lý CTDT", path: "/quan-ly-ctdt", category: "Quản lý CTDT" },
+  { label: "Áp dụng chương trình đào tạo", path: "/quan-ly-ctdt", category: "Quản lý CTDT", modal: "ap-dung" },
+  { label: "Thêm CTDT mới", path: "/them-ctdt-moi", category: "Quản lý CTDT" },
   { label: "Quản lý sinh viên", path: "/quan-ly-sinh-vien", category: "Quản lý sinh viên" },
+  { label: "Cấp tài khoản hàng loạt cho sinh viên", path: "/quan-ly-sinh-vien", category: "Quản lý sinh viên", modal: "cap-tk-hang-loat" },
+  { label: "Xét tốt nghiệp", path: "/quan-ly-sinh-vien", category: "Quản lý sinh viên", modal: "xet-tot-nghiep" },
+  { label: "Thống kê sinh viên trượt môn", path: "/quan-ly-sinh-vien", category: "Quản lý sinh viên", modal: "thong-ke-truot-mon" },
+  { label: "Nhập sinh viên bằng excel", path: "/quan-ly-sinh-vien", category: "Quản lý sinh viên", modal: "nhap-excel" },
   { label: "Quản lý LHP", path: "/quan-ly-lop-hoc-phan", category: "Quản lý lớp học phần" },
-  {
-    label: "Quản lý lớp học phần",
-    path: "/quan-ly-lop-hoc-phan",
-    category: "Quản lý lớp học phần",
-  },
-  {
-    label: "Quản lý sinh viên theo lớp học phần",
-    path: "/quan-ly-lop-hoc-phan",
-    category: "Quản lý lớp học phần",
-  },
-  {
-    label: "Quản lý SV LHP",
-    path: "/quan-ly-lop-hoc-phan",
-    category: "Quản lý lớp học phần",
-  },
-  {
-    label: "Lớp học phần theo giảng viên",
-    path: "/quan-ly-lop-hoc-phan-theo-giang-vien",
-    category: "Quản lý lớp học phần",
-  },
-  {
-    label: "Quản lý lớp học phần theo giảng viên",
-    path: "/quan-ly-lop-hoc-phan-theo-giang-vien",
-    category: "Quản lý lớp học phần",
-  },
-  {
-    label: "Thêm lớp học phần",
-    path: "/them-lop-hoc-phan",
-    category: "Quản lý lớp học phần",
-  },
-  {
-    label: "Thêm sinh viên học lại",
-    path: "/them-sinh-vien-hoc-lai",
-    category: "Quản lý sinh viên",
-  },
-  {
-    label: "Thêm CTDT mới",
-    path: "/them-ctdt-moi",
-    category: "Quản lý CTDT",
-  },
-  //{ label: "Form Elements", path: "/form-elements", category: "Khác" },
-  //{ label: "Basic Tables", path: "/basic-tables", category: "Khác" },
-  //{ label: "Dropdown Table", path: "/second-table", category: "Khác" },
-  //{ label: "Blank Page", path: "/blank", category: "Khác" },
-  //{ label: "Line Chart", path: "/line-chart", category: "Khác" },
-  //{ label: "Bar Chart", path: "/bar-chart", category: "Khác" },
-  //{ label: "Alerts", path: "/alerts", category: "Khác" },
-  //{ label: "Avatar", path: "/avatars", category: "Khác" },
-  //{ label: "Badge", path: "/badge", category: "Khác" },
-  //{ label: "Buttons", path: "/buttons", category: "Khác" },
-  //{ label: "Images", path: "/images", category: "Khác" },
-  //{ label: "Videos", path: "/videos", category: "Khác" },
+  { label: "Quản lý lớp học phần", path: "/quan-ly-lop-hoc-phan", category: "Quản lý lớp học phần" },
+  { label: "Tạo LHP", path: "/quan-ly-lop-hoc-phan", category: "Quản lý lớp học phần", modal: "tao-lhp" },
+  { label: "Tạo lớp học phần", path: "/quan-ly-lop-hoc-phan", category: "Quản lý lớp học phần", modal: "tao-lhp" },
+  { label: "Nhập LHP từ excel", path: "/quan-ly-lop-hoc-phan", category: "Quản lý lớp học phần", modal: "nhap-lhp-excel" },
+  { label: "Thống kê LHP đề xuất", path: "/quan-ly-lop-hoc-phan", category: "Quản lý lớp học phần", modal: "thong-ke-de-xuat" },
+  { label: "Thêm SV vào LHP", path: "/quan-ly-lop-hoc-phan", category: "Quản lý lớp học phần", modal: "them-sv-lhp" },
+  { label: "Quản lý sinh viên theo lớp học phần", path: "/quan-ly-lop-hoc-phan", category: "Quản lý lớp học phần" },
+  { label: "Quản lý SV LHP", path: "/quan-ly-lop-hoc-phan", category: "Quản lý lớp học phần" },
+  { label: "Lớp học phần theo giảng viên", path: "/quan-ly-lop-hoc-phan-theo-giang-vien", category: "Quản lý lớp học phần" },
+  { label: "Quản lý lớp học phần theo giảng viên", path: "/quan-ly-lop-hoc-phan-theo-giang-vien", category: "Quản lý lớp học phần" },
+  { label: "Thêm lớp học phần", path: "/them-lop-hoc-phan", category: "Quản lý lớp học phần" },
+  { label: "Thêm sinh viên học lại", path: "/them-sinh-vien-hoc-lai", category: "Quản lý sinh viên" },
+  { label: "Cấp tài khoản hàng loạt cho giảng viên", path: "/quan-ly-giang-vien", category: "Cơ cấu đào tạo", modal: "cap-tk-hang-loat" },
   { label: "Đăng nhập", path: "/signin", category: "Khác" },
-  //{ label: "Sign Up", path: "/signup", category: "Khác" },
 ];
 
 // Loại bỏ dấu tiếng Việt để tìm kiếm không dấu vẫn match
@@ -112,16 +84,51 @@ function normalizeForSearch(s: string): string {
   return removeVietnameseTones(s).trim();
 }
 
+const getCookie = (name: string): string | null => {
+  if (typeof document === "undefined") return null;
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop()?.split(";").shift() || null;
+  return null;
+};
+
+const decodeJWT = (token: string): { vaiTro?: string } | null => {
+  try {
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+    return JSON.parse(jsonPayload);
+  } catch {
+    return null;
+  }
+};
+
 const AppHeader: React.FC = () => {
   const [isApplicationMenuOpen, setApplicationMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const { isMobileOpen, toggleSidebar, toggleMobileSidebar } = useSidebar();
   const router = useRouter();
+
+  useEffect(() => {
+    const token = getCookie("access_token");
+    if (!token) {
+      setUserRole(null);
+      return;
+    }
+    const decoded = decodeJWT(token);
+    setUserRole(decoded?.vaiTro ?? null);
+  }, []);
 
   const handleToggle = () => {
     if (window.innerWidth >= 1024) {
@@ -135,19 +142,20 @@ const AppHeader: React.FC = () => {
     setApplicationMenuOpen(!isApplicationMenuOpen);
   };
 
-  // Lọc route theo từ khoá (nhãn + path không dấu), mỗi path chỉ hiển thị 1 lần (ưu tiên label khớp nhất)
+  // Lọc route theo từ khoá (nhãn + path không dấu), mỗi path+modal chỉ hiển thị 1 lần
   const filteredRoutes = useMemo(() => {
     const q = normalizeForSearch(searchQuery);
     const normalized = SEARCH_ROUTES.map((r) => ({
       ...r,
       labelNorm: normalizeForSearch(r.label),
       pathNorm: normalizeForSearch(r.path.replace(/\//g, " ")),
+      key: r.path + (r.modal ? `?modal=${r.modal}` : ""),
     }));
     if (!q) {
       const seen = new Set<string>();
       return normalized.filter((r) => {
-        if (seen.has(r.path)) return false;
-        seen.add(r.path);
+        if (seen.has(r.key)) return false;
+        seen.add(r.key);
         return true;
       }).slice(0, 10);
     }
@@ -157,11 +165,11 @@ const AppHeader: React.FC = () => {
     const seen = new Set<string>();
     const unique: typeof normalized = [];
     for (const r of matched) {
-      if (seen.has(r.path)) continue;
-      seen.add(r.path);
+      if (seen.has(r.key)) continue;
+      seen.add(r.key);
       unique.push(r);
     }
-    return unique.slice(0, 12);
+    return unique.slice(0, 16);
   }, [searchQuery]);
 
   useEffect(() => {
@@ -209,20 +217,16 @@ const AppHeader: React.FC = () => {
     } else if (e.key === "Enter") {
       e.preventDefault();
       const r = filteredRoutes[highlightedIndex];
-      if (r) {
-        router.push(r.path);
-        setSearchQuery("");
-        setIsSearchOpen(false);
-        inputRef.current?.blur();
-      }
+      if (r) handleSelectRoute(r);
     } else if (e.key === "Escape") {
       setIsSearchOpen(false);
       inputRef.current?.blur();
     }
   };
 
-  const handleSelectRoute = (path: string) => {
-    router.push(path);
+  const handleSelectRoute = (item: SearchItem) => {
+    const url = item.modal ? `${item.path}?modal=${item.modal}` : item.path;
+    router.push(url);
     setSearchQuery("");
     setIsSearchOpen(false);
     inputRef.current?.blur();
@@ -270,6 +274,7 @@ const AppHeader: React.FC = () => {
             <FontAwesomeIcon icon={faEllipsis} className="h-6 w-6" aria-hidden="true" />
           </button>
 
+          {userRole === "CAN_BO_PHONG_DAO_TAO" && (
           <div className="hidden lg:block relative" ref={dropdownRef}>
             <form
               onSubmit={(e) => e.preventDefault()}
@@ -323,10 +328,10 @@ const AppHeader: React.FC = () => {
                         <li key={`${route.path}-${index}`} role="option" aria-selected={index === highlightedIndex}>
                           <Link
                             href={route.path}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              handleSelectRoute(route.path);
-                            }}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleSelectRoute(route);
+                          }}
                             onMouseEnter={() => setHighlightedIndex(index)}
                             className={`flex items-center gap-3 px-4 py-3 mx-1 rounded-lg transition-colors ${
                               index === highlightedIndex
@@ -342,9 +347,10 @@ const AppHeader: React.FC = () => {
                             </span>
                             <div className="flex-1 min-w-0">
                               <p className="font-medium text-sm truncate">{route.label}</p>
-                              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                                {route.path === "/" ? "Trang chủ" : route.path}
-                              </p>
+<p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                              {route.path === "/" ? "Trang chủ" : route.path}
+                              {route.modal ? ` • Mở modal` : ""}
+                            </p>
                             </div>
                             <FontAwesomeIcon
                               icon={faArrowRight}
@@ -364,6 +370,7 @@ const AppHeader: React.FC = () => {
               </div>
             )}
           </div>
+          )}
         </div>
         <div
           className={`${isApplicationMenuOpen ? "flex" : "hidden"} items-center justify-between w-full gap-4 px-5 py-4 lg:flex shadow-theme-md lg:justify-end lg:px-0 lg:shadow-none`}

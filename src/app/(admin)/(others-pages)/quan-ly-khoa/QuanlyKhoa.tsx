@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useSearchParams, usePathname, useRouter } from "next/navigation";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import {
   Table,
@@ -195,6 +196,9 @@ const KhoaModal: React.FC<KhoaModalProps> = ({
 
 // ==================== TRANG CHÍNH QUẢN LÝ KHOA ====================
 export default function QuanLyKhoaPage() {
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
   const [khoas, setKhoas] = useState<Khoa[]>([]);
   const [pagination, setPagination] = useState<PaginationData>({
     total: 0,
@@ -216,6 +220,15 @@ export default function QuanLyKhoaPage() {
   const [tenKhoa, setTenKhoa] = useState("");
   const [moTa, setMoTa] = useState("");
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+
+  // Mở modal từ thanh search header (?modal=them-khoa)
+  useEffect(() => {
+    const modal = searchParams.get("modal");
+    if (modal === "them-khoa") {
+      setIsCreateModalOpen(true);
+      router.replace(pathname, { scroll: false });
+    }
+  }, [searchParams, pathname, router]);
 
   const [errors, setErrors] = useState({
     maKhoa: false,

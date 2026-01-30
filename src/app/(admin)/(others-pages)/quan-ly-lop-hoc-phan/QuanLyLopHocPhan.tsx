@@ -45,7 +45,7 @@ import { FaAngleDown } from "react-icons/fa6";
 import Checkbox from "@/components/form/input/Checkbox";
 import Switch from "@/components/form/switch/Switch";
 import { useDropzone } from "react-dropzone";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 
 type TrangThai = "DANG_HOC" | "DA_KET_THUC" | "CHUA_BAT_DAU";
 
@@ -2335,6 +2335,9 @@ const ItemsCountInfo: React.FC<ItemsCountInfoProps> = ({ pagination }) => {
 
 // ==================== TRANG CHÍNH QUẢN LÝ LỚP HỌC PHẦN ====================
 export default function QuanLyLopHocPhanPage() {
+    const searchParams = useSearchParams();
+    const pathname = usePathname();
+    const router = useRouter();
     const [lopHocPhans, setLopHocPhans] = useState<LopHocPhan[]>([]);
     const [pagination, setPagination] = useState<PaginationData>({
         total: 0,
@@ -2399,6 +2402,24 @@ export default function QuanLyLopHocPhanPage() {
     const [isCreateLHPModalOpen, setIsCreateLHPModalOpen] = useState(false);
     const [isHeaderDropdownOpen, setIsHeaderDropdownOpen] = useState(false); // ← THÊM DÒNG NÀY
     // State để theo dõi dropdown ĐANG MỞ
+
+    // Mở modal từ thanh search header (?modal=tao-lhp | nhap-lhp-excel | thong-ke-de-xuat | them-sv-lhp)
+    useEffect(() => {
+        const modal = searchParams.get("modal");
+        if (modal === "tao-lhp") {
+            setIsCreateLHPModalOpen(true);
+            router.replace(pathname, { scroll: false });
+        } else if (modal === "nhap-lhp-excel") {
+            setIsImportLHPExcelModalOpen(true);
+            router.replace(pathname, { scroll: false });
+        } else if (modal === "thong-ke-de-xuat") {
+            setIsThongKeLHPModalOpen(true);
+            router.replace(pathname, { scroll: false });
+        } else if (modal === "them-sv-lhp") {
+            setIsImportSinhVienExcelModalOpen(true);
+            router.replace(pathname, { scroll: false });
+        }
+    }, [searchParams, pathname, router]);
 
     const toggleDropdown = (lopHocPhanId: number) => {
         setActiveDropdownId((prev) =>

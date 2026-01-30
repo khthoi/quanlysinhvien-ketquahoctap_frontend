@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import {
     Table,
@@ -459,6 +459,8 @@ const ApDungModal: React.FC<ApDungModalProps> = ({
 // ==================== TRANG CHÍNH QUẢN LÝ CHƯƠNG TRÌNH ĐÀO TẠO ====================
 export default function QuanLyChuongTrinhDaoTaoPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const pathname = usePathname();
     
     // State cho danh sách và pagination
     const [chuongTrinhs, setChuongTrinhs] = useState<ChuongTrinhDaoTao[]>([]);
@@ -541,6 +543,15 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
     const [isExportExcelModalOpen, setIsExportExcelModalOpen] = useState(false);
     const [exportingChuongTrinh, setExportingChuongTrinh] = useState<ChuongTrinhDaoTao | null>(null);
     const [isExporting, setIsExporting] = useState(false);
+
+    // Mở modal từ thanh search header (?modal=ap-dung)
+    useEffect(() => {
+        const modal = searchParams.get("modal");
+        if (modal === "ap-dung") {
+            setIsApDungModalOpen(true);
+            router.replace(pathname, { scroll: false });
+        }
+    }, [searchParams, pathname, router]);
 
     // ==================== API CALLS ====================
     const fetchChuongTrinhs = async (

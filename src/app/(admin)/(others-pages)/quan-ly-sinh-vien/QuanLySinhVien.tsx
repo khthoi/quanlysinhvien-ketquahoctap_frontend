@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import {
     Table,
@@ -1800,6 +1800,9 @@ const ItemsCountInfo: React.FC<ItemsCountInfoProps> = ({ pagination }) => {
 
 // ==================== TRANG CHÍNH QUẢN LÝ SINH VIÊN ====================
 export default function QuanLySinhVienPage() {
+    const searchParams = useSearchParams();
+    const pathname = usePathname();
+    const router = useRouter();
     const [sinhViens, setSinhViens] = useState<SinhVien[]>([]);
     const [pagination, setPagination] = useState<PaginationData>({
         total: 0,
@@ -1896,6 +1899,24 @@ export default function QuanLySinhVienPage() {
 
     // State cho modal thống kê sinh viên trượt môn
     const [isThongKeSVTruotMonModalOpen, setIsThongKeSVTruotMonModalOpen] = useState(false);
+
+    // Mở modal từ thanh search header (?modal=cap-tk-hang-loat | xet-tot-nghiep | thong-ke-truot-mon | nhap-excel)
+    useEffect(() => {
+        const modal = searchParams.get("modal");
+        if (modal === "cap-tk-hang-loat") {
+            setIsBulkCreateAccountModalOpen(true);
+            router.replace(pathname, { scroll: false });
+        } else if (modal === "xet-tot-nghiep") {
+            setIsXetTotNghiepModalOpen(true);
+            router.replace(pathname, { scroll: false });
+        } else if (modal === "thong-ke-truot-mon") {
+            setIsThongKeSVTruotMonModalOpen(true);
+            router.replace(pathname, { scroll: false });
+        } else if (modal === "nhap-excel") {
+            setIsImportExcelModalOpen(true);
+            router.replace(pathname, { scroll: false });
+        }
+    }, [searchParams, pathname, router]);
 
     // Toggle: nếu click vào dropdown đang mở → đóng nó, ngược lại mở nó và đóng cái khác
     const toggleDropdown = (sinhVienId: number) => {
