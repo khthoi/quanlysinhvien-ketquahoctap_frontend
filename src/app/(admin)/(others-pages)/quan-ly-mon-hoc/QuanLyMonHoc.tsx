@@ -20,20 +20,35 @@ import TextArea from "@/components/form/input/TextArea";
 import Badge from "@/components/ui/badge/Badge";
 import Select from "@/components/form/Select";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
+import { faMagnifyingGlass, faChevronDown, faChevronUp, faUnlink } from "@fortawesome/free-solid-svg-icons";
 import { ChevronDownIcon } from "@/icons";
+import { Dropdown } from "@/components/ui/dropdown/Dropdown";
+import { DropdownItem } from "@/components/ui/dropdown/DropdownItem";
+import { FaAngleDown } from "react-icons/fa6";
 import SearchableSelect from "@/components/form/SelectCustom";
 import { useDropzone } from "react-dropzone";
 import { faCloudArrowUp, faDownload, faFileExcel } from "@fortawesome/free-solid-svg-icons";
 import {
-    faLightbulb,      // Thêm mới
-    faUserTie,        // Thêm mới
-    faTableColumns    // Thêm mới
+    faLightbulb,
+    faBook,
+    faTableColumns
 } from '@fortawesome/free-solid-svg-icons';
 import MultiSelectCustom from "@/components/form/MultiSelectCustom";
 
 type LoaiMon = "DAI_CUONG" | "TU_CHON" | "CHUYEN_NGANH";
 
+interface GiangVienInMonHoc {
+    id: number;
+    maGiangVien: string;
+    hoTen: string;
+    sdt: string | null;
+    gioiTinh: "NAM" | "NU" | "KHONG_XAC_DINH";
+}
+interface GiangVienMonHocItem {
+    id: number;
+    giangVien: GiangVienInMonHoc;
+    ghiChu?: string | null;
+}
 interface MonHoc {
     id: number;
     maMonHoc: string;
@@ -41,6 +56,7 @@ interface MonHoc {
     loaiMon: LoaiMon;
     soTinChi: number;
     moTa: string | null;
+    giangVienMonHocs?: GiangVienMonHocItem[];
 }
 
 interface PaginationData {
@@ -87,6 +103,38 @@ const getLoaiMonColor = (loai: LoaiMon): "success" | "warning" | "primary" => {
             return "primary";
     }
 };
+
+const getGioiTinhLabel = (gioiTinh: string): string => {
+    switch (gioiTinh) {
+        case "NAM":
+            return "Nam";
+        case "NU":
+            return "Nữ";
+        case "KHONG_XAC_DINH":
+            return "Không XĐ";
+        default:
+            return gioiTinh;
+    }
+};
+const getGioiTinhColor = (gioiTinh: string): "primary" | "success" | "warning" | "info" | "error" => {
+    switch (gioiTinh) {
+        case "NAM":
+            return "primary";
+        case "NU":
+            return "error";
+        case "KHONG_XAC_DINH":
+            return "warning";
+        default:
+            return "info";
+    }
+};
+
+const ChevronIcon = ({ isOpen }: { isOpen: boolean }) => (
+    <FontAwesomeIcon
+        icon={isOpen ? faChevronUp : faChevronDown}
+        className="w-4 h-4 transition-transform duration-200"
+    />
+);
 
 // ==================== MÔN HỌC MODAL ====================
 interface MonHocModalProps {
@@ -890,8 +938,16 @@ export default function QuanLyMonHocPage() {
     const [monHocSearchKeyword, setMonHocSearchKeyword] = useState("");
     const [giangVienSearchKeyword, setGiangVienSearchKeyword] = useState("");
     const [isPhanCongLoading, setIsPhanCongLoading] = useState(false);
-    // Thêm vào phần khai báo state trong QuanLyLopNienChePage
     const [isImportExcelModalOpen, setIsImportExcelModalOpen] = useState(false);
+    const [expandedRows, setExpandedRows] = useState<number[]>([]);
+    const [isHeaderDropdownOpen, setIsHeaderDropdownOpen] = useState(false);
+    const [isUnassignModalOpen, setIsUnassignModalOpen] = useState(false);
+    const [unassignData, setUnassignData] = useState<{
+        giangVienId: number;
+        monHocId: number;
+        tenMonHoc: string;
+        hoTenGiangVien: string;
+    } | null>(null);
 
     // Mở modal từ thanh search header (?modal=them-mon-hoc | nhap-excel | xuat-excel | phan-cong)
     useEffect(() => {
@@ -1166,6 +1222,49 @@ export default function QuanLyMonHocPage() {
         fetchMonHocs(1, searchKeyword.trim(), filterLoaiMon);
     };
 
+    const toggleRow = (id: number) => {
+        setExpandedRows((prev) =>
+            prev.includes(id) ? prev.filter((rowId) => rowId !== id) : [...prev, id]
+        );
+    };
+    const isRowExpanded = (id: number) => expandedRows.includes(id);
+
+    const toggleHeaderDropdown = () => setIsHeaderDropdownOpen((prev) => !prev);
+    const closeHeaderDropdown = () => setIsHeaderDropdownOpen(false);
+
+    const openUnassignModal = (giangVienId: number, monHocId: number, tenMonHoc: string, hoTenGiangVien: string) => {
+        setUnassignData({ giangVienId, monHocId, tenMonHoc, hoTenGiangVien });
+        setIsUnassignModalOpen(true);
+    };
+
+    const handleUnassignPhanCong = async () => {
+        if (!unassignData) return;
+        try {
+            const accessToken = getCookie("access_token");
+            const res = await fetch(
+                `http://localhost:3000/danh-muc/giang-vien/${unassignData.giangVienId}/phan-cong-mon-hoc/${unassignData.monHocId}`,
+                {
+                    method: "DELETE",
+                    headers: { Authorization: `Bearer ${accessToken}` },
+                }
+            );
+            setIsUnassignModalOpen(false);
+            setUnassignData(null);
+            if (res.ok) {
+                showAlert("success", "Thành công", `Đã gỡ phân công môn học "${unassignData.tenMonHoc}" khỏi giảng viên "${unassignData.hoTenGiangVien}".`);
+                fetchMonHocs(currentPage, searchKeyword.trim(), filterLoaiMon);
+            } else {
+                const err = await res.json();
+                showAlert("error", "Lỗi", err.message || "Gỡ phân công thất bại");
+            }
+        } catch (err) {
+            setIsUnassignModalOpen(false);
+            showAlert("error", "Lỗi", "Có lỗi xảy ra khi gỡ phân công");
+        } finally {
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+    };
+
     const handleFilter = () => {
         setCurrentPage(1);
         fetchMonHocs(1, searchKeyword.trim(), filterLoaiMon);
@@ -1405,7 +1504,7 @@ export default function QuanLyMonHocPage() {
                             </button>
                             <input
                                 type="text"
-                                placeholder="Tìm kiếm môn học..."
+                                placeholder="Tìm kiếm môn học, mã hoặc tên giảng viên..."
                                 value={searchKeyword}
                                 onChange={(e) => setSearchKeyword(e.target.value)}
                                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -1414,35 +1513,72 @@ export default function QuanLyMonHocPage() {
                         </div>
                     </div>
 
-                    <div className="flex gap-3">
+                    <div className="relative inline-block">
                         <Button
-                            variant="primary"
-                            onClick={() => setIsImportExcelModalOpen(true)}
-                            startIcon={<FontAwesomeIcon icon={faFileExcel} />}
+                            variant="outline"
+                            onClick={toggleHeaderDropdown}
+                            className="dropdown-toggle"
+                            endIcon={
+                                <FaAngleDown
+                                    className={`text-gray-500 transition-transform duration-300 ease-in-out ${isHeaderDropdownOpen ? "rotate-180" : "rotate-0"}`}
+                                />
+                            }
                         >
-                            Nhập từ Excel
+                            Thao tác
                         </Button>
-                        <Button
-                            variant="primary"
-                            onClick={() => setIsExportExcelModalOpen(true)}
-                            startIcon={<FontAwesomeIcon icon={faDownload} />}
+                        <Dropdown
+                            isOpen={isHeaderDropdownOpen}
+                            onClose={closeHeaderDropdown}
+                            className="w-64 mt-2 right-0 border-2 border-gray-300 dark:border-gray-700 shadow-lg rounded-lg"
                         >
-                            Xuất Excel
-                        </Button>
-                        <Button
-                            variant="primary"
-                            onClick={openPhanCongModal}
-                        >
-                            Phân công môn học
-                        </Button>
-                        <Button
-                            onClick={() => {
-                                resetForm();
-                                setIsCreateModalOpen(true);
-                            }}
-                        >
-                            Tạo mới Môn học
-                        </Button>
+                            <div className="py-1">
+                                <DropdownItem
+                                    tag="button"
+                                    onClick={() => {
+                                        resetForm();
+                                        setIsCreateModalOpen(true);
+                                        closeHeaderDropdown();
+                                    }}
+                                    className="flex items-center gap-2 px-3 py-2 rounded-md"
+                                >
+                                    <FontAwesomeIcon icon={faBook} className="w-4" />
+                                    Tạo mới Môn học
+                                </DropdownItem>
+                                <DropdownItem
+                                    tag="button"
+                                    onClick={() => {
+                                        setIsImportExcelModalOpen(true);
+                                        closeHeaderDropdown();
+                                    }}
+                                    className="flex items-center gap-2 px-3 py-2 rounded-md"
+                                >
+                                    <FontAwesomeIcon icon={faFileExcel} className="w-4" />
+                                    Nhập từ Excel
+                                </DropdownItem>
+                                <DropdownItem
+                                    tag="button"
+                                    onClick={() => {
+                                        setIsExportExcelModalOpen(true);
+                                        closeHeaderDropdown();
+                                    }}
+                                    className="flex items-center gap-2 px-3 py-2 rounded-md"
+                                >
+                                    <FontAwesomeIcon icon={faDownload} className="w-4" />
+                                    Xuất Excel
+                                </DropdownItem>
+                                <DropdownItem
+                                    tag="button"
+                                    onClick={() => {
+                                        openPhanCongModal();
+                                        closeHeaderDropdown();
+                                    }}
+                                    className="flex items-center gap-2 px-3 py-2 rounded-md"
+                                >
+                                    <FontAwesomeIcon icon={faTableColumns} className="w-4" />
+                                    Phân công môn học
+                                </DropdownItem>
+                            </div>
+                        </Dropdown>
                     </div>
                 </div>
 
@@ -1475,10 +1611,13 @@ export default function QuanLyMonHocPage() {
                 {/* Table */}
                 <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
                     <div className="max-w-full overflow-x-auto">
-                        <div className="min-w-[900px]">
+                        <div className="min-w-[950px]">
                             <Table>
                                 <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
-                                    <TableRow className="grid grid-cols-[15%_22%_15%_7%_25%_15%]">
+                                    <TableRow className="grid grid-cols-[5%_12%_20%_12%_6%_22%_15%]">
+                                        <TableCell isHeader className="px-3 py-3 font-medium text-gray-500 text-theme-xs flex items-center justify-center">
+                                            <span className="sr-only">Mở rộng</span>
+                                        </TableCell>
                                         <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-theme-xs">
                                             Mã Môn
                                         </TableCell>
@@ -1501,40 +1640,138 @@ export default function QuanLyMonHocPage() {
                                 </TableHeader>
                                 <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05] text-theme-sm text-center">
                                     {monHocs.map((mh) => (
-                                        <TableRow key={mh.id} className="grid grid-cols-[15%_22%_15%_7%_25%_15%] items-center">
-                                            <TableCell className="px-5 py-4 text-gray-800 dark:text-white/90">
-                                                {mh.maMonHoc}
-                                            </TableCell>
-                                            <TableCell className="px-5 py-4 text-gray-800 dark:text-white/90">
-                                                {mh.tenMonHoc}
-                                            </TableCell>
-                                            <TableCell className="px-5 py-4">
-                                                <Badge variant="solid" color={getLoaiMonColor(mh.loaiMon)}>
-                                                    {getLoaiMonLabel(mh.loaiMon)}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell className="px-5 py-4 text-gray-800 dark:text-white/90">
-                                                {mh.soTinChi}
-                                            </TableCell>
-                                            <TableCell className="px-5 py-4 text-gray-500 dark:text-gray-400 text-left">
-                                                <div
-                                                    className="max-w-[200px] truncate overflow-hidden text-ellipsis whitespace-nowrap"
-                                                    title={mh.moTa || ""}
-                                                >
-                                                    {mh.moTa || "-"}
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="px-5 py-4">
-                                                <div className="flex gap-2 justify-center">
-                                                    <Button size="sm" variant="primary" onClick={() => openEditModal(mh)}>
-                                                        Sửa
-                                                    </Button>
-                                                    <Button size="sm" variant="primary" onClick={() => openDeleteModal(mh)}>
-                                                        Xóa
-                                                    </Button>
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
+                                        <React.Fragment key={mh.id}>
+                                            <TableRow className="grid grid-cols-[5%_12%_20%_12%_6%_22%_15%] items-center">
+                                                <TableCell className="px-3 py-4 flex items-center justify-center">
+                                                    <button
+                                                        onClick={() => toggleRow(mh.id)}
+                                                        disabled={!(mh.giangVienMonHocs && mh.giangVienMonHocs.length > 0)}
+                                                        className={`flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 transition-colors ${mh.giangVienMonHocs && mh.giangVienMonHocs.length > 0
+                                                            ? "hover:bg-gray-100 dark:hover:bg-white/[0.05]"
+                                                            : "opacity-30 cursor-not-allowed"
+                                                            }`}
+                                                    >
+                                                        <ChevronIcon isOpen={isRowExpanded(mh.id)} />
+                                                    </button>
+                                                </TableCell>
+                                                <TableCell className="px-5 py-4 text-gray-800 dark:text-white/90">
+                                                    <div className="flex items-center gap-2">
+                                                        {mh.maMonHoc}
+                                                        {mh.giangVienMonHocs && mh.giangVienMonHocs.length > 0 && (
+                                                            <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-600 dark:bg-white/[0.05] dark:text-gray-400">
+                                                                {mh.giangVienMonHocs.length}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="px-5 py-4 text-gray-800 dark:text-white/90">
+                                                    {mh.tenMonHoc}
+                                                </TableCell>
+                                                <TableCell className="px-5 py-4">
+                                                    <Badge variant="solid" color={getLoaiMonColor(mh.loaiMon)}>
+                                                        {getLoaiMonLabel(mh.loaiMon)}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="px-5 py-4 text-gray-800 dark:text-white/90">
+                                                    {mh.soTinChi}
+                                                </TableCell>
+                                                <TableCell className="px-5 py-4 text-gray-500 dark:text-gray-400 text-left">
+                                                    <div
+                                                        className="max-w-[200px] truncate overflow-hidden text-ellipsis whitespace-nowrap"
+                                                        title={mh.moTa || ""}
+                                                    >
+                                                        {mh.moTa || "-"}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="px-5 py-4">
+                                                    <div className="flex gap-2 justify-center">
+                                                        <Button size="sm" variant="primary" onClick={() => openEditModal(mh)}>
+                                                            Sửa
+                                                        </Button>
+                                                        <Button size="sm" variant="primary" onClick={() => openDeleteModal(mh)}>
+                                                            Xóa
+                                                        </Button>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                            {/* Expanded: Giảng viên phụ trách */}
+                                            {isRowExpanded(mh.id) && mh.giangVienMonHocs && mh.giangVienMonHocs.length > 0 && (
+                                                <>
+                                                    <TableRow className="grid grid-cols-[5%_12%_20%_12%_8%_20%_15%] items-center bg-gray-100/80 dark:bg-white/[0.04] border-t border-gray-200 dark:border-white/[0.05]">
+                                                        <TableCell className="px-3 py-2.5"><span /></TableCell>
+                                                        <TableCell className="px-5 py-2.5 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                                                            Mã GV
+                                                        </TableCell>
+                                                        <TableCell className="px-5 py-2.5 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                                                            Họ và tên
+                                                        </TableCell>
+                                                        <TableCell className="px-5 py-2.5 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider flex items-center justify-center">
+                                                            SĐT
+                                                        </TableCell>
+                                                        <TableCell className="px-5 py-2.5 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider flex items-center justify-center">
+                                                            Giới tính
+                                                        </TableCell>
+                                                        <TableCell className="px-5 py-2.5"><span /></TableCell>
+                                                        <TableCell className="px-5 py-2.5 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider flex items-center justify-center">
+                                                            Hành động
+                                                        </TableCell>
+                                                    </TableRow>
+                                                    {mh.giangVienMonHocs.map((gvmh, index) => (
+                                                        <TableRow
+                                                            key={gvmh.id}
+                                                            className={`grid grid-cols-[5%_12%_20%_12%_8%_20%_15%] items-center bg-gray-50/50 dark:bg-white/[0.01] ${index === mh.giangVienMonHocs!.length - 1
+                                                                ? "border-b border-gray-200 dark:border-white/[0.05]"
+                                                                : ""
+                                                                }`}
+                                                        >
+                                                            <TableCell className="px-3 py-3 text-center">
+                                                                <div className="flex items-center justify-center h-full">
+                                                                    <div className="flex flex-col items-center">
+                                                                        <div className={`w-px bg-gray-300 dark:bg-white/[0.15] ${index === 0 ? "h-1/2" : "h-full"}`} />
+                                                                        <div className="w-2 h-2 rounded-full bg-brand-400 dark:bg-brand-500" />
+                                                                        {index !== mh.giangVienMonHocs!.length - 1 && (
+                                                                            <div className="w-px h-1/2 bg-gray-300 dark:bg-white/[0.15]" />
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </TableCell>
+                                                            <TableCell className="px-5 py-3 text-gray-700 dark:text-gray-200 font-medium text-sm">
+                                                                {gvmh.giangVien.maGiangVien}
+                                                            </TableCell>
+                                                            <TableCell className="px-5 py-3 text-gray-600 dark:text-gray-300 text-sm">
+                                                                {gvmh.giangVien.hoTen}
+                                                            </TableCell>
+                                                            <TableCell className="px-5 py-3 text-gray-600 dark:text-gray-300 text-sm">
+                                                                {gvmh.giangVien.sdt || "—"}
+                                                            </TableCell>
+                                                            <TableCell className="px-5 py-3 flex items-center justify-center">
+                                                                <Badge variant="solid" color={getGioiTinhColor(gvmh.giangVien.gioiTinh)}>
+                                                                    {getGioiTinhLabel(gvmh.giangVien.gioiTinh)}
+                                                                </Badge>
+                                                            </TableCell>
+                                                            <TableCell className="px-5 py-3"><span /></TableCell>
+                                                            <TableCell className="px-5 py-3 flex items-center justify-center">
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    onClick={() =>
+                                                                        openUnassignModal(
+                                                                            gvmh.giangVien.id,
+                                                                            mh.id,
+                                                                            mh.tenMonHoc,
+                                                                            gvmh.giangVien.hoTen
+                                                                        )
+                                                                    }
+                                                                    className="p-2 text-error-500 border-error-300 hover:bg-error-50 dark:border-error-500/30 dark:hover:bg-error-500/10"
+                                                                >
+                                                                    <FontAwesomeIcon icon={faUnlink} className="w-4 h-4" />
+                                                                </Button>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </>
+                                            )}
+                                        </React.Fragment>
                                     ))}
                                 </TableBody>
                             </Table>
@@ -1557,6 +1794,40 @@ export default function QuanLyMonHocPage() {
                             />
                         </div>
                     )}
+                </div>
+
+                {/* Table Footer Summary - Mở rộng / Thu gọn tất cả */}
+                <div className="mt-4 px-5 py-3 border border-gray-200 rounded-lg bg-gray-50/50 dark:border-white/[0.05] dark:bg-white/[0.02]">
+                    <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-500 dark:text-gray-400">
+                            Tổng số {monHocs.length} môn học với{" "}
+                            {monHocs.reduce(
+                                (acc, mh) => acc + (mh.giangVienMonHocs?.length ?? 0),
+                                0
+                            )}{" "}
+                            giảng viên phụ trách
+                        </span>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() =>
+                                    setExpandedRows(
+                                        monHocs
+                                            .filter((mh) => mh.giangVienMonHocs && mh.giangVienMonHocs.length > 0)
+                                            .map((mh) => mh.id)
+                                    )
+                                }
+                                className="px-3 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 dark:bg-white/[0.03] dark:border-white/[0.1] dark:text-gray-300 dark:hover:bg-white/[0.05] transition-colors"
+                            >
+                                Mở rộng tất cả
+                            </button>
+                            <button
+                                onClick={() => setExpandedRows([])}
+                                className="px-3 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 dark:bg-white/[0.03] dark:border-white/[0.1] dark:text-gray-300 dark:hover:bg-white/[0.05] transition-colors"
+                            >
+                                Thu gọn tất cả
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -1594,6 +1865,48 @@ export default function QuanLyMonHocPage() {
                 className="max-w-md"
             >
                 <DeleteConfirmModal />
+            </Modal>
+
+            {/* Modal Xác nhận gỡ phân công giảng viên */}
+            <Modal
+                isOpen={isUnassignModalOpen}
+                onClose={() => {
+                    setIsUnassignModalOpen(false);
+                    setUnassignData(null);
+                }}
+                className="max-w-md"
+            >
+                <div className="p-6 sm:p-8">
+                    <h3 className="mb-4 text-xl font-semibold text-gray-800 dark:text-white/90">
+                        Xác nhận xoá phân công giảng viên
+                    </h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-8">
+                        Bạn có chắc chắn muốn <strong>gỡ phân công</strong> môn học{" "}
+                        <span className="font-semibold text-brand-600 dark:text-brand-400">
+                            {unassignData?.tenMonHoc}
+                        </span>{" "}
+                        khỏi giảng viên{" "}
+                        <span className="font-semibold text-gray-900 dark:text-white">
+                            {unassignData?.hoTenGiangVien}
+                        </span>
+                        ?<br /><br />
+                        Hành động này không thể hoàn tác.
+                    </p>
+                    <div className="flex justify-end gap-3">
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setIsUnassignModalOpen(false);
+                                setUnassignData(null);
+                            }}
+                        >
+                            Hủy
+                        </Button>
+                        <Button variant="primary" onClick={handleUnassignPhanCong}>
+                            Gỡ liên kết
+                        </Button>
+                    </div>
+                </div>
             </Modal>
 
             {/* Modal Phân công môn học */}
