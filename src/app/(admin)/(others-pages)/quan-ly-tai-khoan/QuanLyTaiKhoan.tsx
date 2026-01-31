@@ -26,8 +26,6 @@ import {
     faEdit,
     faUserPlus,
     faKey,
-    faEnvelope,
-    faPhone,
     faTriangleExclamation,
     faCircleInfo,
     faShieldHalved
@@ -455,16 +453,15 @@ export default function QuanLyNguoiDungPage() {
     const [createPassword, setCreatePassword] = useState("");
     const [isCreatingCanBo, setIsCreatingCanBo] = useState(false);
 
-    // State cho modal khôi phục mật khẩu
+    // State cho modal reset mật khẩu
     const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
     const [resetPasswordNguoiDung, setResetPasswordNguoiDung] = useState<NguoiDung | null>(null);
-    const [resetEmail, setResetEmail] = useState("");
-    const [resetSdt, setResetSdt] = useState("");
     const [isResettingPassword, setIsResettingPassword] = useState(false);
-    const [resetPasswordErrors, setResetPasswordErrors] = useState({
-        email: "",
-        sdt: "",
-    });
+    const [resetPasswordResult, setResetPasswordResult] = useState<{
+        success: boolean;
+        password?: string;
+        message?: string;
+    } | null>(null);
 
     // State để theo dõi dropdown ĐANG MỞ
     const [activeDropdownId, setActiveDropdownId] = useState<number | null>(null);
@@ -653,68 +650,26 @@ export default function QuanLyNguoiDungPage() {
         }
     };
 
-    // Validate email
-    const validateEmail = (email: string): string => {
-        if (!email.trim()) return "Email không được để trống";
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) return "Email không hợp lệ";
-        return "";
-    };
-
-    // Validate số điện thoại
-    const validateSdt = (sdt: string): string => {
-        if (!sdt.trim()) return "Số điện thoại không được để trống";
-        const sdtRegex = /^(0[3|5|7|8|9])+([0-9]{8})$/;
-        if (!sdtRegex.test(sdt)) return "Số điện thoại không hợp lệ (VD: 0912345678)";
-        return "";
-    };
-
-    // Validate form khôi phục mật khẩu
-    const validateResetPasswordForm = (): boolean => {
-        const emailError = validateEmail(resetEmail);
-        const sdtError = validateSdt(resetSdt);
-
-        setResetPasswordErrors({
-            email: emailError,
-            sdt: sdtError,
-        });
-
-        return !emailError && !sdtError;
-    };
-
-    // Reset form khôi phục mật khẩu
-    const resetResetPasswordForm = () => {
-        setResetEmail("");
-        setResetSdt("");
-        setResetPasswordErrors({
-            email: "",
-            sdt: "",
-        });
-    };
-
-    // Mở modal khôi phục mật khẩu
+    // Mở modal reset mật khẩu
     const openResetPasswordModal = (nguoiDung: NguoiDung) => {
         setResetPasswordNguoiDung(nguoiDung);
-
-        setResetEmail("");
-        setResetSdt("");
-
-        setResetPasswordErrors({ email: "", sdt: "" });
+        setResetPasswordResult(null);
         setIsResetPasswordModalOpen(true);
     };
 
-    // Đóng modal khôi phục mật khẩu
+    // Đóng modal reset mật khẩu
     const closeResetPasswordModal = () => {
         setIsResetPasswordModalOpen(false);
         setResetPasswordNguoiDung(null);
-        resetResetPasswordForm();
+        setResetPasswordResult(null);
     };
 
-    // Xử lý khôi phục mật khẩu
+    // Xử lý reset mật khẩu (kết quả hiển thị trong modal)
     const handleResetPassword = async () => {
-        if (!resetPasswordNguoiDung || !validateResetPasswordForm()) return;
+        if (!resetPasswordNguoiDung) return;
 
         setIsResettingPassword(true);
+        setResetPasswordResult(null);
 
         try {
             const accessToken = getCookie("access_token");
@@ -726,24 +681,28 @@ export default function QuanLyNguoiDungPage() {
                 },
                 body: JSON.stringify({
                     userId: resetPasswordNguoiDung.id,
-                    email: resetEmail.trim(),
-                    sdt: resetSdt.trim(),
                 }),
             });
 
+            const data = await res.json();
+
             if (res.ok) {
-                closeResetPasswordModal();
-                showAlert(
-                    "success",
-                    "Thành công",
-                    `Đã khôi phục mật khẩu cho người dùng "${resetPasswordNguoiDung.tenDangNhap}".  Mật khẩu mới đã được gửi đến email ${resetEmail}.`
-                );
+                setResetPasswordResult({
+                    success: true,
+                    password: data.password ?? "123456",
+                });
             } else {
-                const err = await res.json();
-                showAlert("error", "Lỗi", err.message || "Khôi phục mật khẩu thất bại.  Vui lòng kiểm tra lại thông tin.");
+                setResetPasswordResult({
+                    success: false,
+                    message: data.message || "Đặt lại mật khẩu thất bại. Vui lòng thử lại.",
+                });
             }
         } catch (err) {
-            showAlert("error", "Lỗi", "Có lỗi xảy ra khi khôi phục mật khẩu");
+            const error = err as Error;
+            setResetPasswordResult({
+                success: false,
+                message: error.message || "Có lỗi xảy ra khi đặt lại mật khẩu.",
+            });
         } finally {
             setIsResettingPassword(false);
         }
@@ -1067,7 +1026,7 @@ export default function QuanLyNguoiDungPage() {
                 isCreating={isCreatingCanBo}
             />
 
-            {/* Modal Khôi phục mật khẩu */}
+            {/* Modal Reset mật khẩu */}
             <Modal
                 isOpen={isResetPasswordModalOpen}
                 onClose={() => {
@@ -1088,17 +1047,68 @@ export default function QuanLyNguoiDungPage() {
                         </div>
                         <div>
                             <h3 className="text-xl font-semibold text-gray-800 dark:text-white/90">
-                                Khôi phục mật khẩu
+                                Reset mật khẩu
                             </h3>
-                            <p className="text-sm text-gray-500 dark: text-gray-400">
-                                Đặt lại mật khẩu cho người dùng
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                                Đặt lại mật khẩu mặc định cho người dùng
                             </p>
                         </div>
                     </div>
 
-                    {/* Thông tin người dùng */}
-                    {resetPasswordNguoiDung && (
-                        <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark: border-gray-700">
+                    {/* Kết quả thành công / thất bại ngay trong modal */}
+                    {resetPasswordResult && (
+                        <div className={`mb-6 rounded-xl border p-4 ${
+                            resetPasswordResult.success
+                                ? "border-green-200 bg-green-50 dark:border-green-800/50 dark:bg-green-900/20"
+                                : "border-red-200 bg-red-50 dark:border-red-800/50 dark:bg-red-900/20"
+                        }`}>
+                            {resetPasswordResult.success ? (
+                                <>
+                                    <div className="flex items-start gap-3">
+                                        <FontAwesomeIcon
+                                            icon={faCircleInfo}
+                                            className="text-lg text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0"
+                                        />
+                                        <div className="flex-1">
+                                            <h4 className="font-semibold text-green-800 dark:text-green-300 mb-1">
+                                                Đặt lại mật khẩu thành công
+                                            </h4>
+                                            <p className="text-sm text-green-700/90 dark:text-green-300/80 mb-2">
+                                                Mật khẩu mới đã được áp dụng. Vui lòng chuyển mật khẩu này cho người dùng.
+                                            </p>
+                                            <div className="mt-3 p-3 bg-white/80 dark:bg-gray-800/80 rounded-lg border border-green-300 dark:border-green-700">
+                                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Mật khẩu mới:</p>
+                                                <p className="text-lg font-mono font-semibold text-gray-900 dark:text-white select-all">
+                                                    {resetPasswordResult.password}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="flex items-start gap-3">
+                                        <FontAwesomeIcon
+                                            icon={faTriangleExclamation}
+                                            className="text-lg text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0"
+                                        />
+                                        <div className="flex-1">
+                                            <h4 className="font-semibold text-red-800 dark:text-red-300 mb-1">
+                                                Đặt lại mật khẩu thất bại
+                                            </h4>
+                                            <p className="text-sm text-red-700/90 dark:text-red-300/80">
+                                                {resetPasswordResult.message}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Thông tin người dùng (chỉ hiện khi chưa có kết quả hoặc đang xử lý) */}
+                    {resetPasswordNguoiDung && !resetPasswordResult && (
+                        <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700">
                             <h4 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-3">
                                 Thông tin người dùng
                             </h4>
@@ -1127,120 +1137,94 @@ export default function QuanLyNguoiDungPage() {
                         </div>
                     )}
 
-                    {/* Hướng dẫn */}
-                    <div className="mb-6 rounded-xl border border-blue-200 bg-blue-50 dark:border-blue-800/50 dark:bg-blue-900/20">
-                        <div className="p-4">
-                            <div className="flex items-start gap-3">
-                                <div className="flex-shrink-0">
+                    {/* Hướng dẫn (chỉ khi chưa có kết quả) */}
+                    {!resetPasswordResult && (
+                        <div className="mb-6 rounded-xl border border-blue-200 bg-blue-50 dark:border-blue-800/50 dark:bg-blue-900/20">
+                            <div className="p-4">
+                                <div className="flex items-start gap-3">
                                     <FontAwesomeIcon
                                         icon={faCircleInfo}
-                                        className="text-lg text-blue-600 dark: text-blue-400 mt-0.5"
+                                        className="text-lg text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0"
                                     />
-                                </div>
-                                <div className="flex-1">
-                                    <h4 className="font-semibold text-blue-800 dark:text-blue-300 mb-1">
-                                        Hướng dẫn
-                                    </h4>
-                                    <ul className="text-sm text-blue-700/80 dark:text-blue-300/70 space-y-1 list-disc list-inside">
-                                        <li>Nhập email và số điện thoại đã đăng ký của người dùng</li>
-                                        <li>Thông tin phải khớp với dữ liệu trong hệ thống</li>
-                                        <li>Mật khẩu mới sẽ được gửi đến email người dùng</li>
-                                    </ul>
+                                    <div className="flex-1">
+                                        <h4 className="font-semibold text-blue-800 dark:text-blue-300 mb-1">
+                                            Hướng dẫn
+                                        </h4>
+                                        <ul className="text-sm text-blue-700/80 dark:text-blue-300/70 space-y-1 list-disc list-inside">
+                                            <li>Mật khẩu sẽ được đặt lại thành mật khẩu mặc định (123456)</li>
+                                            <li>Mật khẩu mới sẽ hiển thị ngay trong hộp thoại sau khi xác nhận</li>
+                                            <li>Khuyến nghị người dùng đổi mật khẩu sau khi đăng nhập</li>
+                                        </ul>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    )}
 
-                    {/* Form nhập thông tin */}
-                    <div className="space-y-5 mb-6">
-                        {/* Email */}
-                        <div>
-                            <Label className="flex items-center gap-2">
-                                <FontAwesomeIcon icon={faEnvelope} className="text-gray-500" />
-                                Email <span className="text-red-500">*</span>
-                            </Label>
-                            <Input
-                                type="email"
-                                defaultValue={resetEmail}
-                                onChange={(e) => {
-                                    setResetEmail(e.target.value);
-                                    if (resetPasswordErrors.email) {
-                                        setResetPasswordErrors(prev => ({ ...prev, email: "" }));
-                                    }
-                                }}
-                                error={!!resetPasswordErrors.email}
-                                hint={resetPasswordErrors.email}
-                                placeholder="Nhập email của người dùng..."
-                            />
-                        </div>
-
-                        {/* Số điện thoại */}
-                        <div>
-                            <Label className="flex items-center gap-2">
-                                <FontAwesomeIcon icon={faPhone} className="text-gray-500" />
-                                Số điện thoại <span className="text-red-500">*</span>
-                            </Label>
-                            <Input
-                                type="tel"
-                                defaultValue={resetSdt}
-                                onChange={(e) => {
-                                    setResetSdt(e.target.value);
-                                    if (resetPasswordErrors.sdt) {
-                                        setResetPasswordErrors(prev => ({ ...prev, sdt: "" }));
-                                    }
-                                }}
-                                error={!!resetPasswordErrors.sdt}
-                                hint={resetPasswordErrors.sdt}
-                                placeholder="Nhập số điện thoại (VD: 0912345678)..."
-                            />
-                        </div>
-                    </div>
-
-                    {/* Cảnh báo */}
-                    <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800/50 dark:bg-amber-900/20">
-                        <div className="p-4">
-                            <div className="flex items-start gap-3">
-                                <div className="flex-shrink-0">
+                    {/* Lưu ý (chỉ khi chưa có kết quả) */}
+                    {!resetPasswordResult && (
+                        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800/50 dark:bg-amber-900/20">
+                            <div className="p-4">
+                                <div className="flex items-start gap-3">
                                     <FontAwesomeIcon
                                         icon={faTriangleExclamation}
-                                        className="text-lg text-amber-600 dark:text-amber-400 mt-0.5"
+                                        className="text-lg text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0"
                                     />
-                                </div>
-                                <div className="flex-1">
-                                    <h4 className="font-semibold text-amber-800 dark:text-amber-300 mb-1">
-                                        Lưu ý quan trọng
-                                    </h4>
-                                    <ul className="text-xs text-amber-700/80 dark:text-amber-300/70 space-y-1 list-disc list-inside">
-                                        <li>Mật khẩu cũ sẽ bị vô hiệu hóa ngay lập tức</li>
-                                        <li>Người dùng cần kiểm tra email để lấy mật khẩu mới</li>
-                                        <li>Khuyến nghị người dùng đổi mật khẩu sau khi đăng nhập</li>
-                                    </ul>
+                                    <div className="flex-1">
+                                        <h4 className="font-semibold text-amber-800 dark:text-amber-300 mb-1">
+                                            Lưu ý
+                                        </h4>
+                                        <p className="text-xs text-amber-700/80 dark:text-amber-300/70">
+                                            Mật khẩu cũ sẽ bị vô hiệu hóa ngay sau khi xác nhận.
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    )}
 
                     {/* Buttons */}
                     <div className="flex justify-end gap-3">
-                        <Button
-                            variant="outline"
-                            onClick={closeResetPasswordModal}
-                            disabled={isResettingPassword}
-                        >
-                            Hủy
-                        </Button>
-                        <Button
-                            variant="primary"
-                            onClick={handleResetPassword}
-                            disabled={isResettingPassword}
-                            startIcon={
-                                isResettingPassword
-                                    ? undefined
-                                    : <FontAwesomeIcon icon={faKey} />
-                            }
-                        >
-                            {isResettingPassword ? "Đang xử lý..." : "Xác nhận khôi phục"}
-                        </Button>
+                        {resetPasswordResult ? (
+                            <>
+                                {!resetPasswordResult.success && (
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => setResetPasswordResult(null)}
+                                    >
+                                        Thử lại
+                                    </Button>
+                                )}
+                                <Button
+                                    variant="primary"
+                                    onClick={closeResetPasswordModal}
+                                >
+                                    Đóng
+                                </Button>
+                            </>
+                        ) : (
+                            <>
+                                <Button
+                                    variant="outline"
+                                    onClick={closeResetPasswordModal}
+                                    disabled={isResettingPassword}
+                                >
+                                    Hủy
+                                </Button>
+                                <Button
+                                    variant="primary"
+                                    onClick={handleResetPassword}
+                                    disabled={isResettingPassword}
+                                    startIcon={
+                                        isResettingPassword
+                                            ? undefined
+                                            : <FontAwesomeIcon icon={faKey} />
+                                    }
+                                >
+                                    {isResettingPassword ? "Đang xử lý..." : "Xác nhận đặt lại"}
+                                </Button>
+                            </>
+                        )}
                     </div>
                 </div>
             </Modal>
