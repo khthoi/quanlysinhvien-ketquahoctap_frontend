@@ -84,6 +84,14 @@ const getCookie = (name: string): string | null => {
 };
 
 // ==================== LỚP MODAL ====================
+export type LopFormErrors = {
+    maLop: string;
+    tenLop: string;
+    khoaId: string;
+    nganhId: string;
+    nienKhoaId: string;
+};
+
 interface LopModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -102,13 +110,7 @@ interface LopModalProps {
     onNganhIdChange: (value: number | "") => void;
     onNienKhoaIdChange: (value: number | "") => void;
     onSubmit: () => void;
-    errors: {
-        maLop: boolean;
-        tenLop: boolean;
-        khoaId: boolean;
-        nganhId: boolean;
-        nienKhoaId: boolean;
-    };
+    errors: LopFormErrors;
 }
 
 const LopModal: React.FC<LopModalProps> = ({
@@ -143,19 +145,21 @@ const LopModal: React.FC<LopModalProps> = ({
                     <div>
                         <Label>Mã Lớp</Label>
                         <Input
-                            defaultValue={maLop}
+                            value={maLop}
                             onChange={(e) => onMaLopChange(e.target.value)}
-                            error={errors.maLop}
-                            hint={errors.maLop ? "Mã lớp không được để trống" : ""}
+                            error={!!errors.maLop}
+                            hint={errors.maLop}
+                            placeholder="Nhập mã lớp"
                         />
                     </div>
                     <div>
                         <Label>Tên Lớp</Label>
                         <Input
-                            defaultValue={tenLop}
+                            value={tenLop}
                             onChange={(e) => onTenLopChange(e.target.value)}
-                            error={errors.tenLop}
-                            hint={errors.tenLop ? "Tên lớp không được để trống" : ""}
+                            error={!!errors.tenLop}
+                            hint={errors.tenLop}
+                            placeholder="Nhập tên lớp"
                         />
                     </div>
 
@@ -177,7 +181,7 @@ const LopModal: React.FC<LopModalProps> = ({
                             />
                         </div>
                         {errors.khoaId && (
-                            <p className="mt-1 text-sm text-error-500">Vui lòng chọn khoa</p>
+                            <p className="mt-1.5 text-xs text-error-500">{errors.khoaId}</p>
                         )}
                     </div>
 
@@ -202,7 +206,7 @@ const LopModal: React.FC<LopModalProps> = ({
                             />
                         </div>
                         {errors.nganhId && (
-                            <p className="mt-1 text-sm text-error-500">Vui lòng chọn ngành</p>
+                            <p className="mt-1.5 text-xs text-error-500">{errors.nganhId}</p>
                         )}
                     </div>
 
@@ -224,7 +228,7 @@ const LopModal: React.FC<LopModalProps> = ({
                             />
                         </div>
                         {errors.nienKhoaId && (
-                            <p className="mt-1 text-sm text-error-500">Vui lòng chọn niên khóa</p>
+                            <p className="mt-1.5 text-xs text-error-500">{errors.nienKhoaId}</p>
                         )}
                     </div>
                 </div>
@@ -628,13 +632,14 @@ export default function QuanLyLopNienChePage() {
     // Thêm vào phần khai báo state trong QuanLyLopNienChePage
     const [isImportExcelModalOpen, setIsImportExcelModalOpen] = useState(false);
 
-    const [errors, setErrors] = useState({
-        maLop: false,
-        tenLop: false,
-        khoaId: false,
-        nganhId: false,
-        nienKhoaId: false,
-    });
+    const emptyErrors: LopFormErrors = {
+        maLop: "",
+        tenLop: "",
+        khoaId: "",
+        nganhId: "",
+        nienKhoaId: "",
+    };
+    const [errors, setErrors] = useState<LopFormErrors>(emptyErrors);
 
     const [alert, setAlert] = useState<{
         id: number;
@@ -708,16 +713,39 @@ export default function QuanLyLopNienChePage() {
         });
     };
 
-    const validateForm = () => {
-        const newErrors = {
-            maLop: !maLop.trim(),
-            tenLop: !tenLop.trim(),
-            khoaId: khoaId === "",
-            nganhId: nganhId === "",
-            nienKhoaId: nienKhoaId === "",
-        };
-        setErrors(newErrors);
-        return !Object.values(newErrors).some((e) => e);
+    /** Validate form trước khi tạo/sửa. Trả về valid và object lỗi (message per field). */
+    const validateForm = (): { valid: boolean; formErrors: LopFormErrors } => {
+        const formErrors: LopFormErrors = { ...emptyErrors };
+        let valid = true;
+
+        const ma = maLop?.trim() ?? "";
+        if (!ma) {
+            formErrors.maLop = "Mã lớp không được để trống";
+            valid = false;
+        }
+
+        const ten = tenLop?.trim() ?? "";
+        if (!ten) {
+            formErrors.tenLop = "Tên lớp không được để trống";
+            valid = false;
+        }
+
+        if (khoaId === "" || (typeof khoaId === "number" && (isNaN(khoaId) || khoaId <= 0))) {
+            formErrors.khoaId = "Vui lòng chọn khoa";
+            valid = false;
+        }
+
+        if (nganhId === "" || (typeof nganhId === "number" && (isNaN(nganhId) || nganhId <= 0))) {
+            formErrors.nganhId = "Vui lòng chọn ngành";
+            valid = false;
+        }
+
+        if (nienKhoaId === "" || (typeof nienKhoaId === "number" && (isNaN(nienKhoaId) || nienKhoaId <= 0))) {
+            formErrors.nienKhoaId = "Vui lòng chọn niên khóa";
+            valid = false;
+        }
+
+        return { valid, formErrors };
     };
 
     const resetForm = () => {
@@ -726,17 +754,15 @@ export default function QuanLyLopNienChePage() {
         setKhoaId("");
         setNganhId("");
         setNienKhoaId("");
-        setErrors({
-            maLop: false,
-            tenLop: false,
-            khoaId: false,
-            nganhId: false,
-            nienKhoaId: false,
-        });
+        setErrors(emptyErrors);
     };
 
     const handleCreate = async () => {
-        if (!validateForm()) return;
+        const { valid, formErrors } = validateForm();
+        if (!valid) {
+            setErrors(formErrors);
+            return;
+        }
 
         try {
             const accessToken = getCookie("access_token");
@@ -777,7 +803,13 @@ export default function QuanLyLopNienChePage() {
     };
 
     const handleUpdate = async () => {
-        if (!editingLop || !validateForm()) return;
+        if (!editingLop) return;
+
+        const { valid, formErrors } = validateForm();
+        if (!valid) {
+            setErrors(formErrors);
+            return;
+        }
 
         try {
             const accessToken = getCookie("access_token");

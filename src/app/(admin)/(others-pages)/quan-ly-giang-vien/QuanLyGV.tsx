@@ -213,6 +213,16 @@ const ItemsCountInfo: React.FC<ItemsCountInfoProps> = ({ pagination }) => {
 };
 
 // ==================== GIẢNG VIÊN MODAL ====================
+export type GiangVienFormErrors = {
+    maGiangVien: string;
+    hoTen: string;
+    ngaySinh: string;
+    email: string;
+    sdt: string;
+    gioiTinh: string;
+    diaChi: string;
+};
+
 interface GiangVienModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -228,15 +238,7 @@ interface GiangVienModalProps {
     };
     onFormChange: (field: string, value: string) => void;
     onSubmit: () => void;
-    errors: {
-        maGiangVien: boolean;
-        hoTen: boolean;
-        ngaySinh: boolean;
-        email: boolean;
-        sdt: boolean;
-        gioiTinh: boolean;
-        diaChi: boolean;
-    };
+    errors: GiangVienFormErrors;
 }
 
 const GiangVienModal: React.FC<GiangVienModalProps> = ({
@@ -275,10 +277,11 @@ const GiangVienModal: React.FC<GiangVienModalProps> = ({
                     <div>
                         <Label>Mã Giảng Viên</Label>
                         <Input
-                            defaultValue={formData.maGiangVien}
+                            value={formData.maGiangVien}
                             onChange={(e) => onFormChange("maGiangVien", e.target.value)}
-                            error={errors.maGiangVien}
-                            hint={errors.maGiangVien ? "Mã giảng viên không được để trống" : ""}
+                            error={!!errors.maGiangVien}
+                            hint={errors.maGiangVien}
+                            placeholder="Nhập mã giảng viên"
                         />
                     </div>
 
@@ -286,10 +289,11 @@ const GiangVienModal: React.FC<GiangVienModalProps> = ({
                     <div>
                         <Label>Họ và Tên</Label>
                         <Input
-                            defaultValue={formData.hoTen}
+                            value={formData.hoTen}
                             onChange={(e) => onFormChange("hoTen", e.target.value)}
-                            error={errors.hoTen}
-                            hint={errors.hoTen ? "Họ tên không được để trống" : ""}
+                            error={!!errors.hoTen}
+                            hint={errors.hoTen}
+                            placeholder="Nhập họ tên"
                         />
                     </div>
 
@@ -298,7 +302,7 @@ const GiangVienModal: React.FC<GiangVienModalProps> = ({
                         <Label>Ngày Sinh</Label>
                         <DatePicker
                             id={isEdit ? "edit-ngaySinh" : "create-ngaySinh"}
-                            defaultDate={formData.ngaySinh || undefined}   // tránh truyền ""
+                            defaultDate={formData.ngaySinh || undefined}
                             onChange={([date]: any) => {
                                 if (date) {
                                     const formatted = formatDateNoTimezone(date);
@@ -308,11 +312,8 @@ const GiangVienModal: React.FC<GiangVienModalProps> = ({
                                 }
                             }}
                         />
-
                         {errors.ngaySinh && (
-                            <p className="mt-1 text-sm text-error-500">
-                                Ngày sinh không được để trống
-                            </p>
+                            <p className="mt-1.5 text-xs text-error-500">{errors.ngaySinh}</p>
                         )}
                     </div>
 
@@ -321,10 +322,11 @@ const GiangVienModal: React.FC<GiangVienModalProps> = ({
                         <Label>Email</Label>
                         <Input
                             type="email"
-                            defaultValue={formData.email}
+                            value={formData.email}
                             onChange={(e) => onFormChange("email", e.target.value)}
-                            error={errors.email}
-                            hint={errors.email ? "Email không được để trống" : ""}
+                            error={!!errors.email}
+                            hint={errors.email}
+                            placeholder="Nhập email"
                         />
                     </div>
 
@@ -332,10 +334,11 @@ const GiangVienModal: React.FC<GiangVienModalProps> = ({
                     <div>
                         <Label>Số Điện Thoại</Label>
                         <Input
-                            defaultValue={formData.sdt}
+                            value={formData.sdt}
                             onChange={(e) => onFormChange("sdt", e.target.value)}
-                            error={errors.sdt}
-                            hint={errors.sdt ? "Số điện thoại không được để trống" : ""}
+                            error={!!errors.sdt}
+                            hint={errors.sdt}
+                            placeholder="Nhập số điện thoại"
                         />
                     </div>
 
@@ -352,9 +355,7 @@ const GiangVienModal: React.FC<GiangVienModalProps> = ({
                             />
                         </div>
                         {errors.gioiTinh && (
-                            <p className="mt-1 text-sm text-error-500">
-                                Vui lòng chọn giới tính
-                            </p>
+                            <p className="mt-1.5 text-xs text-error-500">{errors.gioiTinh}</p>
                         )}
                     </div>
 
@@ -364,10 +365,10 @@ const GiangVienModal: React.FC<GiangVienModalProps> = ({
                         <TextArea
                             placeholder="Nhập địa chỉ"
                             rows={3}
-                            defaultValue={formData.diaChi}
+                            value={formData.diaChi}
                             onChange={(value) => onFormChange("diaChi", value)}
-                            error={errors.diaChi}
-                            hint={errors.diaChi ? "Địa chỉ không được để trống" : ""}
+                            error={!!errors.diaChi}
+                            hint={errors.diaChi}
                         />
                     </div>
                 </div>
@@ -1271,15 +1272,16 @@ export default function QuanLyGiangVienPage() {
     const [searchKeyword, setSearchKeyword] = useState("");
     const [selectedFilterMonHocId, setSelectedFilterMonHocId] = useState<number | "">("");
 
-    const [errors, setErrors] = useState({
-        maGiangVien: false,
-        hoTen: false,
-        ngaySinh: false,
-        email: false,
-        sdt: false,
-        gioiTinh: false,
-        diaChi: false,
-    });
+    const emptyErrors: GiangVienFormErrors = {
+        maGiangVien: "",
+        hoTen: "",
+        ngaySinh: "",
+        email: "",
+        sdt: "",
+        gioiTinh: "",
+        diaChi: "",
+    };
+    const [errors, setErrors] = useState<GiangVienFormErrors>(emptyErrors);
 
     const [alert, setAlert] = useState<{
         id: number;
@@ -1390,15 +1392,66 @@ export default function QuanLyGiangVienPage() {
             gioiTinh: "",
             diaChi: "",
         });
-        setErrors({
-            maGiangVien: false,
-            hoTen: false,
-            ngaySinh: false,
-            email: false,
-            sdt: false,
-            gioiTinh: false,
-            diaChi: false,
-        });
+        setErrors(emptyErrors);
+    };
+
+    /** Validate form trước khi tạo/sửa. Trả về valid và object lỗi (message per field). */
+    const validateForm = (): { valid: boolean; formErrors: GiangVienFormErrors } => {
+        const formErrors: GiangVienFormErrors = { ...emptyErrors };
+        let valid = true;
+
+        const ma = formData.maGiangVien?.trim() ?? "";
+        if (!ma) {
+            formErrors.maGiangVien = "Mã giảng viên không được để trống";
+            valid = false;
+        }
+
+        const hoTen = formData.hoTen?.trim() ?? "";
+        if (!hoTen) {
+            formErrors.hoTen = "Họ tên không được để trống";
+            valid = false;
+        }
+
+        const ngaySinh = formData.ngaySinh?.trim() ?? "";
+        if (!ngaySinh) {
+            formErrors.ngaySinh = "Ngày sinh không được để trống";
+            valid = false;
+        } else {
+            const d = new Date(ngaySinh);
+            if (isNaN(d.getTime())) {
+                formErrors.ngaySinh = "Ngày sinh không hợp lệ";
+                valid = false;
+            }
+        }
+
+        const email = formData.email?.trim() ?? "";
+        if (!email) {
+            formErrors.email = "Email không được để trống";
+            valid = false;
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            formErrors.email = "Email không đúng định dạng";
+            valid = false;
+        }
+
+        const sdt = formData.sdt?.trim() ?? "";
+        if (!sdt) {
+            formErrors.sdt = "Số điện thoại không được để trống";
+            valid = false;
+        }
+
+        const gioiTinh = formData.gioiTinh?.trim() ?? "";
+        if (!gioiTinh || !["NAM", "NU", "KHONG_XAC_DINH"].includes(gioiTinh)) {
+            formErrors.gioiTinh = "Vui lòng chọn giới tính";
+            valid = false;
+        }
+
+        const diaChi = formData.diaChi?.trim() ?? "";
+        if (!diaChi) {
+            formErrors.diaChi = "Địa chỉ không được để trống";
+            valid = false;
+        }
+
+        return { valid, formErrors };
     };
 
     const handleFormChange = (field: string, value: string) => {
@@ -1415,6 +1468,12 @@ export default function QuanLyGiangVienPage() {
 
     // Create
     const handleCreate = async () => {
+        const { valid, formErrors } = validateForm();
+        if (!valid) {
+            setErrors(formErrors);
+            return;
+        }
+
         try {
             const accessToken = getCookie("access_token");
             const res = await fetch("http://localhost:3000/danh-muc/giang-vien", {
@@ -1452,6 +1511,12 @@ export default function QuanLyGiangVienPage() {
     // Update
     const handleUpdate = async () => {
         if (!editingGiangVien) return;
+
+        const { valid, formErrors } = validateForm();
+        if (!valid) {
+            setErrors(formErrors);
+            return;
+        }
 
         try {
             const accessToken = getCookie("access_token");

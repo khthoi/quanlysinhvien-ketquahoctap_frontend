@@ -332,9 +332,9 @@ const HocKyModal: React.FC<HocKyModalProps> = ({
                     </div>
 
                     {/* Ngày bắt đầu & kết thúc */}
-                    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                    <div className="flex flex-col gap-5">
                         <div>
-                            <Label >Ngày Bắt đầu</Label>
+                            <Label>Ngày Bắt đầu</Label>
                             <DatePicker
                                 id="hocky-ngayBatDau"
                                 defaultDate={formData.ngayBatDau ? new Date(formData.ngayBatDau) : undefined}

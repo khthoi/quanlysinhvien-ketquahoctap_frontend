@@ -41,7 +41,7 @@ import {
 import TextArea from "@/components/form/input/TextArea";
 import { DropdownItem } from "@/components/ui/dropdown/DropdownItem";
 import { Dropdown } from "@/components/ui/dropdown/Dropdown";
-import { FaAngleDown } from "react-icons/fa6";
+import { FaAngleDown, FaAngleUp } from "react-icons/fa6";
 import Checkbox from "@/components/form/input/Checkbox";
 import Switch from "@/components/form/switch/Switch";
 import { useDropzone } from "react-dropzone";
@@ -2365,6 +2365,7 @@ export default function QuanLyLopHocPhanPage() {
     const [filterNganhId, setFilterNganhId] = useState("");
     const [filterNamHocId, setFilterNamHocId] = useState("");
     const [filterTrangThai, setFilterTrangThai] = useState<TrangThai | "">("");
+    const [filterExpanded, setFilterExpanded] = useState(false);
 
     // State cho form sửa
     const [maLopHocPhan, setMaLopHocPhan] = useState("");
@@ -3014,147 +3015,204 @@ export default function QuanLyLopHocPhanPage() {
                     </div>
                 </div>
 
-                {/* Khối lọc */}
-                <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
-                    <Label className="block mb-3 text-base font-medium">Bộ lọc</Label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {/* Lọc theo Môn học */}
-                        <div>
-                            <Label className="block mb-2 text-sm">Môn học</Label>
-                            <SearchableSelect
-                                options={monHocOptions.map((mh) => ({
-                                    value: mh.id.toString(),
-                                    label: mh.maMonHoc,
-                                    secondary: mh.tenMonHoc,
-                                }))}
-                                placeholder="Tất cả môn học"
-                                onChange={(value) => setFilterMonHocId(value)}
-                                defaultValue={filterMonHocId}
-                                showSecondary={true}
-                                maxDisplayOptions={10}
-                                searchPlaceholder="Tìm môn học..."
-                            />
-                        </div>
+                {/* Khối lọc - có thể thu gọn/mở rộng */}
+                {(() => {
+                    const activeFilterCount = [
+                        filterMonHocId,
+                        filterGiangVienId,
+                        filterNamHocId,
+                        filterHocKyId,
+                        filterNienKhoaId,
+                        filterNganhId,
+                        filterTrangThai,
+                    ].filter(Boolean).length;
+                    return (
+                        <div className="mb-6 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 overflow-hidden transition-shadow hover:shadow-sm">
+                            {/* Header luôn hiển thị - click để thu gọn/mở rộng */}
+                            <button
+                                type="button"
+                                onClick={() => setFilterExpanded((prev) => !prev)}
+                                className="w-full flex items-center justify-between gap-3 p-4 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/50 rounded-t-lg"
+                                aria-expanded={filterExpanded}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <span className="text-base font-medium text-gray-800 dark:text-white/90">
+                                        Bộ lọc
+                                    </span>
+                                    {activeFilterCount > 0 && (
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-brand-100 text-brand-700 dark:bg-brand-900/30 dark:text-brand-400">
+                                            {activeFilterCount} đang áp dụng
+                                        </span>
+                                    )}
+                                </div>
+                                <span className="flex items-center gap-2 text-gray-500 dark:text-gray-400 shrink-0">
+                                    {filterExpanded ? (
+                                        <>
+                                            <span className="text-sm hidden sm:inline">Thu gọn</span>
+                                            <FaAngleUp className="w-4 h-4 transition-transform" />
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span className="text-sm hidden sm:inline">Mở rộng</span>
+                                            <FaAngleDown className="w-4 h-4 transition-transform" />
+                                        </>
+                                    )}
+                                </span>
+                            </button>
 
-                        {/* Lọc theo Giảng viên */}
-                        <div>
-                            <Label className="block mb-2 text-sm">Giảng viên</Label>
-                            <SearchableSelect
-                                options={giangVienOptions.map((gv) => ({
-                                    value: gv.id.toString(),
-                                    label: gv.maGiangVien,
-                                    secondary: gv.hoTen,
-                                }))}
-                                placeholder="Tất cả giảng viên"
-                                onChange={(value) => setFilterGiangVienId(value)}
-                                defaultValue={filterGiangVienId}
-                                showSecondary={true}
-                                maxDisplayOptions={10}
-                                searchPlaceholder="Tìm giảng viên..."
-                            />
-                        </div>
+                            {/* Nội dung bộ lọc - hiển thị khi mở rộng */}
+                            <div
+                                className={`grid transition-[grid-template-rows] duration-200 ease-out ${
+                                    filterExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+                                }`}
+                            >
+                                <div className="min-h-0 overflow-hidden">
+                                    <div className="px-4 pb-4 pt-0 border-t border-gray-200/80 dark:border-gray-700/80">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-4">
+                                            {/* Lọc theo Môn học */}
+                                            <div>
+                                                <Label className="block mb-2 text-sm">Môn học</Label>
+                                                <SearchableSelect
+                                                    options={monHocOptions.map((mh) => ({
+                                                        value: mh.id.toString(),
+                                                        label: mh.maMonHoc,
+                                                        secondary: mh.tenMonHoc,
+                                                    }))}
+                                                    placeholder="Tất cả môn học"
+                                                    onChange={(value) => setFilterMonHocId(value)}
+                                                    defaultValue={filterMonHocId}
+                                                    showSecondary={true}
+                                                    maxDisplayOptions={10}
+                                                    searchPlaceholder="Tìm môn học..."
+                                                />
+                                            </div>
 
-                        {/* Lọc theo Năm học */}
-                        <div>
-                            <Label className="block mb-2 text-sm">Năm học</Label>
-                            <SearchableSelect
-                                options={namHocOptions.map((nh) => ({
-                                    value: nh.id.toString(),
-                                    label: nh.maNamHoc,
-                                    secondary: nh.tenNamHoc,
-                                }))}
-                                placeholder="Tất cả năm học"
-                                onChange={(value) => {
-                                    setFilterNamHocId(value);
-                                    setFilterHocKyId(""); // Reset học kỳ khi đổi năm học
-                                }}
-                                defaultValue={filterNamHocId}
-                                showSecondary={true}
-                                maxDisplayOptions={10}
-                                searchPlaceholder="Tìm năm học..."
-                            />
-                        </div>
+                                            {/* Lọc theo Giảng viên */}
+                                            <div>
+                                                <Label className="block mb-2 text-sm">Giảng viên</Label>
+                                                <SearchableSelect
+                                                    options={giangVienOptions.map((gv) => ({
+                                                        value: gv.id.toString(),
+                                                        label: gv.maGiangVien,
+                                                        secondary: gv.hoTen,
+                                                    }))}
+                                                    placeholder="Tất cả giảng viên"
+                                                    onChange={(value) => setFilterGiangVienId(value)}
+                                                    defaultValue={filterGiangVienId}
+                                                    showSecondary={true}
+                                                    maxDisplayOptions={10}
+                                                    searchPlaceholder="Tìm giảng viên..."
+                                                />
+                                            </div>
 
-                        {/* Lọc theo Học kỳ */}
-                        <div>
-                            <Label className="block mb-2 text-sm">Học kỳ</Label>
-                            <SearchableSelect
-                                options={filterHocKyOptions.map((hk) => ({
-                                    value: hk.id.toString(),
-                                    label: `Học kỳ ${hk.hocKy}`,
-                                    secondary: `${new Date(hk.ngayBatDau).toLocaleDateString("vi-VN")} - ${new Date(hk.ngayKetThuc).toLocaleDateString("vi-VN")}`,
-                                }))}
-                                placeholder={filterNamHocId ? "Tất cả học kỳ" : "Chọn năm học trước"}
-                                onChange={(value) => setFilterHocKyId(value)}
-                                defaultValue={filterHocKyId}
-                                showSecondary={true}
-                                maxDisplayOptions={10}
-                                searchPlaceholder="Tìm học kỳ..."
-                                disabled={!filterNamHocId}
-                            />
-                        </div>
+                                            {/* Lọc theo Năm học */}
+                                            <div>
+                                                <Label className="block mb-2 text-sm">Năm học</Label>
+                                                <SearchableSelect
+                                                    options={namHocOptions.map((nh) => ({
+                                                        value: nh.id.toString(),
+                                                        label: nh.maNamHoc,
+                                                        secondary: nh.tenNamHoc,
+                                                    }))}
+                                                    placeholder="Tất cả năm học"
+                                                    onChange={(value) => {
+                                                        setFilterNamHocId(value);
+                                                        setFilterHocKyId("");
+                                                    }}
+                                                    defaultValue={filterNamHocId}
+                                                    showSecondary={true}
+                                                    maxDisplayOptions={10}
+                                                    searchPlaceholder="Tìm năm học..."
+                                                />
+                                            </div>
 
-                        {/* Lọc theo Niên khóa */}
-                        <div>
-                            <Label className="block mb-2 text-sm">Niên khóa</Label>
-                            <SearchableSelect
-                                options={nienKhoaOptions.map((nk) => ({
-                                    value: nk.id.toString(),
-                                    label: nk.maNienKhoa,
-                                    secondary: nk.tenNienKhoa,
-                                }))}
-                                placeholder="Tất cả niên khóa"
-                                onChange={(value) => setFilterNienKhoaId(value)}
-                                defaultValue={filterNienKhoaId}
-                                showSecondary={true}
-                                maxDisplayOptions={10}
-                                searchPlaceholder="Tìm niên khóa..."
-                            />
-                        </div>
+                                            {/* Lọc theo Học kỳ */}
+                                            <div>
+                                                <Label className="block mb-2 text-sm">Học kỳ</Label>
+                                                <SearchableSelect
+                                                    options={filterHocKyOptions.map((hk) => ({
+                                                        value: hk.id.toString(),
+                                                        label: `Học kỳ ${hk.hocKy}`,
+                                                        secondary: `${new Date(hk.ngayBatDau).toLocaleDateString("vi-VN")} - ${new Date(hk.ngayKetThuc).toLocaleDateString("vi-VN")}`,
+                                                    }))}
+                                                    placeholder={filterNamHocId ? "Tất cả học kỳ" : "Chọn năm học trước"}
+                                                    onChange={(value) => setFilterHocKyId(value)}
+                                                    defaultValue={filterHocKyId}
+                                                    showSecondary={true}
+                                                    maxDisplayOptions={10}
+                                                    searchPlaceholder="Tìm học kỳ..."
+                                                    disabled={!filterNamHocId}
+                                                />
+                                            </div>
 
-                        {/* Lọc theo Ngành */}
-                        <div>
-                            <Label className="block mb-2 text-sm">Ngành</Label>
-                            <SearchableSelect
-                                options={nganhOptions.map((n) => ({
-                                    value: n.id.toString(),
-                                    label: n.maNganh,
-                                    secondary: n.tenNganh,
-                                }))}
-                                placeholder="Tất cả ngành"
-                                onChange={(value) => setFilterNganhId(value)}
-                                defaultValue={filterNganhId}
-                                showSecondary={true}
-                                maxDisplayOptions={10}
-                                searchPlaceholder="Tìm ngành..."
-                            />
-                        </div>
-                        <div>
-                            <Label className="block mb-2 text-sm">Trạng thái</Label>
-                            <SearchableSelect
-                                options={TRANG_THAI_OPTIONS.map((opt) => ({
-                                    value: opt.value,
-                                    label: opt.label,
-                                }))}
-                                placeholder="Tất cả trạng thái"
-                                onChange={(value) => setFilterTrangThai(value as TrangThai | "")}
-                                defaultValue={filterTrangThai}
-                                showSecondary={true}
-                                maxDisplayOptions={10}
-                                searchPlaceholder="Tìm trạng thái..."
-                            />
-                        </div>
-                    </div>
+                                            {/* Lọc theo Niên khóa */}
+                                            <div>
+                                                <Label className="block mb-2 text-sm">Niên khóa</Label>
+                                                <SearchableSelect
+                                                    options={nienKhoaOptions.map((nk) => ({
+                                                        value: nk.id.toString(),
+                                                        label: nk.maNienKhoa,
+                                                        secondary: nk.tenNienKhoa,
+                                                    }))}
+                                                    placeholder="Tất cả niên khóa"
+                                                    onChange={(value) => setFilterNienKhoaId(value)}
+                                                    defaultValue={filterNienKhoaId}
+                                                    showSecondary={true}
+                                                    maxDisplayOptions={10}
+                                                    searchPlaceholder="Tìm niên khóa..."
+                                                />
+                                            </div>
 
-                    <div className="mt-4 flex gap-3">
-                        <Button onClick={handleFilter} className="h-10">
-                            Áp dụng bộ lọc
-                        </Button>
-                        <Button variant="outline" onClick={handleResetFilter} className="h-10">
-                            Đặt lại
-                        </Button>
-                    </div>
-                </div>
+                                            {/* Lọc theo Ngành */}
+                                            <div>
+                                                <Label className="block mb-2 text-sm">Ngành</Label>
+                                                <SearchableSelect
+                                                    options={nganhOptions.map((n) => ({
+                                                        value: n.id.toString(),
+                                                        label: n.maNganh,
+                                                        secondary: n.tenNganh,
+                                                    }))}
+                                                    placeholder="Tất cả ngành"
+                                                    onChange={(value) => setFilterNganhId(value)}
+                                                    defaultValue={filterNganhId}
+                                                    showSecondary={true}
+                                                    maxDisplayOptions={10}
+                                                    searchPlaceholder="Tìm ngành..."
+                                                />
+                                            </div>
+
+                                            {/* Trạng thái */}
+                                            <div>
+                                                <Label className="block mb-2 text-sm">Trạng thái</Label>
+                                                <SearchableSelect
+                                                    options={TRANG_THAI_OPTIONS.map((opt) => ({
+                                                        value: opt.value,
+                                                        label: opt.label,
+                                                    }))}
+                                                    placeholder="Tất cả trạng thái"
+                                                    onChange={(value) => setFilterTrangThai(value as TrangThai | "")}
+                                                    defaultValue={filterTrangThai}
+                                                    showSecondary={true}
+                                                    maxDisplayOptions={10}
+                                                    searchPlaceholder="Tìm trạng thái..."
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-4 flex gap-3">
+                                            <Button onClick={handleFilter} className="h-10">
+                                                Áp dụng bộ lọc
+                                            </Button>
+                                            <Button variant="outline" onClick={handleResetFilter} className="h-10">
+                                                Đặt lại
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })()}
 
                 {/* Table */}
                 <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">

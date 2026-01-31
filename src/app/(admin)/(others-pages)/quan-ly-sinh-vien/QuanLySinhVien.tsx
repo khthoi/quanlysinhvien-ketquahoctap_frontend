@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/table";
 import Pagination from "@/components/tables/Pagination";
 import { Modal } from "@/components/ui/modal";
+import DatePicker from "@/components/form/date-picker";
 import Button from "@/components/ui/button/Button";
 import Alert from "@/components/ui/alert/Alert";
 import Input from "@/components/form/input/InputField";
@@ -279,6 +280,13 @@ const SinhVienModal: React.FC<SinhVienModalProps> = ({
         { value: "BAO_LUU", label: "Bảo lưu" },
     ];
 
+    function formatDateNoTimezone(date: Date) {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, "0");
+        const d = String(date.getDate()).padStart(2, "0");
+        return `${y}-${m}-${d}`;
+    }
+
     // Modal sửa nhưng sinh viên đã tốt nghiệp → chỉ hiển thị thông tin, không cho sửa
     if (isDaTotNghiepReadOnly) {
         return (
@@ -381,13 +389,20 @@ const SinhVienModal: React.FC<SinhVienModalProps> = ({
                     </div>
                     <div>
                         <Label>Ngày sinh</Label>
-                        <Input
-                            type="date"
-                            defaultValue={ngaySinh}
-                            onChange={(e) => onNgaySinhChange(e.target.value)}
-                            error={errors.ngaySinh}
-                            hint={errors.ngaySinh ? "Ngày sinh không được để trống" : ""}
+                        <DatePicker
+                            id={isEdit ? "edit-ngaySinh-sv" : "create-ngaySinh-sv"}
+                            defaultDate={ngaySinh || undefined}
+                            onChange={([date]: any) => {
+                                if (date) {
+                                    onNgaySinhChange(formatDateNoTimezone(date));
+                                } else {
+                                    onNgaySinhChange("");
+                                }
+                            }}
                         />
+                        {errors.ngaySinh && (
+                            <p className="mt-1.5 text-xs text-error-500">Ngày sinh không được để trống</p>
+                        )}
                     </div>
                     <div>
                         <Label>Giới tính</Label>
@@ -432,13 +447,20 @@ const SinhVienModal: React.FC<SinhVienModalProps> = ({
                     </div>
                     <div>
                         <Label>Ngày nhập học</Label>
-                        <Input
-                            type="date"
-                            defaultValue={ngayNhapHoc}
-                            onChange={(e) => onNgayNhapHocChange(e.target.value)}
-                            error={errors.ngayNhapHoc}
-                            hint={errors.ngayNhapHoc ? "Ngày nhập học không được để trống" : ""}
+                        <DatePicker
+                            id={isEdit ? "edit-ngayNhapHoc-sv" : "create-ngayNhapHoc-sv"}
+                            defaultDate={ngayNhapHoc || undefined}
+                            onChange={([date]: any) => {
+                                if (date) {
+                                    onNgayNhapHocChange(formatDateNoTimezone(date));
+                                } else {
+                                    onNgayNhapHocChange("");
+                                }
+                            }}
                         />
+                        {errors.ngayNhapHoc && (
+                            <p className="mt-1.5 text-xs text-error-500">Ngày nhập học không được để trống</p>
+                        )}
                     </div>
                     <div>
                         <Label>Tình trạng</Label>

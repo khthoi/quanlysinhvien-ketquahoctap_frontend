@@ -60,6 +60,13 @@ const getCookie = (name: string): string | null => {
 };
 
 // ==================== NGÀNH MODAL ====================
+export type NganhFormErrors = {
+    maNganh: string;
+    tenNganh: string;
+    moTa: string;
+    khoaId: string;
+};
+
 interface NganhModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -74,12 +81,7 @@ interface NganhModalProps {
     onMoTaChange: (value: string) => void;
     onKhoaIdChange: (value: number | "") => void;
     onSubmit: () => void;
-    errors: {
-        maNganh: boolean;
-        tenNganh: boolean;
-        moTa: boolean;
-        khoaId: boolean;
-    };
+    errors: NganhFormErrors;
 }
 
 const NganhModal: React.FC<NganhModalProps> = ({
@@ -110,19 +112,21 @@ const NganhModal: React.FC<NganhModalProps> = ({
                     <div>
                         <Label>Mã Ngành</Label>
                         <Input
-                            defaultValue={maNganh}
+                            value={maNganh}
                             onChange={(e) => onMaNganhChange(e.target.value)}
-                            error={errors.maNganh}
-                            hint={errors.maNganh ? "Mã ngành không được để trống" : ""}
+                            error={!!errors.maNganh}
+                            hint={errors.maNganh}
+                            placeholder="Nhập mã ngành"
                         />
                     </div>
                     <div>
                         <Label>Tên Ngành</Label>
                         <Input
-                            defaultValue={tenNganh}
+                            value={tenNganh}
                             onChange={(e) => onTenNganhChange(e.target.value)}
-                            error={errors.tenNganh}
-                            hint={errors.tenNganh ? "Tên ngành không được để trống" : ""}
+                            error={!!errors.tenNganh}
+                            hint={errors.tenNganh}
+                            placeholder="Nhập tên ngành"
                         />
                     </div>
                     <div>
@@ -130,10 +134,10 @@ const NganhModal: React.FC<NganhModalProps> = ({
                         <TextArea
                             placeholder="Nhập mô tả cho ngành"
                             rows={4}
-                            defaultValue={moTa || ""}
+                            value={moTa}
                             onChange={onMoTaChange}
-                            error={errors.moTa}
-                            hint={errors.moTa ? "Mô tả không được để trống" : ""}
+                            error={!!errors.moTa}
+                            hint={errors.moTa}
                         />
                     </div>
                     <div>
@@ -153,7 +157,7 @@ const NganhModal: React.FC<NganhModalProps> = ({
                             />
                         </div>
                         {errors.khoaId && (
-                            <p className="mt-1 text-sm text-error-500">Vui lòng chọn khoa</p>
+                            <p className="mt-1.5 text-xs text-error-500">{errors.khoaId}</p>
                         )}
                     </div>
                 </div>
@@ -563,12 +567,13 @@ export default function QuanLyNganhPage() {
         }
     }, [searchParams, pathname, router]);
 
-    const [errors, setErrors] = useState({
-        maNganh: false,
-        tenNganh: false,
-        moTa: false,
-        khoaId: false,
-    });
+    const emptyErrors: NganhFormErrors = {
+        maNganh: "",
+        tenNganh: "",
+        moTa: "",
+        khoaId: "",
+    };
+    const [errors, setErrors] = useState<NganhFormErrors>(emptyErrors);
 
     const [alert, setAlert] = useState<{
         id: number;
@@ -632,10 +637,47 @@ export default function QuanLyNganhPage() {
         setTenNganh("");
         setMoTa("");
         setKhoaId("");
-        setErrors({ maNganh: false, tenNganh: false, moTa: false, khoaId: false });
+        setErrors(emptyErrors);
+    };
+
+    /** Validate form trước khi tạo/sửa. Trả về valid và object lỗi (message per field). */
+    const validateForm = (): { valid: boolean; formErrors: NganhFormErrors } => {
+        const formErrors: NganhFormErrors = { ...emptyErrors };
+        let valid = true;
+
+        const ma = maNganh?.trim() ?? "";
+        if (!ma) {
+            formErrors.maNganh = "Mã ngành không được để trống";
+            valid = false;
+        }
+
+        const ten = tenNganh?.trim() ?? "";
+        if (!ten) {
+            formErrors.tenNganh = "Tên ngành không được để trống";
+            valid = false;
+        }
+
+        const mt = moTa?.trim() ?? "";
+        if (!mt) {
+            formErrors.moTa = "Mô tả không được để trống";
+            valid = false;
+        }
+
+        if (khoaId === "" || (typeof khoaId === "number" && (isNaN(khoaId) || khoaId <= 0))) {
+            formErrors.khoaId = "Vui lòng chọn khoa";
+            valid = false;
+        }
+
+        return { valid, formErrors };
     };
 
     const handleCreate = async () => {
+        const { valid, formErrors } = validateForm();
+        if (!valid) {
+            setErrors(formErrors);
+            return;
+        }
+
         try {
             const accessToken = getCookie("access_token");
             const res = await fetch("http://localhost:3000/danh-muc/nganh", {
@@ -669,6 +711,12 @@ export default function QuanLyNganhPage() {
 
     const handleUpdate = async () => {
         if (!editingNganh) return;
+
+        const { valid, formErrors } = validateForm();
+        if (!valid) {
+            setErrors(formErrors);
+            return;
+        }
 
         try {
             const accessToken = getCookie("access_token");

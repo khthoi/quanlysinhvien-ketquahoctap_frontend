@@ -810,7 +810,7 @@ export default function TaoCTDT() {
 
                         {/* Niên khóa */}
                         <div>
-                            <Label>Niên khóa *</Label>
+                            <Label>Niên khóa áp dụng *</Label>
                             <MultiSelectCustom
                                 options={availableNienKhoas.map((nk) => ({
                                     value: nk.id.toString(),

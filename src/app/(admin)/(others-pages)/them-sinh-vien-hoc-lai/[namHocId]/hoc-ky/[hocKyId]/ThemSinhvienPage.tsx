@@ -28,6 +28,8 @@ import {
     faCircleExclamation,
     faSpinner,
     faUserPlus,
+    faEye,
+    faRotateRight,
 } from "@fortawesome/free-solid-svg-icons";
 import { FaAngleDown } from "react-icons/fa6";
 
@@ -76,16 +78,52 @@ interface DeXuatItem {
     cacLopHocPhanCoTheDangKy: LopHocPhanOption[];
 }
 
+// --- Types for "sinh viên đã học lại / đang học lại" ---
+interface KetQuaHocLai {
+    diemQuaTrinh: number | null;
+    diemThanhPhan: number | null;
+    diemThi: number | null;
+    diemTBCHP: number | null;
+    diemChu: string | null;
+    diemSo: number | null;
+    khoaDiem: boolean;
+}
+
+interface LanHocLai {
+    lopHocPhanId: number;
+    maLopHocPhan: string;
+    hocKy: number;
+    maNamHoc: string;
+    tenNamHoc: string;
+    ngayBatDau?: string | null;
+    ngayKetThuc?: string | null;
+    ketQuaHocTap: KetQuaHocLai | null;
+}
+
+interface SinhVienDaHocLaiItem {
+    sinhVienId: number;
+    maSinhVien: string;
+    hoTen: string;
+    gioiTinh?: string;
+    maMonHocTruot: string;
+    tenMonHocTruot: string;
+    maLopHocPhanTruot: string;
+    diemTBCHPTruot: string;
+    cacLanHocLai: LanHocLai[];
+}
+
 interface DeXuatResponse {
     maNamHoc: string;
     hocKy: number;
     tenNamHoc: string;
     tongSinhVien: number;
     items: DeXuatItem[];
+    sinhVienDaHocLaiHoacDangHoc?: SinhVienDaHocLaiItem[];
 }
 
 const DANH_GIA_TRUOT = "Trượt môn";
 const PAGE_SIZE = 10;
+const PAGE_SIZE_DA_HOC_LAI = 10;
 
 function formatDanhGia(danhGia: string): string {
     if (!danhGia) return danhGia;
@@ -105,6 +143,205 @@ interface EditModalProps {
     onSave: () => void;
     canSave: boolean;
 }
+
+// --- Detail modal: Xem thêm (DeXuatItem) ---
+interface DetailDeXuatModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    item: DeXuatItem | null;
+}
+
+const DetailDeXuatModal: React.FC<DetailDeXuatModalProps> = ({ isOpen, onClose, item }) => {
+    if (!isOpen || !item) return null;
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} className="max-w-3xl">
+            <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
+                <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
+                    Chi tiết đề xuất học lại
+                </h3>
+                <div className="space-y-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700/50">
+                        <div>
+                            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Mã sinh viên</p>
+                            <p className="mt-0.5 font-mono text-gray-800 dark:text-white">{item.maSinhVien}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Họ và tên</p>
+                            <p className="mt-0.5 text-gray-800 dark:text-white">{item.hoTen}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">LHP trượt</p>
+                            <p className="mt-0.5 font-mono text-gray-800 dark:text-white">{item.maLopHocPhanTruot}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Điểm QT / TP / Thi</p>
+                            <p className="mt-0.5 text-gray-800 dark:text-white">{item.diemQuaTrinh} / {item.diemThanhPhan} / {item.diemThi}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">TBCHP / Điểm số / Điểm chữ</p>
+                            <p className="mt-0.5 text-gray-800 dark:text-white">{item.diemTBCHP} / {item.diemSo} / {item.diemChu}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">LHP đề xuất</p>
+                            <p className="mt-0.5 font-mono text-gray-800 dark:text-white">
+                                {item.bestChoiceLopHocPhan ? `${item.bestChoiceLopHocPhan.maLopHocPhan} (sĩ số: ${item.bestChoiceLopHocPhan.siSo})` : "Chưa có"}
+                            </p>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                            Các lớp học phần có thể đăng ký ({item.cacLopHocPhanCoTheDangKy.length})
+                        </h4>
+                        <ul className="space-y-2 max-h-64 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700/80">
+                            {item.cacLopHocPhanCoTheDangKy.length === 0 ? (
+                                <li className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">Không có lớp phù hợp</li>
+                            ) : (
+                                item.cacLopHocPhanCoTheDangKy.map((lhp) => (
+                                    <li key={lhp.lopHocPhanId} className="px-4 py-3 flex items-center justify-between gap-3 bg-white dark:bg-gray-900/30">
+                                        <div>
+                                            <span className="font-mono text-gray-800 dark:text-white">{lhp.maLopHocPhan}</span>
+                                            {lhp.laBestChoice && (
+                                                <Badge variant="light" color="success" className="ml-2 text-xs">Đề xuất</Badge>
+                                            )}
+                                        </div>
+                                        <span className="text-sm text-gray-500 dark:text-gray-400">
+                                            {lhp.tenMonHoc} · Sĩ số: {lhp.siSo} · {lhp.tenNamHoc} HK{lhp.hocKy}
+                                        </span>
+                                    </li>
+                                ))
+                            )}
+                        </ul>
+                    </div>
+                </div>
+                <div className="mt-6 flex justify-end">
+                    <Button variant="outline" onClick={onClose}>Đóng</Button>
+                </div>
+            </div>
+        </Modal>
+    );
+};
+
+// --- Detail modal: Xem thêm (Sinh viên đã học lại) ---
+interface DetailDaHocLaiModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    item: SinhVienDaHocLaiItem | null;
+}
+
+function formatDateVi(dateStr: string | null | undefined): string {
+    if (!dateStr) return "—";
+    try {
+        const d = new Date(dateStr);
+        if (Number.isNaN(d.getTime())) return dateStr;
+        return d.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
+    } catch {
+        return dateStr;
+    }
+}
+
+const DetailDaHocLaiModal: React.FC<DetailDaHocLaiModalProps> = ({ isOpen, onClose, item }) => {
+    if (!isOpen || !item) return null;
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} className="max-w-3xl">
+            <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-900 text-gray-800 dark:text-white/90">
+                <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
+                    Chi tiết học lại
+                </h3>
+                <div className="space-y-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700/50">
+                        <div>
+                            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Mã sinh viên</p>
+                            <p className="mt-0.5 font-mono text-gray-800 dark:text-white">{item.maSinhVien}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Họ và tên</p>
+                            <p className="mt-0.5 text-gray-800 dark:text-white">{item.hoTen}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Môn trượt</p>
+                            <p className="mt-0.5 text-gray-800 dark:text-white">{item.tenMonHocTruot} ({item.maMonHocTruot})</p>
+                        </div>
+                        <div>
+                            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">LHP trượt</p>
+                            <p className="mt-0.5 font-mono text-gray-800 dark:text-white">{item.maLopHocPhanTruot}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Điểm TBCHP khi trượt</p>
+                            <p className="mt-0.5 text-gray-800 dark:text-white">{item.diemTBCHPTruot}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Số lần học lại</p>
+                            <p className="mt-0.5 text-gray-800 dark:text-white">{item.cacLanHocLai.length}</p>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                            <FontAwesomeIcon icon={faRotateRight} className="text-brand-500 dark:text-brand-400" />
+                            Các lần học lại ({item.cacLanHocLai.length})
+                        </h4>
+                        <ul className="space-y-3 max-h-72 overflow-y-auto">
+                            {item.cacLanHocLai.length === 0 ? (
+                                <li className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                                    Chưa có lần học lại nào
+                                </li>
+                            ) : (
+                                item.cacLanHocLai.map((lan) => (
+                                    <li
+                                        key={lan.lopHocPhanId}
+                                        className="p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-gray-800 dark:text-white/90"
+                                    >
+                                        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                                            <span className="font-mono font-medium text-gray-800 dark:text-white">{lan.maLopHocPhan}</span>
+                                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                                                {lan.tenNamHoc} · HK{lan.hocKy}
+                                                {(lan.ngayBatDau != null || lan.ngayKetThuc != null) && (
+                                                    <> ({formatDateVi(lan.ngayBatDau)} - {formatDateVi(lan.ngayKetThuc)})</>
+                                                )}
+                                            </span>
+                                        </div>
+                                        {lan.ketQuaHocTap ? (
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2 text-sm">
+                                                <span className="text-gray-500 dark:text-gray-400">Điểm 10%:</span>
+                                                <span className="text-gray-800 dark:text-white">{lan.ketQuaHocTap.diemQuaTrinh ?? "—"}</span>
+                                                <span className="sm:col-span-1" />
+                                                <span className="text-gray-500 dark:text-gray-400">Điểm 30%:</span>
+                                                <span className="text-gray-800 dark:text-white">{lan.ketQuaHocTap.diemThanhPhan ?? "—"}</span>
+                                                <span className="sm:col-span-1" />
+                                                <span className="text-gray-500 dark:text-gray-400">Điểm 60%:</span>
+                                                <span className="text-gray-800 dark:text-white">{lan.ketQuaHocTap.diemThi ?? "—"}</span>
+                                                <span className="sm:col-span-1" />
+                                                <span className="text-gray-500 dark:text-gray-400">TBCHP:</span>
+                                                <span className="font-medium text-gray-800 dark:text-white">
+                                                    {lan.ketQuaHocTap.diemTBCHP != null ? lan.ketQuaHocTap.diemTBCHP.toFixed(2) : "—"}
+                                                </span>
+                                                <span className="sm:col-span-1" />
+                                                <span className="text-gray-500 dark:text-gray-400">Điểm chữ:</span>
+                                                <span className="text-gray-800 dark:text-white">{lan.ketQuaHocTap.diemChu ?? "—"}</span>
+                                                <span className="sm:col-span-1" />
+                                                <span className="text-gray-500 dark:text-gray-400">Điểm số (Hệ 4):</span>
+                                                <span className="font-medium text-gray-800 dark:text-white">
+                                                    {lan.ketQuaHocTap.diemSo != null ? lan.ketQuaHocTap.diemSo.toFixed(1) : "—"}
+                                                </span>
+                                                <span className="sm:col-span-1" />
+                                                <span className="text-gray-500 dark:text-gray-400">Khóa điểm:</span>
+                                                <span className="text-gray-800 dark:text-white">{lan.ketQuaHocTap.khoaDiem ? "Đã khóa" : "Chưa khóa"}</span>
+                                            </div>
+                                        ) : (
+                                            <p className="text-sm text-gray-500 dark:text-gray-400">Chưa có kết quả học tập</p>
+                                        )}
+                                    </li>
+                                ))
+                            )}
+                        </ul>
+                    </div>
+                </div>
+                <div className="mt-6 flex justify-end">
+                    <Button variant="outline" onClick={onClose}>Đóng</Button>
+                </div>
+            </div>
+        </Modal>
+    );
+};
 
 const EditModal: React.FC<EditModalProps> = ({
     isOpen,
@@ -430,9 +667,13 @@ export default function ThemSinhvienPage() {
     const [removedIds, setRemovedIds] = useState<Set<number>>(new Set());
     const [selectedLHPMap, setSelectedLHPMap] = useState<Record<number, number>>({});
     const [searchKeyword, setSearchKeyword] = useState("");
+    const [searchKeywordDaHocLai, setSearchKeywordDaHocLai] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
+    const [currentPageDaHocLai, setCurrentPageDaHocLai] = useState(1);
     const [activeDropdownId, setActiveDropdownId] = useState<number | null>(null);
     const [editModalItem, setEditModalItem] = useState<DeXuatItem | null>(null);
+    const [detailDeXuatItem, setDetailDeXuatItem] = useState<DeXuatItem | null>(null);
+    const [detailDaHocLaiItem, setDetailDaHocLaiItem] = useState<SinhVienDaHocLaiItem | null>(null);
     const [isConfirmAddModalOpen, setIsConfirmAddModalOpen] = useState(false);
     const [isConfirmAddResultModalOpen, setIsConfirmAddResultModalOpen] = useState(false);
     const [confirmSubmitting, setConfirmSubmitting] = useState(false);
@@ -453,20 +694,27 @@ export default function ThemSinhvienPage() {
                 },
                 body: JSON.stringify({ maNamHoc: namHocId, hocKy: hocKyNum }),
             });
-            const data: DeXuatResponse = await res.json();
+            const data = await res.json() as DeXuatResponse & { message?: string };
             if (res.ok) {
-                setApiData({ ...data });
+                setApiData({
+                    maNamHoc: data.maNamHoc,
+                    hocKy: data.hocKy,
+                    tenNamHoc: data.tenNamHoc,
+                    tongSinhVien: data.tongSinhVien ?? 0,
+                    items: data.items ?? [],
+                    sinhVienDaHocLaiHoacDangHoc: data.sinhVienDaHocLaiHoacDangHoc ?? [],
+                });
                 setRemovedIds(idsToKeepRemoved?.length ? new Set(idsToKeepRemoved) : new Set());
                 const nextMap: Record<number, number> = {};
-                data.items.forEach((it) => {
+                (data.items ?? []).forEach((it: DeXuatItem) => {
                     nextMap[it.sinhVienId] =
                         it.bestChoiceLopHocPhan?.lopHocPhanId ??
-                        it.cacLopHocPhanCoTheDangKy[0]?.lopHocPhanId ??
+                        it.cacLopHocPhanCoTheDangKy?.[0]?.lopHocPhanId ??
                         null;
                 });
                 setSelectedLHPMap(nextMap);
             } else {
-                setFetchError((data as any).message ?? "Không tải được dữ liệu");
+                setFetchError(data.message ?? "Không tải được dữ liệu");
             }
         } catch {
             setFetchError("Lỗi kết nối");
@@ -517,6 +765,34 @@ export default function ThemSinhvienPage() {
         });
         return count;
     }, [displayItems, selectedLHPMap]);
+
+    const daHocLaiList = useMemo(
+        () => apiData?.sinhVienDaHocLaiHoacDangHoc ?? [],
+        [apiData?.sinhVienDaHocLaiHoacDangHoc]
+    );
+    const filteredDaHocLai = useMemo(() => {
+        if (!searchKeywordDaHocLai.trim()) return daHocLaiList;
+        const q = searchKeywordDaHocLai.trim().toLowerCase();
+        return daHocLaiList.filter(
+            (sv) =>
+                sv.maSinhVien.toLowerCase().includes(q) ||
+                sv.hoTen.toLowerCase().includes(q)
+        );
+    }, [daHocLaiList, searchKeywordDaHocLai]);
+    const totalDaHocLai = filteredDaHocLai.length;
+    const totalPagesDaHocLai = Math.max(1, Math.ceil(totalDaHocLai / PAGE_SIZE_DA_HOC_LAI));
+    const paginatedDaHocLai = useMemo(() => {
+        const start = (currentPageDaHocLai - 1) * PAGE_SIZE_DA_HOC_LAI;
+        return filteredDaHocLai.slice(start, start + PAGE_SIZE_DA_HOC_LAI);
+    }, [filteredDaHocLai, currentPageDaHocLai]);
+
+    useEffect(() => {
+        setCurrentPageDaHocLai(1);
+    }, [searchKeywordDaHocLai]);
+
+    useEffect(() => {
+        if (currentPageDaHocLai > totalPagesDaHocLai && totalPagesDaHocLai >= 1) setCurrentPageDaHocLai(totalPagesDaHocLai);
+    }, [totalPagesDaHocLai, currentPageDaHocLai]);
 
     const toggleDropdown = (id: number) => {
         setActiveDropdownId((prev) => (prev === id ? null : id));
@@ -655,9 +931,10 @@ export default function ThemSinhvienPage() {
                             <p className="font-semibold text-gray-800 dark:text-white">{tenNamHoc || "—"}</p>
                         </div>
                         <div>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Học kỳ & Số SV cần học lại (hiển thị)</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Học kỳ · Số SV cần học lại</p>
                             <p className="font-semibold text-gray-800 dark:text-white">
-                                Học kỳ {hocKyNum} — {soSinhVienHienThi} sinh viên
+                                Học kỳ {hocKyNum} — {soSinhVienHienThi} sinh viên cần học lại
+                                {apiData?.sinhVienDaHocLaiHoacDangHoc?.length ? ` · ${apiData.sinhVienDaHocLaiHoacDangHoc.length} đã/đang học lại` : ""}
                             </p>
                         </div>
                     </div>
@@ -688,37 +965,43 @@ export default function ThemSinhvienPage() {
                     </Button>
                 </div>
 
-                {/* Table */}
+                {/* Table: Sinh viên cần học lại (đề xuất) */}
                 <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
                     <div className="overflow-x-auto">
                         <Table className="w-full table-fixed">
                             <colgroup>
+                                <col style={{ width: "10%" }} />
+                                <col style={{ width: "13%" }} />
+                                <col style={{ width: "14%" }} />
+                                <col style={{ width: "7%" }} />
+                                <col style={{ width: "7%" }} />
+                                <col style={{ width: "7%" }} />
+                                <col style={{ width: "8%" }} />
+                                <col style={{ width: "14%" }} />
                                 <col style={{ width: "12%" }} />
-                                <col style={{ width: "14%" }} />
-                                <col style={{ width: "17%" }} />
-                                <col style={{ width: "8%" }} />
-                                <col style={{ width: "8%" }} />
-                                <col style={{ width: "9%" }} />
-                                <col style={{ width: "8%" }} />
-                                <col style={{ width: "14%" }} />
                             </colgroup>
                             <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
                                 <TableRow>
-                                    <TableCell isHeader className="px-4 py-3 font-medium text-gray-500 text-theme-xs text-left whitespace-nowrap">Mã sinh viên</TableCell>
+                                    <TableCell isHeader className="px-4 py-3 font-medium text-gray-500 text-theme-xs text-left whitespace-nowrap">Mã SV</TableCell>
                                     <TableCell isHeader className="px-4 py-3 font-medium text-gray-500 text-theme-xs text-left">Họ tên</TableCell>
                                     <TableCell isHeader className="px-4 py-3 font-medium text-gray-500 text-theme-xs text-left whitespace-nowrap">LHP trượt</TableCell>
                                     <TableCell isHeader className="px-4 py-3 font-medium text-gray-500 text-theme-xs text-center whitespace-nowrap">TBCHP</TableCell>
                                     <TableCell isHeader className="px-4 py-3 font-medium text-gray-500 text-theme-xs text-center whitespace-nowrap">Điểm số</TableCell>
                                     <TableCell isHeader className="px-4 py-3 font-medium text-gray-500 text-theme-xs text-center whitespace-nowrap">Điểm chữ</TableCell>
                                     <TableCell isHeader className="px-4 py-3 font-medium text-gray-500 text-theme-xs text-center">Đánh giá</TableCell>
+                                    <TableCell isHeader className="px-4 py-3 font-medium text-gray-500 text-theme-xs text-left whitespace-nowrap">LHP đề xuất</TableCell>
                                     <TableCell isHeader className="px-4 py-3 font-medium text-gray-500 text-theme-xs text-center whitespace-nowrap">Hành động</TableCell>
                                 </TableRow>
                             </TableHeader>
                             <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05] text-theme-sm">
                                 {paginatedItems.length === 0 ? (
                                     <TableRow>
-                                        <TableCell cols={8} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
-                                            {displayItems.length === 0 ? "Không có sinh viên cần học lại" : "Không có kết quả tìm kiếm"}
+                                        <TableCell cols={9} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+                                            {displayItems.length === 0
+                                                ? (apiData?.sinhVienDaHocLaiHoacDangHoc?.length
+                                                    ? "Không có sinh viên cần học lại trong kỳ này (xem phần Sinh viên đã/đang học lại bên dưới)"
+                                                    : "Không có sinh viên cần học lại")
+                                                : "Không có kết quả tìm kiếm"}
                                         </TableCell>
                                     </TableRow>
                                 ) : (
@@ -732,6 +1015,11 @@ export default function ThemSinhvienPage() {
                                             <TableCell className="px-4 py-3 text-gray-800 dark:text-white/90 text-center">{sv.diemChu}</TableCell>
                                             <TableCell className="px-4 py-3 text-center">
                                                 <Badge variant="light" color="error">{formatDanhGia(sv.danhGia)}</Badge>
+                                            </TableCell>
+                                            <TableCell className="px-4 py-3 text-left max-w-0">
+                                                <span className="block truncate font-mono text-gray-800 dark:text-white/90" title={sv.bestChoiceLopHocPhan?.maLopHocPhan ?? "Chưa có"}>
+                                                    {sv.bestChoiceLopHocPhan ? `${sv.bestChoiceLopHocPhan.maLopHocPhan} (${sv.bestChoiceLopHocPhan.siSo} SV)` : "Chưa có"}
+                                                </span>
                                             </TableCell>
                                             <TableCell className="px-4 py-3 text-center">
                                                 <div className="relative inline-block">
@@ -752,6 +1040,15 @@ export default function ThemSinhvienPage() {
                                                         className="w-48 mt-2 right-0"
                                                     >
                                                         <div className="py-1">
+                                                            <DropdownItem
+                                                                tag="button"
+                                                                onItemClick={closeDropdown}
+                                                                onClick={() => { setDetailDeXuatItem(sv); }}
+                                                                className="flex items-center gap-2 px-3 py-2"
+                                                            >
+                                                                <FontAwesomeIcon icon={faEye} className="w-4" />
+                                                                Xem thêm
+                                                            </DropdownItem>
                                                             <DropdownItem
                                                                 tag="button"
                                                                 onItemClick={closeDropdown}
@@ -807,8 +1104,130 @@ export default function ThemSinhvienPage() {
                         </div>
                     )}
                 </div>
+
+                {/* Section: Sinh viên đã học lại / đang học lại */}
+                {daHocLaiList.length > 0 && (
+                    <div className="mt-10">
+                        <div className="mb-4 flex items-center gap-2">
+                            <FontAwesomeIcon icon={faRotateRight} className="text-brand-500 dark:text-brand-400" />
+                            <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
+                                Sinh viên đã học lại / đang học lại
+                            </h3>
+                            <Badge variant="light" color="info">{totalDaHocLai}</Badge>
+                        </div>
+                        <div className="mb-4 w-full sm:max-w-md">
+                            <div className="relative">
+                                <button type="button" className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                                    <FontAwesomeIcon icon={faMagnifyingGlass} className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                                </button>
+                                <input
+                                    type="text"
+                                    placeholder="Tìm theo mã sinh viên hoặc tên..."
+                                    value={searchKeywordDaHocLai}
+                                    onChange={(e) => setSearchKeywordDaHocLai(e.target.value)}
+                                    className="h-11 w-full rounded-lg border border-gray-200 bg-transparent py-2.5 pl-12 pr-4 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-3 focus:ring-brand-500/10 dark:border-gray-800 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
+                                />
+                            </div>
+                        </div>
+                        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
+                            <div className="overflow-x-auto">
+                                <Table className="w-full table-fixed">
+                                    <colgroup>
+                                        <col style={{ width: "10%" }} />
+                                        <col style={{ width: "18%" }} />
+                                        <col style={{ width: "22%" }} />
+                                        <col style={{ width: "18%" }} />
+                                        <col style={{ width: "8%" }} />
+                                        <col style={{ width: "10%" }} />
+                                        <col style={{ width: "14%" }} />
+                                    </colgroup>
+                                    <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
+                                        <TableRow>
+                                            <TableCell isHeader className="px-4 py-3 font-medium text-gray-500 text-theme-xs text-left whitespace-nowrap">Mã SV</TableCell>
+                                            <TableCell isHeader className="px-4 py-3 font-medium text-gray-500 text-theme-xs text-left">Họ tên</TableCell>
+                                            <TableCell isHeader className="px-4 py-3 font-medium text-gray-500 text-theme-xs text-left">Môn trượt</TableCell>
+                                            <TableCell isHeader className="px-4 py-3 font-medium text-gray-500 text-theme-xs text-left whitespace-nowrap">LHP trượt</TableCell>
+                                            <TableCell isHeader className="px-4 py-3 font-medium text-gray-500 text-theme-xs text-center whitespace-nowrap">TBCHP</TableCell>
+                                            <TableCell isHeader className="px-4 py-3 font-medium text-gray-500 text-theme-xs text-center whitespace-nowrap">Số lần học lại</TableCell>
+                                            <TableCell isHeader className="px-4 py-3 font-medium text-gray-500 text-theme-xs text-center whitespace-nowrap">Hành động</TableCell>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05] text-theme-sm">
+                                        {paginatedDaHocLai.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell cols={7} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+                                                    {filteredDaHocLai.length === 0 && searchKeywordDaHocLai.trim()
+                                                        ? "Không có kết quả tìm kiếm"
+                                                        : "Không có dữ liệu"}
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : (
+                                            paginatedDaHocLai.map((sv) => (
+                                                <TableRow key={sv.sinhVienId} className="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+                                                    <TableCell className="px-4 py-3 font-mono text-gray-800 dark:text-white/90 overflow-hidden"><span className="block truncate" title={sv.maSinhVien}>{sv.maSinhVien}</span></TableCell>
+                                                    <TableCell className="px-4 py-3 text-gray-800 dark:text-white/90 overflow-hidden"><span className="block truncate" title={sv.hoTen}>{sv.hoTen}</span></TableCell>
+                                                    <TableCell className="px-4 py-3 text-gray-800 dark:text-white/90 overflow-hidden"><span className="block truncate" title={sv.tenMonHocTruot}>{sv.tenMonHocTruot}</span></TableCell>
+                                                    <TableCell className="px-4 py-3 font-mono text-gray-800 dark:text-white/90 overflow-hidden"><span className="block truncate" title={sv.maLopHocPhanTruot}>{sv.maLopHocPhanTruot}</span></TableCell>
+                                                    <TableCell className="px-4 py-3 text-center text-gray-800 dark:text-white/90">{sv.diemTBCHPTruot}</TableCell>
+                                                    <TableCell className="px-4 py-3 text-center">
+                                                        <Badge variant="light" color="info">{sv.cacLanHocLai.length}</Badge>
+                                                    </TableCell>
+                                                    <TableCell className="px-4 py-3 text-center">
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => setDetailDaHocLaiItem(sv)}
+                                                            className="flex items-center gap-2 mx-auto"
+                                                        >
+                                                            <FontAwesomeIcon icon={faEye} className="w-4" />
+                                                            Xem thêm
+                                                        </Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </div>
+                        <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="text-sm text-gray-500 dark:text-gray-400">
+                                Hiển thị{" "}
+                                <span className="font-medium text-gray-700 dark:text-gray-300">
+                                    {totalDaHocLai === 0 ? 0 : (currentPageDaHocLai - 1) * PAGE_SIZE_DA_HOC_LAI + 1}
+                                </span>
+                                {" - "}
+                                <span className="font-medium text-gray-700 dark:text-gray-300">
+                                    {Math.min(currentPageDaHocLai * PAGE_SIZE_DA_HOC_LAI, totalDaHocLai)}
+                                </span>
+                                {" trên "}
+                                <span className="font-medium text-gray-700 dark:text-gray-300">{totalDaHocLai}</span>
+                                {" kết quả"}
+                            </div>
+                            {totalPagesDaHocLai > 1 && (
+                                <div className="flex justify-center sm:justify-end">
+                                    <Pagination
+                                        currentPage={currentPageDaHocLai}
+                                        totalPages={totalPagesDaHocLai}
+                                        onPageChange={setCurrentPageDaHocLai}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
 
+            <DetailDeXuatModal
+                isOpen={!!detailDeXuatItem}
+                onClose={() => setDetailDeXuatItem(null)}
+                item={detailDeXuatItem}
+            />
+            <DetailDaHocLaiModal
+                isOpen={!!detailDaHocLaiItem}
+                onClose={() => setDetailDaHocLaiItem(null)}
+                item={detailDaHocLaiItem}
+            />
             <EditModal
                 isOpen={!!editModalItem}
                 onClose={closeEditModal}

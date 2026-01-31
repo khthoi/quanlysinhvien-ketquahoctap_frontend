@@ -77,6 +77,13 @@ const ItemsCountInfo: React.FC<ItemsCountInfoProps> = ({ pagination }) => {
 };
 
 // ==================== KHOA MODAL - COMPONENT RIÊNG, ỔN ĐỊNH ====================
+export type KhoaFormErrors = {
+  maKhoa: string;
+  tenKhoa: string;
+  moTa: string;
+  ngayThanhLap: string;
+};
+
 interface KhoaModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -90,12 +97,7 @@ interface KhoaModalProps {
   onMoTaChange: (value: string) => void;
   onDateChange: (date: string) => void;
   onSubmit: () => void;
-  errors: {
-    maKhoa: boolean;
-    tenKhoa: boolean;
-    moTa: boolean;
-    ngayThanhLap: boolean;
-  };
+  errors: KhoaFormErrors;
 }
 
 function formatDateNoTimezone(date: Date) {
@@ -133,26 +135,28 @@ const KhoaModal: React.FC<KhoaModalProps> = ({
           <div>
             <Label>Mã Khoa</Label>
             <Input
-              defaultValue={maKhoa}
+              value={maKhoa}
               onChange={(e) => onMaKhoaChange(e.target.value)}
-              error={errors.maKhoa}
-              hint={errors.maKhoa ? "Mã khoa không được để trống" : ""}
+              error={!!errors.maKhoa}
+              hint={errors.maKhoa}
+              placeholder="Nhập mã khoa"
             />
           </div>
           <div>
             <Label>Tên Khoa</Label>
             <Input
-              defaultValue={tenKhoa}
+              value={tenKhoa}
               onChange={(e) => onTenKhoaChange(e.target.value)}
-              error={errors.tenKhoa}
-              hint={errors.tenKhoa ? "Tên khoa không được để trống" : ""}
+              error={!!errors.tenKhoa}
+              hint={errors.tenKhoa}
+              placeholder="Nhập tên khoa"
             />
           </div>
           <div>
             <Label>Ngày thành lập</Label>
             <DatePicker
               id={isEdit ? "edit-ngayThanhLap" : "create-ngayThanhLap"}
-              defaultDate={selectedDate ?? undefined} // cần đảm bảo selectedDate là string!
+              defaultDate={selectedDate ?? undefined}
               onChange={([date]: any) => {
                 if (date) {
                   const f = formatDateNoTimezone(date);
@@ -162,10 +166,9 @@ const KhoaModal: React.FC<KhoaModalProps> = ({
                 }
               }}
             />
-
             {errors.ngayThanhLap && (
-              <p className="mt-1 text-sm text-error-500">
-                Ngày thành lập không được để trống
+              <p className="mt-1.5 text-xs text-error-500">
+                {errors.ngayThanhLap}
               </p>
             )}
           </div>
@@ -174,10 +177,10 @@ const KhoaModal: React.FC<KhoaModalProps> = ({
             <TextArea
               placeholder="Nhập mô tả cho khoa"
               rows={4}
-              defaultValue={moTa}
+              value={moTa}
               onChange={onMoTaChange}
-              error={errors.moTa}
-              hint={errors.moTa ? "Mô tả không được để trống" : ""}
+              error={!!errors.moTa}
+              hint={errors.moTa}
             />
           </div>
         </div>
@@ -230,12 +233,13 @@ export default function QuanLyKhoaPage() {
     }
   }, [searchParams, pathname, router]);
 
-  const [errors, setErrors] = useState({
-    maKhoa: false,
-    tenKhoa: false,
-    moTa: false,
-    ngayThanhLap: false,
-  });
+  const emptyErrors: KhoaFormErrors = {
+    maKhoa: "",
+    tenKhoa: "",
+    moTa: "",
+    ngayThanhLap: "",
+  };
+  const [errors, setErrors] = useState<KhoaFormErrors>(emptyErrors);
 
   const [alert, setAlert] = useState<{
     id: number;
@@ -291,11 +295,54 @@ export default function QuanLyKhoaPage() {
     setMaKhoa("");
     setTenKhoa("");
     setMoTa("");
-    setSelectedDate("");
-    setErrors({ maKhoa: false, tenKhoa: false, moTa: false, ngayThanhLap: false });
+    setSelectedDate(null);
+    setErrors(emptyErrors);
+  };
+
+  /** Validate form trước khi tạo/sửa. Trả về valid và object lỗi (message per field). */
+  const validateForm = (): { valid: boolean; formErrors: KhoaFormErrors } => {
+    const formErrors: KhoaFormErrors = { ...emptyErrors };
+    let valid = true;
+
+    const ma = maKhoa?.trim() ?? "";
+    if (!ma) {
+      formErrors.maKhoa = "Mã khoa không được để trống";
+      valid = false;
+    }
+
+    const ten = tenKhoa?.trim() ?? "";
+    if (!ten) {
+      formErrors.tenKhoa = "Tên khoa không được để trống";
+      valid = false;
+    }
+
+    const mt = moTa?.trim() ?? "";
+    if (!mt) {
+      formErrors.moTa = "Mô tả không được để trống";
+      valid = false;
+    }
+
+    const ngay = selectedDate?.trim() ?? "";
+    if (!ngay) {
+      formErrors.ngayThanhLap = "Ngày thành lập không được để trống";
+      valid = false;
+    } else {
+      const d = new Date(ngay);
+      if (isNaN(d.getTime())) {
+        formErrors.ngayThanhLap = "Ngày thành lập không hợp lệ";
+        valid = false;
+      }
+    }
+
+    return { valid, formErrors };
   };
 
   const handleCreate = async () => {
+    const { valid, formErrors } = validateForm();
+    if (!valid) {
+      setErrors(formErrors);
+      return;
+    }
 
     try {
       const accessToken = getCookie("access_token");
@@ -331,6 +378,12 @@ export default function QuanLyKhoaPage() {
   const handleUpdate = async () => {
     if (!editingKhoa) return;
 
+    const { valid, formErrors } = validateForm();
+    if (!valid) {
+      setErrors(formErrors);
+      return;
+    }
+
     try {
       const accessToken = getCookie("access_token");
       const res = await fetch(
@@ -364,7 +417,6 @@ export default function QuanLyKhoaPage() {
       showAlert("error", "Lỗi", "Có lỗi xảy ra khi cập nhật");
     } finally {
       setIsEditModalOpen(false);
-      // 👉 Cuộn lên đầu trang
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
@@ -539,9 +591,9 @@ export default function QuanLyKhoaPage() {
                         <div
                           className="max-w-[220px] truncate overflow-hidden 
              text-ellipsis whitespace-nowrap cursor-pointer"
-                          title={khoa.moTa}
+                          title={khoa.moTa && khoa.moTa.trim() ? khoa.moTa : "---"}
                         >
-                          {khoa.moTa}
+                          {khoa.moTa && khoa.moTa.trim() ? khoa.moTa : "---"}
                         </div>
                       </TableCell>
                       <TableCell className="px-5 py-4 text-gray-800 dark:text-white/90">

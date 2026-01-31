@@ -44,6 +44,14 @@ const getCookie = (name: string): string | null => {
 };
 
 // ==================== NIÊN KHÓA MODAL - COMPONENT RIÊNG ====================
+export type NienKhoaFormErrors = {
+    maNienKhoa: string;
+    tenNienKhoa: string;
+    namBatDau: string;
+    namKetThuc: string;
+    moTa: string;
+};
+
 interface NienKhoaModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -59,13 +67,7 @@ interface NienKhoaModalProps {
     onNamKetThucChange: (value: string) => void;
     onMoTaChange: (value: string) => void;
     onSubmit: () => void;
-    errors: {
-        maNienKhoa: boolean;
-        tenNienKhoa: boolean;
-        namBatDau: boolean;
-        namKetThuc: boolean;
-        moTa: boolean;
-    };
+    errors: NienKhoaFormErrors;
 }
 
 const NienKhoaModal: React.FC<NienKhoaModalProps> = ({
@@ -97,19 +99,21 @@ const NienKhoaModal: React.FC<NienKhoaModalProps> = ({
                     <div>
                         <Label>Mã Niên khóa</Label>
                         <Input
-                            defaultValue={maNienKhoa}
+                            value={maNienKhoa}
                             onChange={(e) => onMaNienKhoaChange(e.target.value)}
-                            error={errors.maNienKhoa}
-                            hint={errors.maNienKhoa ? "Mã niên khóa không được để trống" : ""}
+                            error={!!errors.maNienKhoa}
+                            hint={errors.maNienKhoa}
+                            placeholder="Nhập mã niên khóa"
                         />
                     </div>
                     <div>
                         <Label>Tên Niên khóa</Label>
                         <Input
-                            defaultValue={tenNienKhoa}
+                            value={tenNienKhoa}
                             onChange={(e) => onTenNienKhoaChange(e.target.value)}
-                            error={errors.tenNienKhoa}
-                            hint={errors.tenNienKhoa ? "Tên niên khóa không được để trống" : ""}
+                            error={!!errors.tenNienKhoa}
+                            hint={errors.tenNienKhoa}
+                            placeholder="Nhập tên niên khóa"
                         />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
@@ -117,20 +121,22 @@ const NienKhoaModal: React.FC<NienKhoaModalProps> = ({
                             <Label>Năm bắt đầu</Label>
                             <Input
                                 type="number"
-                                defaultValue={namBatDau}
+                                value={namBatDau}
                                 onChange={(e) => onNamBatDauChange(e.target.value)}
-                                error={errors.namBatDau}
-                                hint={errors.namBatDau ? "Vui lòng nhập năm bắt đầu" : ""}
+                                error={!!errors.namBatDau}
+                                hint={errors.namBatDau}
+                                placeholder="VD: 2024"
                             />
                         </div>
                         <div>
                             <Label>Năm kết thúc</Label>
                             <Input
                                 type="number"
-                                defaultValue={namKetThuc}
+                                value={namKetThuc}
                                 onChange={(e) => onNamKetThucChange(e.target.value)}
-                                error={errors.namKetThuc}
-                                hint={errors.namKetThuc ? "Vui lòng nhập năm kết thúc" : ""}
+                                error={!!errors.namKetThuc}
+                                hint={errors.namKetThuc}
+                                placeholder="VD: 2028"
                             />
                         </div>
                     </div>
@@ -139,10 +145,10 @@ const NienKhoaModal: React.FC<NienKhoaModalProps> = ({
                         <TextArea
                             placeholder="Nhập mô tả cho niên khóa"
                             rows={4}
-                            defaultValue={moTa || ""}
+                            value={moTa}
                             onChange={onMoTaChange}
-                            error={errors.moTa}
-                            hint={errors.moTa ? "Mô tả không được để trống" : ""}
+                            error={!!errors.moTa}
+                            hint={errors.moTa}
                         />
                     </div>
                 </div>
@@ -217,13 +223,14 @@ export default function QuanLyNienKhoaPage() {
     const [namKetThuc, setNamKetThuc] = useState("");
     const [moTa, setMoTa] = useState("");
 
-    const [errors, setErrors] = useState({
-        maNienKhoa: false,
-        tenNienKhoa: false,
-        namBatDau: false,
-        namKetThuc: false,
-        moTa: false,
-    });
+    const emptyErrors: NienKhoaFormErrors = {
+        maNienKhoa: "",
+        tenNienKhoa: "",
+        namBatDau: "",
+        namKetThuc: "",
+        moTa: "",
+    };
+    const [errors, setErrors] = useState<NienKhoaFormErrors>(emptyErrors);
 
     const [alert, setAlert] = useState<{
         id: number;
@@ -277,16 +284,60 @@ export default function QuanLyNienKhoaPage() {
         });
     };
 
-    const validateForm = () => {
-        const newErrors = {
-            maNienKhoa: !maNienKhoa.trim(),
-            tenNienKhoa: !tenNienKhoa.trim(),
-            namBatDau: !namBatDau || isNaN(Number(namBatDau)),
-            namKetThuc: !namKetThuc || isNaN(Number(namKetThuc)),
-            moTa: !moTa.trim(),
-        };
-        setErrors(newErrors);
-        return !Object.values(newErrors).some((e) => e);
+    /** Validate form trước khi tạo/sửa. Trả về valid và object lỗi (message per field). */
+    const validateForm = (): { valid: boolean; formErrors: NienKhoaFormErrors } => {
+        const formErrors: NienKhoaFormErrors = { ...emptyErrors };
+        let valid = true;
+
+        const ma = maNienKhoa?.trim() ?? "";
+        if (!ma) {
+            formErrors.maNienKhoa = "Mã niên khóa không được để trống";
+            valid = false;
+        }
+
+        const ten = tenNienKhoa?.trim() ?? "";
+        if (!ten) {
+            formErrors.tenNienKhoa = "Tên niên khóa không được để trống";
+            valid = false;
+        }
+
+        const nb = namBatDau?.trim() ?? "";
+        if (!nb) {
+            formErrors.namBatDau = "Vui lòng nhập năm bắt đầu";
+            valid = false;
+        } else {
+            const yearB = Number(nb);
+            if (isNaN(yearB) || yearB < 1900 || yearB > 2100) {
+                formErrors.namBatDau = "Năm bắt đầu phải là số từ 1900 đến 2100";
+                valid = false;
+            }
+        }
+
+        const nk = namKetThuc?.trim() ?? "";
+        if (!nk) {
+            formErrors.namKetThuc = "Vui lòng nhập năm kết thúc";
+            valid = false;
+        } else {
+            const yearK = Number(nk);
+            if (isNaN(yearK) || yearK < 1900 || yearK > 2100) {
+                formErrors.namKetThuc = "Năm kết thúc phải là số từ 1900 đến 2100";
+                valid = false;
+            } else if (nb && !formErrors.namBatDau) {
+                const yearB = Number(nb);
+                if (yearK < yearB) {
+                    formErrors.namKetThuc = "Năm kết thúc phải lớn hơn hoặc bằng năm bắt đầu";
+                    valid = false;
+                }
+            }
+        }
+
+        const mt = moTa?.trim() ?? "";
+        if (!mt) {
+            formErrors.moTa = "Mô tả không được để trống";
+            valid = false;
+        }
+
+        return { valid, formErrors };
     };
 
     const resetForm = () => {
@@ -295,17 +346,15 @@ export default function QuanLyNienKhoaPage() {
         setNamBatDau("");
         setNamKetThuc("");
         setMoTa("");
-        setErrors({
-            maNienKhoa: false,
-            tenNienKhoa: false,
-            namBatDau: false,
-            namKetThuc: false,
-            moTa: false,
-        });
+        setErrors(emptyErrors);
     };
 
     const handleCreate = async () => {
-        if (!validateForm()) return;
+        const { valid, formErrors } = validateForm();
+        if (!valid) {
+            setErrors(formErrors);
+            return;
+        }
 
         try {
             const accessToken = getCookie("access_token");
@@ -340,7 +389,13 @@ export default function QuanLyNienKhoaPage() {
     };
 
     const handleUpdate = async () => {
-        if (!editingNienKhoa || !validateForm()) return;
+        if (!editingNienKhoa) return;
+
+        const { valid, formErrors } = validateForm();
+        if (!valid) {
+            setErrors(formErrors);
+            return;
+        }
 
         try {
             const accessToken = getCookie("access_token");
