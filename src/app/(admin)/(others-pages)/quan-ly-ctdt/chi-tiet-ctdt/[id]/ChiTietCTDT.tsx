@@ -236,7 +236,6 @@ const ThemMonHocModal: React.FC<ThemMonHocModalProps> = ({
     if (!isOpen) return null;
 
     const loaiMonOptions = [
-        { value: "", label: "Tất cả loại môn" },
         { value: "DAI_CUONG", label: "Đại cương" },
         { value: "CHUYEN_NGANH", label: "Chuyên ngành" },
         { value: "TU_CHON", label: "Tự chọn" },

@@ -191,6 +191,19 @@ const getGioiTinhLabel = (gioiTinh: GioiTinh): string => {
 };
 
 // ==================== SINH VIÊN MODAL ====================
+type SinhVienFormErrors = {
+    maSinhVien: string;
+    hoTen: string;
+    ngaySinh: string;
+    gioiTinh: string;
+    diaChi: string;
+    email: string;
+    sdt: string;
+    ngayNhapHoc: string;
+    tinhTrang: string;
+    lopId: string;
+};
+
 interface SinhVienModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -218,18 +231,7 @@ interface SinhVienModalProps {
     onLopIdChange: (value: string) => void;
     onSearchLop: (search: string) => void;
     onSubmit: () => void;
-    errors: {
-        maSinhVien: boolean;
-        hoTen: boolean;
-        ngaySinh: boolean;
-        gioiTinh: boolean;
-        diaChi: boolean;
-        email: boolean;
-        sdt: boolean;
-        ngayNhapHoc: boolean;
-        tinhTrang: boolean;
-        lopId: boolean;
-    };
+    errors: SinhVienFormErrors;
 }
 
 const SinhVienModal: React.FC<SinhVienModalProps> = ({
@@ -372,19 +374,21 @@ const SinhVienModal: React.FC<SinhVienModalProps> = ({
                     <div>
                         <Label>Mã Sinh viên</Label>
                         <Input
-                            defaultValue={maSinhVien}
+                            value={maSinhVien}
                             onChange={(e) => onMaSinhVienChange(e.target.value)}
-                            error={errors.maSinhVien}
-                            hint={errors.maSinhVien ? "Mã sinh viên không được để trống" : ""}
+                            error={!!errors.maSinhVien}
+                            hint={errors.maSinhVien}
+                            placeholder="Nhập mã sinh viên"
                         />
                     </div>
                     <div>
                         <Label>Họ và Tên</Label>
                         <Input
-                            defaultValue={hoTen}
+                            value={hoTen}
                             onChange={(e) => onHoTenChange(e.target.value)}
-                            error={errors.hoTen}
-                            hint={errors.hoTen ? "Họ tên không được để trống" : ""}
+                            error={!!errors.hoTen}
+                            hint={errors.hoTen}
+                            placeholder="Nhập họ tên"
                         />
                     </div>
                     <div>
@@ -401,7 +405,7 @@ const SinhVienModal: React.FC<SinhVienModalProps> = ({
                             }}
                         />
                         {errors.ngaySinh && (
-                            <p className="mt-1.5 text-xs text-error-500">Ngày sinh không được để trống</p>
+                            <p className="mt-1.5 text-xs text-error-500">{errors.ngaySinh}</p>
                         )}
                     </div>
                     <div>
@@ -414,35 +418,39 @@ const SinhVienModal: React.FC<SinhVienModalProps> = ({
                             showSecondary={false}
                         />
                         {errors.gioiTinh && (
-                            <p className="mt-1 text-sm text-error-500">Vui lòng chọn giới tính</p>
+                            <p className="mt-1 text-sm text-error-500">{errors.gioiTinh}</p>
                         )}
                     </div>
                     <div className="md:col-span-2">
                         <Label>Địa chỉ</Label>
                         <Input
-                            defaultValue={diaChi}
+                            value={diaChi}
                             onChange={(e) => onDiaChiChange(e.target.value)}
-                            error={errors.diaChi}
-                            hint={errors.diaChi ? "Địa chỉ không được để trống" : ""}
+                            error={!!errors.diaChi}
+                            hint={errors.diaChi}
+                            placeholder="Nhập địa chỉ"
                         />
                     </div>
                     <div>
                         <Label>Email</Label>
                         <Input
                             type="email"
-                            defaultValue={email}
+                            value={email}
                             onChange={(e) => onEmailChange(e.target.value)}
-                            error={errors.email}
-                            hint={errors.email ? "Email không hợp lệ" : ""}
+                            error={!!errors.email}
+                            hint={errors.email}
+                            placeholder="VD: email@domain.com"
                         />
                     </div>
                     <div>
                         <Label>Số điện thoại</Label>
                         <Input
-                            defaultValue={sdt}
+                            type="tel"
+                            value={sdt}
                             onChange={(e) => onSdtChange(e.target.value)}
-                            error={errors.sdt}
-                            hint={errors.sdt ? "Số điện thoại không được để trống" : ""}
+                            error={!!errors.sdt}
+                            hint={errors.sdt}
+                            placeholder="VD: 0123456789 hoặc +84912345678"
                         />
                     </div>
                     <div>
@@ -459,7 +467,7 @@ const SinhVienModal: React.FC<SinhVienModalProps> = ({
                             }}
                         />
                         {errors.ngayNhapHoc && (
-                            <p className="mt-1.5 text-xs text-error-500">Ngày nhập học không được để trống</p>
+                            <p className="mt-1.5 text-xs text-error-500">{errors.ngayNhapHoc}</p>
                         )}
                     </div>
                     <div>
@@ -472,7 +480,7 @@ const SinhVienModal: React.FC<SinhVienModalProps> = ({
                             showSecondary={false}
                         />
                         {errors.tinhTrang && (
-                            <p className="mt-1 text-sm text-error-500">Vui lòng chọn tình trạng</p>
+                            <p className="mt-1 text-sm text-error-500">{errors.tinhTrang}</p>
                         )}
                     </div>
                     <div className="md:col-span-2">
@@ -491,7 +499,7 @@ const SinhVienModal: React.FC<SinhVienModalProps> = ({
                             searchPlaceholder="Tìm trong danh sách..."
                         />
                         {errors.lopId && (
-                            <p className="mt-1 text-sm text-error-500">Vui lòng chọn lớp</p>
+                            <p className="mt-1 text-sm text-error-500">{errors.lopId}</p>
                         )}
                     </div>
                 </div>
@@ -1960,17 +1968,17 @@ export default function QuanLySinhVienPage() {
         setIsHeaderDropdownOpen(false);
     };
 
-    const [errors, setErrors] = useState({
-        maSinhVien: false,
-        hoTen: false,
-        ngaySinh: false,
-        gioiTinh: false,
-        diaChi: false,
-        email: false,
-        sdt: false,
-        ngayNhapHoc: false,
-        tinhTrang: false,
-        lopId: false,
+    const [errors, setErrors] = useState<SinhVienFormErrors>({
+        maSinhVien: "",
+        hoTen: "",
+        ngaySinh: "",
+        gioiTinh: "",
+        diaChi: "",
+        email: "",
+        sdt: "",
+        ngayNhapHoc: "",
+        tinhTrang: "",
+        lopId: "",
     });
 
     const [alert, setAlert] = useState<{
@@ -2168,22 +2176,55 @@ export default function QuanLySinhVienPage() {
         });
     };
 
-    const validateForm = () => {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        const newErrors = {
-            maSinhVien: !maSinhVien.trim(),
-            hoTen: !hoTen.trim(),
-            ngaySinh: !ngaySinh,
-            gioiTinh: gioiTinh === "",
-            diaChi: !diaChi.trim(),
-            email: !email.trim() || !emailRegex.test(email),
-            sdt: !sdt.trim(),
-            ngayNhapHoc: !ngayNhapHoc,
-            tinhTrang: tinhTrang === "",
-            lopId: !lopId,
+    const validateForm = (): boolean => {
+        let emailMsg = "";
+        const emailTrim = email?.trim() ?? "";
+        if (!emailTrim) {
+            emailMsg = "Email không được để trống";
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrim)) {
+            emailMsg = "Email không đúng định dạng (VD: email@domain.com)";
+        }
+
+        let sdtMsg = "";
+        const sdtTrim = sdt?.trim() ?? "";
+        if (!sdtTrim) {
+            sdtMsg = "Số điện thoại không được để trống";
+        } else {
+            const cleaned = sdtTrim.replace(/[\s\-.]/g, "");
+            const vnPhoneRegex = /^(\+84|84|0)?[3-9]\d{8}$/;
+            if (!vnPhoneRegex.test(cleaned)) {
+                sdtMsg = "Số điện thoại không đúng định dạng (VD: 0123456789 hoặc +84912345678)";
+            }
+        }
+
+        let ngaySinhMsg = "";
+        if (!ngaySinh?.trim()) {
+            ngaySinhMsg = "Ngày sinh không được để trống";
+        } else if (formatToYMD(ngaySinh) === "") {
+            ngaySinhMsg = "Ngày sinh không đúng định dạng (VD: yyyy-mm-dd hoặc dd/mm/yyyy)";
+        }
+        let ngayNhapHocMsg = "";
+        if (!ngayNhapHoc?.trim()) {
+            ngayNhapHocMsg = "Ngày nhập học không được để trống";
+        } else if (formatToYMD(ngayNhapHoc) === "") {
+            ngayNhapHocMsg = "Ngày nhập học không đúng định dạng (VD: yyyy-mm-dd hoặc dd/mm/yyyy)";
+        }
+
+        const newErrors: SinhVienFormErrors = {
+            maSinhVien: !maSinhVien.trim() ? "Mã sinh viên không được để trống" : "",
+            hoTen: !hoTen.trim() ? "Họ tên không được để trống" : "",
+            ngaySinh: ngaySinhMsg,
+            gioiTinh: gioiTinh === "" ? "Vui lòng chọn giới tính" : "",
+            diaChi: !diaChi.trim() ? "Địa chỉ không được để trống" : "",
+            email: emailMsg,
+            sdt: sdtMsg,
+            ngayNhapHoc: ngayNhapHocMsg,
+            tinhTrang: tinhTrang === "" ? "Vui lòng chọn tình trạng" : "",
+            lopId: !lopId ? "Vui lòng chọn lớp" : "",
         };
         setErrors(newErrors);
-        return !Object.values(newErrors).some((e) => e);
+        const hasError = Object.values(newErrors).some((msg) => msg !== "");
+        return !hasError;
     };
 
     const resetForm = () => {
@@ -2198,16 +2239,16 @@ export default function QuanLySinhVienPage() {
         setTinhTrang("");
         setLopId("");
         setErrors({
-            maSinhVien: false,
-            hoTen: false,
-            ngaySinh: false,
-            gioiTinh: false,
-            diaChi: false,
-            email: false,
-            sdt: false,
-            ngayNhapHoc: false,
-            tinhTrang: false,
-            lopId: false,
+            maSinhVien: "",
+            hoTen: "",
+            ngaySinh: "",
+            gioiTinh: "",
+            diaChi: "",
+            email: "",
+            sdt: "",
+            ngayNhapHoc: "",
+            tinhTrang: "",
+            lopId: "",
         });
     };
 

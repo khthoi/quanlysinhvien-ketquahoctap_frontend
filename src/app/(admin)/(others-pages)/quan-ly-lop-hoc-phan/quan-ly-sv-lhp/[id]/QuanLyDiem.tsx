@@ -1349,10 +1349,10 @@ export default function ChiTietLopHocPhanPage() {
                                     <table className="w-full text-sm">
                                         <thead className="sticky top-0 bg-gray-50 dark:bg-gray-800">
                                             <tr>
-                                                <th className="px-3 py-2 text-left text-gray-600 dark: text-gray-400 font-medium">Mã SV</th>
+                                                <th className="px-3 py-2 text-left text-gray-600 dark:text-gray-400 font-medium">Mã SV</th>
                                                 <th className="px-3 py-2 text-left text-gray-600 dark:text-gray-400 font-medium">Họ tên</th>
-                                                <th className="px-3 py-2 text-center text-gray-600 dark: text-gray-400 font-medium">Trạng thái</th>
-                                                <th className="px-3 py-2 text-left text-gray-600 dark: text-gray-400 font-medium">Chi tiết</th>
+                                                <th className="px-3 py-2 text-center text-gray-600 dark:text-gray-400 font-medium">Trạng thái</th>
+                                                <th className="px-3 py-2 text-left text-gray-600 dark:text-gray-400 font-medium">Chi tiết</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-100 dark:divide-gray-700">

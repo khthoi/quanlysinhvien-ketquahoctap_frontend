@@ -252,10 +252,10 @@ const GiangVienModal: React.FC<GiangVienModalProps> = ({
 }) => {
     if (!isOpen) return null;
 
+    // Chỉ cho chọn Nam hoặc Nữ
     const gioiTinhOptions = [
         { value: "NAM", label: "Nam" },
         { value: "NU", label: "Nữ" },
-        { value: "KHONG_XAC_DINH", label: "Không xác định" },
     ];
 
     function formatDateNoTimezone(date: Date) {
@@ -334,11 +334,12 @@ const GiangVienModal: React.FC<GiangVienModalProps> = ({
                     <div>
                         <Label>Số Điện Thoại</Label>
                         <Input
+                            type="tel"
                             value={formData.sdt}
                             onChange={(e) => onFormChange("sdt", e.target.value)}
                             error={!!errors.sdt}
                             hint={errors.sdt}
-                            placeholder="Nhập số điện thoại"
+                            placeholder="VD: 0123456789 hoặc +84912345678"
                         />
                     </div>
 
@@ -1429,19 +1430,26 @@ export default function QuanLyGiangVienPage() {
             formErrors.email = "Email không được để trống";
             valid = false;
         } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-            formErrors.email = "Email không đúng định dạng";
+            formErrors.email = "Email không đúng định dạng (VD: email@domain.com)";
             valid = false;
         }
 
-        const sdt = formData.sdt?.trim() ?? "";
-        if (!sdt) {
+        const sdtRaw = formData.sdt?.trim() ?? "";
+        if (!sdtRaw) {
             formErrors.sdt = "Số điện thoại không được để trống";
             valid = false;
+        } else {
+            const sdtCleaned = sdtRaw.replace(/[\s\-.]/g, "");
+            const vnPhoneRegex = /^(\+84|84|0)?[3-9]\d{8}$/;
+            if (!vnPhoneRegex.test(sdtCleaned)) {
+                formErrors.sdt = "Số điện thoại không đúng định dạng (VD: 0123456789 hoặc +84912345678)";
+                valid = false;
+            }
         }
 
         const gioiTinh = formData.gioiTinh?.trim() ?? "";
-        if (!gioiTinh || !["NAM", "NU", "KHONG_XAC_DINH"].includes(gioiTinh)) {
-            formErrors.gioiTinh = "Vui lòng chọn giới tính";
+        if (!gioiTinh || !["NAM", "NU"].includes(gioiTinh)) {
+            formErrors.gioiTinh = "Vui lòng chọn giới tính (Nam hoặc Nữ)";
             valid = false;
         }
 
@@ -1873,13 +1881,17 @@ export default function QuanLyGiangVienPage() {
     // Open modals
     const openEditModal = (giangVien: GiangVien) => {
         setEditingGiangVien(giangVien);
+        // Giới tính chỉ chấp nhận Nam/Nữ; nếu đang lưu "Không xác định" thì để trống để user chọn lại
+        const gioiTinhForm = (giangVien.gioiTinh === "NAM" || giangVien.gioiTinh === "NU")
+            ? giangVien.gioiTinh
+            : "";
         setFormData({
             maGiangVien: giangVien.maGiangVien,
             hoTen: giangVien.hoTen,
             ngaySinh: giangVien.ngaySinh,
             email: giangVien.email,
             sdt: giangVien.sdt,
-            gioiTinh: giangVien.gioiTinh,
+            gioiTinh: gioiTinhForm,
             diaChi: giangVien.diaChi,
         });
         setIsEditModalOpen(true);

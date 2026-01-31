@@ -120,12 +120,12 @@ export default function UserInfoCard() {
   const [gioiTinh, setGioiTinh] = useState("NAM");
   const [diaChi, setDiaChi] = useState("");
 
-  // Error states
-  const [hoTenError, setHoTenError] = useState(false);
-  const [ngaySinhError, setNgaySinhError] = useState(false);
-  const [emailError, setEmailError] = useState(false);
-  const [sdtError, setSdtError] = useState(false);
-  const [diaChiError, setDiaChiError] = useState(false);
+  // Error states (message string, empty = no error)
+  const [hoTenError, setHoTenError] = useState("");
+  const [ngaySinhError, setNgaySinhError] = useState("");
+  const [emailError, setEmailError] = useState("");
+  const [sdtError, setSdtError] = useState("");
+  const [diaChiError, setDiaChiError] = useState("");
 
   // State cho modal đổi mật khẩu
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
@@ -281,11 +281,11 @@ export default function UserInfoCard() {
       setDiaChi(profileData.diaChi);
 
       // Reset errors
-      setHoTenError(false);
-      setNgaySinhError(false);
-      setEmailError(false);
-      setSdtError(false);
-      setDiaChiError(false);
+      setHoTenError("");
+      setNgaySinhError("");
+      setEmailError("");
+      setSdtError("");
+      setDiaChiError("");
 
       // Reset modal alert
       setModalAlert({ type: "success", message: "", show: false });
@@ -297,45 +297,82 @@ export default function UserInfoCard() {
     setGioiTinh(value);
   };
 
-  // Validation functions
+  // Validation functions – set error message (string), return true if valid
   const validateHoTen = (value: string) => {
-    const isValid = value.trim().length > 0;
-    setHoTenError(!isValid);
-    return isValid;
+    const trimmed = value.trim();
+    if (!trimmed) {
+      setHoTenError("Họ tên không được để trống");
+      return false;
+    }
+    setHoTenError("");
+    return true;
   };
 
   const validateNgaySinh = (value: string) => {
-    const isValid = value.trim().length > 0;
-    setNgaySinhError(!isValid);
-    return isValid;
+    const trimmed = value.trim();
+    if (!trimmed) {
+      setNgaySinhError("Ngày sinh không được để trống");
+      return false;
+    }
+    const d = new Date(trimmed);
+    if (isNaN(d.getTime())) {
+      setNgaySinhError("Ngày sinh không hợp lệ");
+      return false;
+    }
+    setNgaySinhError("");
+    return true;
   };
 
+  /** Email: bắt buộc và đúng định dạng (có @ và domain). */
   const validateEmail = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      setEmailError("Email không được để trống");
+      return false;
+    }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const isValid = value.trim().length > 0 && emailRegex.test(value);
-    setEmailError(!isValid);
-    return isValid;
+    if (!emailRegex.test(trimmed)) {
+      setEmailError("Email không đúng định dạng (VD: email@domain.com)");
+      return false;
+    }
+    setEmailError("");
+    return true;
   };
 
+  /** Số điện thoại: bắt buộc và đúng dạng số ĐT (VN: 0xxxxxxxxx hoặc +84..., 10–11 chữ số). */
   const validateSdt = (value: string) => {
-    const isValid = value.trim().length >= 10 && value.trim().length <= 15;
-    setSdtError(!isValid);
-    return isValid;
+    const trimmed = value.trim();
+    if (!trimmed) {
+      setSdtError("Số điện thoại không được để trống");
+      return false;
+    }
+    const cleaned = trimmed.replace(/[\s\-.]/g, "");
+    const vnPhoneRegex = /^(\+84|84|0)?[3-9]\d{8}$/;
+    if (!vnPhoneRegex.test(cleaned)) {
+      setSdtError("Số điện thoại không đúng định dạng (VD: 0123456789 hoặc +84912345678)");
+      return false;
+    }
+    setSdtError("");
+    return true;
   };
 
   const validateDiaChi = (value: string) => {
-    const isValid = value.trim().length > 0;
-    setDiaChiError(!isValid);
-    return isValid;
+    const trimmed = value.trim();
+    if (!trimmed) {
+      setDiaChiError("Địa chỉ không được để trống");
+      return false;
+    }
+    setDiaChiError("");
+    return true;
   };
 
   const handleSave = async () => {
     // Reset all errors first
-    setHoTenError(false);
-    setNgaySinhError(false);
-    setEmailError(false);
-    setSdtError(false);
-    setDiaChiError(false);
+    setHoTenError("");
+    setNgaySinhError("");
+    setEmailError("");
+    setSdtError("");
+    setDiaChiError("");
     setModalAlert({ type: "success", message: "", show: false });
 
     // Nếu không thay đổi gì thì hiện alert info trong modal
@@ -856,10 +893,11 @@ export default function UserInfoCard() {
                     <Label>Họ và tên <span className="text-error-500">*</span></Label>
                     <Input
                       type="text"
-                      defaultValue={hoTen}
+                      value={hoTen}
                       onChange={(e) => setHoTen(e.target.value)}
-                      error={hoTenError}
-                      hint={hoTenError ? "Vui lòng nhập họ tên" : ""}
+                      error={!!hoTenError}
+                      hint={hoTenError}
+                      placeholder="Nhập họ tên"
                     />
                   </div>
 
@@ -882,31 +920,38 @@ export default function UserInfoCard() {
                         if (dates && dates.length > 0) {
                           const formatted = formatDateNoTimezone(dates[0]);
                           setNgaySinh(formatted);
+                        } else {
+                          setNgaySinh(null);
                         }
                       }}
                       placeholder="Chọn ngày sinh"
                     />
+                    {ngaySinhError && (
+                      <p className="mt-1.5 text-xs text-error-500">{ngaySinhError}</p>
+                    )}
                   </div>
 
                   <div className="col-span-2 lg:col-span-1">
                     <Label>Email <span className="text-error-500">*</span></Label>
                     <Input
                       type="email"
-                      defaultValue={email}
+                      value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      error={emailError}
-                      hint={emailError ? "Vui lòng nhập email hợp lệ" : ""}
+                      error={!!emailError}
+                      hint={emailError}
+                      placeholder="VD: email@domain.com"
                     />
                   </div>
 
                   <div className="col-span-2 lg:col-span-1">
                     <Label>Số điện thoại <span className="text-error-500">*</span></Label>
                     <Input
-                      type="text"
-                      defaultValue={sdt}
+                      type="tel"
+                      value={sdt}
                       onChange={(e) => setSdt(e.target.value)}
-                      error={sdtError}
-                      hint={sdtError ? "Số điện thoại phải có từ 10-15 ký tự" : ""}
+                      error={!!sdtError}
+                      hint={sdtError}
+                      placeholder="VD: 0123456789 hoặc +84912345678"
                     />
                   </div>
 
@@ -916,8 +961,9 @@ export default function UserInfoCard() {
                       rows={4}
                       value={diaChi}
                       onChange={(value: string) => setDiaChi(value)}
-                      error={diaChiError}
-                      hint={diaChiError ? "Vui lòng nhập địa chỉ thường trú" : ""}
+                      error={!!diaChiError}
+                      hint={diaChiError}
+                      placeholder="Nhập địa chỉ thường trú"
                     />
                   </div>
                 </div>

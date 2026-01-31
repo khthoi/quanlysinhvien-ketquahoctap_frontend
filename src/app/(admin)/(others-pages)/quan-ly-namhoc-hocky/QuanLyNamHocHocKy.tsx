@@ -139,8 +139,8 @@ interface NamHocModalProps {
     errors: {
         maNamHoc: boolean;
         tenNamHoc: boolean;
-        namBatDau: boolean;
-        namKetThuc: boolean;
+        namBatDau: string;
+        namKetThuc: string;
     };
 }
 
@@ -191,11 +191,11 @@ const NamHocModal: React.FC<NamHocModalProps> = ({
                         <Label>Năm Bắt đầu</Label>
                         <Input
                             type="number"
-                            defaultValue={formData.namBatDau}
+                            value={formData.namBatDau}
                             onChange={(e) => onFormChange("namBatDau", e.target.value)}
-                            placeholder="VD: 2024"
-                            error={errors.namBatDau}
-                            hint={errors.namBatDau ? "Năm bắt đầu không được để trống" : ""}
+                            placeholder="VD: 2024 (1900-2100)"
+                            error={!!errors.namBatDau}
+                            hint={errors.namBatDau}
                         />
                     </div>
 
@@ -204,11 +204,11 @@ const NamHocModal: React.FC<NamHocModalProps> = ({
                         <Label>Năm Kết thúc</Label>
                         <Input
                             type="number"
-                            defaultValue={formData.namKetThuc}
+                            value={formData.namKetThuc}
                             onChange={(e) => onFormChange("namKetThuc", e.target.value)}
-                            placeholder="VD:  2025"
-                            error={errors.namKetThuc}
-                            hint={errors.namKetThuc ? "Năm kết thúc không được để trống" : ""}
+                            placeholder="VD: 2025 (1900-2100)"
+                            error={!!errors.namKetThuc}
+                            hint={errors.namKetThuc}
                         />
                     </div>
                 </div>
@@ -431,12 +431,12 @@ export default function QuanLyNamHocHocKyPage() {
     // State cho filter & search
     const [searchKeyword, setSearchKeyword] = useState("");
 
-    // State cho errors
+    // State cho errors (namBatDau, namKetThuc là message string; rỗng = không lỗi)
     const [namHocErrors, setNamHocErrors] = useState({
         maNamHoc: false,
         tenNamHoc: false,
-        namBatDau: false,
-        namKetThuc: false,
+        namBatDau: "" as string,
+        namKetThuc: "" as string,
     });
 
     const [hocKyErrors, setHocKyErrors] = useState({
@@ -558,8 +558,8 @@ export default function QuanLyNamHocHocKyPage() {
         setNamHocErrors({
             maNamHoc: false,
             tenNamHoc: false,
-            namBatDau: false,
-            namKetThuc: false,
+            namBatDau: "",
+            namKetThuc: "",
         });
     };
 
@@ -594,16 +594,48 @@ export default function QuanLyNamHocHocKyPage() {
 
     const isRowExpanded = (id: number) => expandedRows.includes(id);
 
-    // Validate năm học form
+    // Validate năm học form – năm bắt đầu/năm kết thúc từ 1900 đến 2100, không âm
     const validateNamHocForm = (): boolean => {
-        const newErrors = {
+        const MIN_YEAR = 1900;
+        const MAX_YEAR = 2100;
+
+        let namBatDauMsg = "";
+        const nb = namHocFormData.namBatDau?.trim() ?? "";
+        if (!nb) {
+            namBatDauMsg = "Năm bắt đầu không được để trống";
+        } else {
+            const yearB = Number(nb);
+            if (isNaN(yearB) || yearB < MIN_YEAR || yearB > MAX_YEAR) {
+                namBatDauMsg = `Năm bắt đầu phải từ ${MIN_YEAR} đến ${MAX_YEAR}`;
+            }
+        }
+
+        let namKetThucMsg = "";
+        const nk = namHocFormData.namKetThuc?.trim() ?? "";
+        if (!nk) {
+            namKetThucMsg = "Năm kết thúc không được để trống";
+        } else {
+            const yearK = Number(nk);
+            if (isNaN(yearK) || yearK < MIN_YEAR || yearK > MAX_YEAR) {
+                namKetThucMsg = `Năm kết thúc phải từ ${MIN_YEAR} đến ${MAX_YEAR}`;
+            } else if (!namBatDauMsg) {
+                const yearB = Number(nb);
+                if (yearK < yearB) {
+                    namKetThucMsg = "Năm kết thúc phải lớn hơn hoặc bằng năm bắt đầu";
+                }
+            }
+        }
+
+        setNamHocErrors({
             maNamHoc: !namHocFormData.maNamHoc.trim(),
             tenNamHoc: !namHocFormData.tenNamHoc.trim(),
-            namBatDau: !namHocFormData.namBatDau,
-            namKetThuc: !namHocFormData.namKetThuc,
-        };
-        setNamHocErrors(newErrors);
-        return !Object.values(newErrors).some((e) => e);
+            namBatDau: namBatDauMsg,
+            namKetThuc: namKetThucMsg,
+        });
+
+        const noYearErrors = !namBatDauMsg && !namKetThucMsg;
+        const noOtherErrors = namHocFormData.maNamHoc.trim() && namHocFormData.tenNamHoc.trim();
+        return !!noOtherErrors && noYearErrors;
     };
 
     // Validate học kỳ form

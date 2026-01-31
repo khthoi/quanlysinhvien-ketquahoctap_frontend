@@ -173,7 +173,7 @@ interface ChuongTrinhModalProps {
     errors: {
         maChuongTrinh: boolean;
         tenChuongTrinh: boolean;
-        thoiGianDaoTao: boolean;
+        thoiGianDaoTao: string;
         nganhId: boolean;
     };
 }
@@ -204,10 +204,10 @@ const ChuongTrinhModal: React.FC<ChuongTrinhModalProps> = ({
                     <div>
                         <Label>Mã Chương trình</Label>
                         <Input
-                            defaultValue={formData.maChuongTrinh}
+                            value={formData.maChuongTrinh}
                             onChange={(e) => onFormChange("maChuongTrinh", e.target.value)}
                             placeholder="VD: CNTT2021"
-                            error={errors.maChuongTrinh}
+                            error={!!errors.maChuongTrinh}
                             hint={errors.maChuongTrinh ? "Mã chương trình không được để trống" : ""}
                         />
                     </div>
@@ -216,10 +216,10 @@ const ChuongTrinhModal: React.FC<ChuongTrinhModalProps> = ({
                     <div>
                         <Label>Tên Chương trình</Label>
                         <Input
-                            defaultValue={formData.tenChuongTrinh}
+                            value={formData.tenChuongTrinh}
                             onChange={(e) => onFormChange("tenChuongTrinh", e.target.value)}
                             placeholder="VD: Cử nhân Công nghệ Thông tin"
-                            error={errors.tenChuongTrinh}
+                            error={!!errors.tenChuongTrinh}
                             hint={errors.tenChuongTrinh ? "Tên chương trình không được để trống" : ""}
                         />
                     </div>
@@ -229,11 +229,11 @@ const ChuongTrinhModal: React.FC<ChuongTrinhModalProps> = ({
                         <Label>Thời gian đào tạo (năm)</Label>
                         <Input
                             type="number"
-                            defaultValue={formData.thoiGianDaoTao}
+                            value={formData.thoiGianDaoTao}
                             onChange={(e) => onFormChange("thoiGianDaoTao", e.target.value)}
-                            placeholder="VD:  4"
-                            error={errors.thoiGianDaoTao}
-                            hint={errors.thoiGianDaoTao ? "Thời gian đào tạo không được để trống" : ""}
+                            placeholder="VD: 4 (1-15 năm)"
+                            error={!!errors.thoiGianDaoTao}
+                            hint={errors.thoiGianDaoTao}
                         />
                     </div>
 
@@ -518,11 +518,11 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
     const [apDungModalKhoaId, setApDungModalKhoaId] = useState("");
     const [apDungModalNganhOptions, setApDungModalNganhOptions] = useState<Nganh[]>([]);
 
-    // State cho errors
+    // State cho errors (thoiGianDaoTao là message string; rỗng = không lỗi)
     const [chuongTrinhErrors, setChuongTrinhErrors] = useState({
         maChuongTrinh: false,
         tenChuongTrinh: false,
-        thoiGianDaoTao: false,
+        thoiGianDaoTao: "" as string,
         nganhId: false,
     });
 
@@ -738,7 +738,7 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
         setChuongTrinhErrors({
             maChuongTrinh: false,
             tenChuongTrinh: false,
-            thoiGianDaoTao: false,
+            thoiGianDaoTao: "",
             nganhId: false,
         });
     };
@@ -796,16 +796,34 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
 
 
 
-    // Validate chương trình form
+    // Validate chương trình form – thời gian đào tạo từ 1 đến 15 năm, không âm, không quá lớn
     const validateChuongTrinhForm = (): boolean => {
-        const newErrors = {
+        const MIN_YEARS = 1;
+        const MAX_YEARS = 15;
+
+        let thoiGianMsg = "";
+        const tg = chuongTrinhFormData.thoiGianDaoTao?.trim() ?? "";
+        if (!tg) {
+            thoiGianMsg = "Thời gian đào tạo không được để trống";
+        } else {
+            const num = Number(tg);
+            if (isNaN(num) || num < MIN_YEARS || num > MAX_YEARS) {
+                thoiGianMsg = `Thời gian đào tạo phải nằm trong khoảng từ ${MIN_YEARS} đến ${MAX_YEARS} năm`;
+            }
+        }
+
+        setChuongTrinhErrors({
             maChuongTrinh: !chuongTrinhFormData.maChuongTrinh.trim(),
             tenChuongTrinh: !chuongTrinhFormData.tenChuongTrinh.trim(),
-            thoiGianDaoTao: !chuongTrinhFormData.thoiGianDaoTao,
+            thoiGianDaoTao: thoiGianMsg,
             nganhId: !chuongTrinhFormData.nganhId,
-        };
-        setChuongTrinhErrors(newErrors);
-        return !Object.values(newErrors).some((e) => e);
+        });
+
+        const noOtherErrors =
+            chuongTrinhFormData.maChuongTrinh.trim() &&
+            chuongTrinhFormData.tenChuongTrinh.trim() &&
+            chuongTrinhFormData.nganhId;
+        return !!noOtherErrors && !thoiGianMsg;
     };
 
     // Validate áp dụng form

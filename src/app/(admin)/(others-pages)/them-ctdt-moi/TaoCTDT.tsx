@@ -170,11 +170,11 @@ export default function TaoCTDT() {
         ghiChu: "",
     });
 
-    // Errors
+    // Errors (thoiGianDaoTao là message string; rỗng = không lỗi)
     const [formErrors, setFormErrors] = useState({
         maChuongTrinh: false,
         tenChuongTrinh: false,
-        thoiGianDaoTao: false,
+        thoiGianDaoTao: "" as string,
         nganhId: false,
         nienKhoaIds: false,
     });
@@ -389,15 +389,32 @@ export default function TaoCTDT() {
         }
         // Clear error
         if (field in formErrors) {
-            setFormErrors((prev) => ({ ...prev, [field]: false }));
+            setFormErrors((prev) => ({
+                ...prev,
+                [field]: field === "thoiGianDaoTao" ? "" : false,
+            }));
         }
     };
 
     const validateForm = (): boolean => {
+        const MIN_YEARS = 1;
+        const MAX_YEARS = 15;
+
+        let thoiGianMsg = "";
+        const tg = formData.thoiGianDaoTao?.trim() ?? "";
+        if (!tg) {
+            thoiGianMsg = "Thời gian đào tạo không được để trống";
+        } else {
+            const num = Number(tg);
+            if (isNaN(num) || num < MIN_YEARS || num > MAX_YEARS) {
+                thoiGianMsg = `Thời gian đào tạo phải nằm trong khoảng từ ${MIN_YEARS} đến ${MAX_YEARS} năm`;
+            }
+        }
+
         const errors = {
             maChuongTrinh: !formData.maChuongTrinh.trim(),
             tenChuongTrinh: !formData.tenChuongTrinh.trim(),
-            thoiGianDaoTao: !formData.thoiGianDaoTao,
+            thoiGianDaoTao: thoiGianMsg,
             nganhId: !formData.nganhId,
             nienKhoaIds: formData.nienKhoaIds.length === 0,
         };
@@ -414,7 +431,8 @@ export default function TaoCTDT() {
         }
 
         setFormErrors(errors);
-        return !Object.values(errors).some((e) => e);
+        const hasError = errors.maChuongTrinh || errors.tenChuongTrinh || !!errors.thoiGianDaoTao || errors.nganhId || errors.nienKhoaIds;
+        return !hasError;
     };
 
     const validateMonHocForm = (): boolean => {
@@ -672,6 +690,13 @@ export default function TaoCTDT() {
                     nienKhoaIds: [],
                     ghiChu: "",
                 });
+                setFormErrors({
+                    maChuongTrinh: false,
+                    tenChuongTrinh: false,
+                    thoiGianDaoTao: "",
+                    nganhId: false,
+                    nienKhoaIds: false,
+                });
                 setMonHocTrongCTDT([]);
                 setMonHocTableSearchKeyword("");
             }
@@ -781,9 +806,9 @@ export default function TaoCTDT() {
                                 type="number"
                                 value={formData.thoiGianDaoTao}
                                 onChange={(e) => handleFormChange("thoiGianDaoTao", e.target.value)}
-                                placeholder="VD: 4"
-                                error={formErrors.thoiGianDaoTao}
-                                hint={formErrors.thoiGianDaoTao ? "Thời gian đào tạo không được để trống" : ""}
+                                placeholder="VD: 4 (1-15 năm)"
+                                error={!!formErrors.thoiGianDaoTao}
+                                hint={formErrors.thoiGianDaoTao}
                             />
                         </div>
 

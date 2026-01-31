@@ -395,6 +395,16 @@ const EditLopHocPhanModal: React.FC<EditLopHocPhanModalProps> = ({
     const exceedsLimit = tinChiInfo.newCredits > 12;
     const selectedGiangVien = giangVienOptions.find(gv => gv.id.toString() === giangVienId);
 
+    // Khi đang sửa và GV chọn trùng GV đang dạy lớp này: hiển thị "các lớp khác" (không tính lớp này) để phép cộng hợp lý: [các lớp khác] + [lớp này] = [tổng]
+    const isEditingSameGv = giangVienId === lopHocPhan.giangVien?.id?.toString();
+    const creditsOfThisLhp = lopHocPhan.monHoc?.soTinChi ?? 0;
+    const displayCurrentCredits = isEditingSameGv
+        ? Math.max(0, tinChiInfo.currentCredits - creditsOfThisLhp)
+        : tinChiInfo.currentCredits;
+    const displayCurrentLabel = isEditingSameGv
+        ? "Tín chỉ các lớp khác của GV trong HK này (không tính lớp này):"
+        : "Tín chỉ hiện tại của GV trong học kỳ này:";
+
     return (
         <Modal isOpen={isOpen} onClose={onClose} className="max-w-2xl">
             <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
@@ -541,10 +551,10 @@ const EditLopHocPhanModal: React.FC<EditLopHocPhanModalProps> = ({
                                         <div className="space-y-2">
                                             <div className="flex items-center justify-between text-sm">
                                                 <span className="text-gray-600 dark:text-gray-400">
-                                                    Tín chỉ hiện tại của GV trong học kỳ này:
+                                                    {displayCurrentLabel}
                                                 </span>
                                                 <span className="font-semibold text-gray-800 dark:text-white">
-                                                    {tinChiInfo.currentCredits} tín chỉ
+                                                    {displayCurrentCredits} tín chỉ
                                                 </span>
                                             </div>
                                             
@@ -553,7 +563,7 @@ const EditLopHocPhanModal: React.FC<EditLopHocPhanModalProps> = ({
                                                     Tín chỉ của lớp học phần này:
                                                 </span>
                                                 <span className="font-semibold text-gray-800 dark:text-white">
-                                                    +{lopHocPhan.monHoc.soTinChi} tín chỉ
+                                                    +{creditsOfThisLhp} tín chỉ
                                                 </span>
                                             </div>
                                             
@@ -2667,7 +2677,16 @@ export default function QuanLyLopHocPhanPage() {
     };
 
     // Hàm tính tín chỉ giảng dạy hiện tại của giảng viên trong học kỳ
-    const calculateTeachingCredits = async (giangVienIdParam: string, hocKyId: number, excludeLopHocPhanId?: number) => {
+    // excludeLopHocPhanId: khi sửa LHP thì loại lớp đó khỏi tổng "các lớp khác"
+    // currentLopHocPhanCredits: tín chỉ của lớp đang sửa (để tính tổng sau cập nhật)
+    // isLhpAssignedToThisGv: true nếu GV đang chọn là GV đang được gán lớp này (để "tín chỉ hiện tại" bao gồm lớp này)
+    const calculateTeachingCredits = async (
+        giangVienIdParam: string,
+        hocKyId: number,
+        excludeLopHocPhanId?: number,
+        currentLopHocPhanCredits?: number,
+        isLhpAssignedToThisGv: boolean = false
+    ) => {
         if (!giangVienIdParam || !hocKyId) {
             setTinChiInfo({ currentCredits: 0, newCredits: 0, isLoading: false });
             return;
@@ -2689,23 +2708,24 @@ export default function QuanLyLopHocPhanPage() {
             const json = await res.json();
             
             if (json.data && Array.isArray(json.data)) {
-                // Tính tổng tín chỉ, loại trừ lớp học phần đang sửa
-                let totalCredits = 0;
+                // Tổng tín chỉ các lớp của GV đang chọn, KHÔNG tính lớp đang sửa (nếu có)
+                let creditsExcludeCurrent = 0;
                 json.data.forEach((lhp: LopHocPhan) => {
                     if (excludeLopHocPhanId && lhp.id === excludeLopHocPhanId) {
                         return; // Bỏ qua lớp học phần đang sửa
                     }
-                    totalCredits += lhp.monHoc.soTinChi;
+                    creditsExcludeCurrent += lhp.monHoc.soTinChi;
                 });
 
-                // Tính tín chỉ mới (nếu đang sửa lớp học phần)
-                const newCredits = editingLopHocPhan 
-                    ? totalCredits + editingLopHocPhan.monHoc.soTinChi 
-                    : totalCredits;
+                const creditsOfCurrentLhp = currentLopHocPhanCredits ?? 0;
+                // Tín chỉ hiện tại của GV đang chọn: nếu lớp đang sửa thuộc GV này thì cộng thêm, không thì chỉ tổng từ API
+                const currentCredits = creditsExcludeCurrent + (isLhpAssignedToThisGv ? creditsOfCurrentLhp : 0);
+                // Tổng sau cập nhật = tổng hiện tại của GV đang chọn + tín chỉ lớp này (sau khi gán/giữ lớp cho GV này)
+                const newCredits = creditsExcludeCurrent + creditsOfCurrentLhp;
 
                 setTinChiInfo({
-                    currentCredits: totalCredits,
-                    newCredits: newCredits,
+                    currentCredits,
+                    newCredits,
                     isLoading: false,
                 });
             } else {
@@ -2840,17 +2860,18 @@ export default function QuanLyLopHocPhanPage() {
         setGhiChu(lopHocPhan.ghiChu || "");
         setIsEditModalOpen(true);
         
-        // Tính tín chỉ giảng dạy khi mở modal
+        // Tính tín chỉ giảng dạy khi mở modal (lớp đang sửa thuộc GV này nên isLhpAssignedToThisGv = true)
         if (giangVienIdValue && lopHocPhan.hocKy?.id) {
-            calculateTeachingCredits(giangVienIdValue, lopHocPhan.hocKy.id, lopHocPhan.id);
+            calculateTeachingCredits(giangVienIdValue, lopHocPhan.hocKy.id, lopHocPhan.id, lopHocPhan.monHoc?.soTinChi, true);
         }
     };
     
-    // Handler khi thay đổi giảng viên
+    // Handler khi thay đổi giảng viên (isLhpAssignedToThisGv = true chỉ khi GV chọn trùng với GV đang gán lớp này)
     const handleGiangVienIdChange = (value: string) => {
         setGiangVienId(value);
         if (editingLopHocPhan && editingLopHocPhan.hocKy?.id) {
-            calculateTeachingCredits(value, editingLopHocPhan.hocKy.id, editingLopHocPhan.id);
+            const isSameGv = value === editingLopHocPhan.giangVien?.id?.toString();
+            calculateTeachingCredits(value, editingLopHocPhan.hocKy.id, editingLopHocPhan.id, editingLopHocPhan.monHoc?.soTinChi, isSameGv);
         }
     };
 

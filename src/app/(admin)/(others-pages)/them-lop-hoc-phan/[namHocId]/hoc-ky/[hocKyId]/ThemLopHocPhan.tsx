@@ -385,7 +385,7 @@ export default function ThemLopHocPhanPage() {
         }));
     };
 
-    // Map tính tổng sinh viên hiện tại theo ngành + niên khóa + môn học
+    // Map tính tổng sinh viên hiện tại trong table theo ngành + niên khóa + môn học (dùng để kiểm tra khi tạo/sửa lớp)
     const currentSinhVienMap = useMemo(() => {
         const map = new Map<string, { tongSinhVien: number; danhSachLop: { maLopHocPhan: string; soSinhVien: number }[] }>();
 
@@ -407,6 +407,15 @@ export default function ThemLopHocPhanPage() {
 
         return map;
     }, [lopHocPhans]);
+
+    // Số sinh viên còn lại có thể phân bổ cho nhóm (ngành, niên khóa, môn học) khi tạo lớp mới
+    const getRemainingSinhVienForGroup = (maNganh: string, maNienKhoa: string, maMonHoc: string): number | null => {
+        const key = getSinhVienMapKey(maNganh, maNienKhoa, maMonHoc);
+        const limit = originalSinhVienMap.get(key);
+        if (limit === undefined) return null; // Nhóm chưa có trong map (chưa có lớp nào) -> không giới hạn theo map
+        const currentTotal = currentSinhVienMap.get(key)?.tongSinhVien ?? 0;
+        return Math.max(0, limit - currentTotal);
+    };
 
     // Hàm kiểm tra số lượng sinh viên khi thay đổi
     const checkSinhVienLimit = (
@@ -673,6 +682,24 @@ export default function ThemLopHocPhanPage() {
             return newData;
         });
 
+        // Khi đổi ngành/niên khóa/môn, cần kiểm tra lại số sinh viên với nhóm mới (nếu không bật phân bổ)
+        if ((field === "maNganh" || field === "maNienKhoa" || field === "maMonHoc") && !createFormData.phanBoLaiSinhVien) {
+            const maN = field === "maNganh" ? (value as string) : createFormData.maNganh;
+            const maNK = field === "maNienKhoa" ? (value as string) : createFormData.maNienKhoa;
+            const maMH = field === "maMonHoc" ? (value as string) : createFormData.maMonHoc;
+            if (maN && maNK && maMH) {
+                const remaining = getRemainingSinhVienForGroup(maN, maNK, maMH);
+                if (remaining !== null && createFormData.soSinhVienThamGia > remaining) {
+                    setCreateSinhVienWarning({
+                        type: "error",
+                        message: `Vượt quá số sinh viên cho phép! Nhóm này chỉ còn ${remaining} SV có thể phân bổ. Tổng sinh viên của nhóm (ngành, niên khóa, môn) không được vượt quá giới hạn.`,
+                    });
+                } else {
+                    setCreateSinhVienWarning(null);
+                }
+            }
+        }
+
         // Kiểm tra tín chỉ giảng viên
         if (field === "maGiangVien" && value) {
             const maMonHoc = createFormData.maMonHoc;
@@ -709,6 +736,17 @@ export default function ThemLopHocPhanPage() {
                     type: "error",
                     message: `Vượt quá số lượng sinh viên tối đa của một lớp học phần (${MAX_SINH_VIEN} SV). Hiện tại: ${soSinhVien} SV.`,
                 });
+            } else if (!createFormData.phanBoLaiSinhVien && createFormData.maNganh && createFormData.maNienKhoa && createFormData.maMonHoc) {
+                // Kiểm tra theo map: tổng sinh viên nhóm (ngành, niên khóa, môn) không được vượt giới hạn
+                const remaining = getRemainingSinhVienForGroup(createFormData.maNganh, createFormData.maNienKhoa, createFormData.maMonHoc);
+                if (remaining !== null && soSinhVien > remaining) {
+                    setCreateSinhVienWarning({
+                        type: "error",
+                        message: `Vượt quá số sinh viên cho phép! Nhóm này chỉ còn ${remaining} SV có thể phân bổ. Tổng sinh viên của nhóm (ngành, niên khóa, môn) không được vượt quá giới hạn.`,
+                    });
+                } else {
+                    setCreateSinhVienWarning(null);
+                }
             } else {
                 setCreateSinhVienWarning(null);
             }
@@ -810,6 +848,14 @@ export default function ThemLopHocPhanPage() {
 
         if (phanBoLaiSinhVien && phanBoPreview && !phanBoPreview.isValid) {
             return false;
+        }
+
+        // Khi không bật phân bổ lại: kiểm tra tổng sinh viên nhóm không vượt giới hạn trong map
+        if (!phanBoLaiSinhVien) {
+            const remaining = getRemainingSinhVienForGroup(maNganh, maNienKhoa, maMonHoc);
+            if (remaining !== null && soSinhVienThamGia > remaining) {
+                return false;
+            }
         }
 
         return true;
@@ -995,7 +1041,7 @@ export default function ThemLopHocPhanPage() {
             if (result.type === "error") {
                 setSinhVienWarning({
                     type: "error",
-                    message: `Vượt quá số lượng sinh viên cho phép! Tổng sinh viên của ngành "${editingLopHocPhan.maNganh}" - niên khóa "${editingLopHocPhan.maNienKhoa}" - môn "${editingLopHocPhan.maMonHoc}" sẽ là ${result.tongHienTai} SV, vượt quá giới hạn ${result.tongGoc} SV (thừa ${Math.abs(result.chenh)} SV).`,
+                    message: `Vượt quá số lượng sinh viên cho phép! Tổng sinh viên của ngành "${editingLopHocPhan.maNganh}" - niên khóa "${editingLopHocPhan.maNienKhoa}" - môn "${editingLopHocPhan.maMonHoc}" sẽ là ${result.tongHienTai} SV, vượt quá tổng số ${result.tongGoc} SV dự kiến tham gia các LHP trong kế hoạch (thừa ${Math.abs(result.chenh)} SV).`,
                 });
             } else if (result.type === "warning") {
                 setSinhVienWarning({
@@ -2141,13 +2187,35 @@ export default function ThemLopHocPhanPage() {
                                 <Input
                                     type="number"
                                     min={20}
-                                    max={40}
+                                    max={
+                                        createFormData.phanBoLaiSinhVien
+                                            ? 40
+                                            : (() => {
+                                                const rem = getRemainingSinhVienForGroup(
+                                                    createFormData.maNganh,
+                                                    createFormData.maNienKhoa,
+                                                    createFormData.maMonHoc
+                                                );
+                                                return rem !== null ? Math.min(40, rem) : 40;
+                                            })()
+                                    }
                                     defaultValue={createFormData.soSinhVienThamGia.toString()}
                                     onChange={(e) => handleCreateFormChange("soSinhVienThamGia", parseInt(e.target.value) || 0)}
                                     disabled={createFormData.phanBoLaiSinhVien}
                                 />
                                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                                     Giới hạn: 20 - 40 SV/lớp
+                                    {!createFormData.phanBoLaiSinhVien &&
+                                        createFormData.maNganh &&
+                                        createFormData.maNienKhoa &&
+                                        createFormData.maMonHoc && (() => {
+                                            const rem = getRemainingSinhVienForGroup(
+                                                createFormData.maNganh,
+                                                createFormData.maNienKhoa,
+                                                createFormData.maMonHoc
+                                            );
+                                            return rem !== null ? ` • Số SV còn lại có thể phân bổ cho nhóm này: ${rem}` : null;
+                                        })()}
                                 </p>
 
                                 {/* Cảnh báo số lượng sinh viên */}
