@@ -278,21 +278,7 @@ export default function UserDropdown() {
                 icon={faUserCircle}
                 className="h-6 w-6 text-gray-500 group-hover:text-gray-700 dark:text-gray-400 dark:group-hover:text-gray-300"
               />
-              Edit profile
-            </DropdownItem>
-          </li>
-          <li>
-            <DropdownItem
-              onItemClick={closeDropdown}
-              tag="a"
-              href="/profile"
-              className="flex items-center gap-3 px-3 py-2 font-medium text-gray-700 rounded-lg group text-theme-sm hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-white/5 dark:hover:text-gray-300"
-            >
-              <FontAwesomeIcon
-                icon={faGear}
-                className="h-6 w-6 text-gray-500 group-hover:text-gray-700 dark:text-gray-400 dark:group-hover:text-gray-300"
-              />
-              Account settings
+              Thông tin cá nhân
             </DropdownItem>
           </li>
         </ul>
@@ -319,7 +305,7 @@ export default function UserDropdown() {
             className="h-5 w-5 text-red-500 group-hover:text-red-600 
                dark:text-red-400 dark:group-hover:text-red-300"
           />
-          Sign out
+          Đăng xuất
         </button>
       </Dropdown>
     </div>
