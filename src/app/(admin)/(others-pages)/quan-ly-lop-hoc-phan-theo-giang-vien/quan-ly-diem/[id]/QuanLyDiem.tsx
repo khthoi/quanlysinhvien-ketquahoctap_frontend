@@ -391,6 +391,7 @@ interface ImportExcelModalProps {
     isOpen: boolean;
     onClose: () => void;
     lopHocPhanId: string;
+    maLopHocPhan?: string;
     onSuccess: () => void;
     showAlert: (variant: "success" | "error" | "warning" | "info", title: string, message: string) => void;
 }
@@ -399,6 +400,7 @@ const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
     isOpen,
     onClose,
     lopHocPhanId,
+    maLopHocPhan,
     onSuccess,
     showAlert,
 }) => {
@@ -412,7 +414,7 @@ const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
     }[]>([]);
     const [uploadSuccess, setUploadSuccess] = useState<number>(0);
     const [uploadFailed, setUploadFailed] = useState<number>(0);
-
+    const [isDownloadingTemplate, setIsDownloadingTemplate] = useState(false);
 
     const onDrop = (acceptedFiles: File[], rejectedFiles: any[]) => {
         setFileError("");
@@ -442,15 +444,46 @@ const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
         multiple: false,
     });
 
-    const handleDownloadTemplate = () => {
-        // Đường dẫn file mẫu - bạn có thể sửa lại sau
-        const templateUrl = "/templates/mau-nhap-diem.xlsx";
-        const link = document.createElement("a");
-        link.href = templateUrl;
-        link.download = "mau-nhap-diem.xlsx";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+    const handleDownloadTemplate = async () => {
+        if (!lopHocPhanId) return;
+        setIsDownloadingTemplate(true);
+        try {
+            const accessToken = getCookie("access_token");
+            const res = await fetch(
+                `http://localhost:3000/giang-day/lop-hoc-phan/${lopHocPhanId}/export-mau-nhap-diem`,
+                {
+                    method: "GET",
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                    },
+                }
+            );
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                showAlert("error", "Lỗi", err.message || "Không thể tải file mẫu");
+                return;
+            }
+            const blob = await res.blob();
+            const disposition = res.headers.get("Content-Disposition");
+            const filenameMatch = disposition?.match(/filename="?([^";\n]+)"?/);
+            const fallbackFilename = maLopHocPhan
+                ? `Mẫu nhập điểm LHP ${maLopHocPhan}.xlsx`
+                : `mau-nhap-diem-${lopHocPhanId}.xlsx`;
+            const filename = filenameMatch?.[1] || fallbackFilename;
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error("Lỗi tải file mẫu:", err);
+            showAlert("error", "Lỗi", "Không thể tải file mẫu nhập điểm");
+        } finally {
+            setIsDownloadingTemplate(false);
+        }
     };
 
     const handleUpload = async () => {
@@ -557,7 +590,7 @@ const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
                     </div>
                 </div>
 
-                {/* === LƯU Ý BỔ SUNG (màu xanh) === */}
+                {/* === HƯỚNG DẪN SỬ DỤNG (màu xanh) === */}
                 <div className="mb-6 rounded-xl border border-blue-200 bg-blue-50 dark:border-blue-800/50 dark:bg-blue-900/20">
                     <div className="p-4">
                         <div className="flex items-start gap-3">
@@ -567,10 +600,21 @@ const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
                                     className="text-lg text-blue-600 dark:text-blue-400 mt-0.5"
                                 />
                             </div>
-                            <div className="flex-1">
-                                <p className="text-sm text-blue-700/80 dark:text-blue-300/70">
-                                    <strong>Lưu ý:</strong> File Excel cần chứa <strong>mã sinh viên</strong> (cột B), <strong>điểm chuyên cần</strong> (cột F), <strong>điểm thành phần</strong> (cột G), <strong>điểm thi</strong> (cột H).
-                                    Hệ thống sẽ tự động validate: sinh viên phải đăng ký lớp, điểm phải trong khoảng 0-10. Sinh viên không có trong lớp hoặc điểm không hợp lệ sẽ bị báo lỗi.
+                            <div className="flex-1 space-y-3 text-sm text-blue-700/90 dark:text-blue-300/80">
+                                <p className="font-semibold text-blue-800 dark:text-blue-200">
+                                    Hướng dẫn nhập điểm bằng Excel
+                                </p>
+                                <p>
+                                    <strong>Bước 1 — Tải file mẫu:</strong> Bấm nút &quot;Tải file Excel mẫu&quot; bên dưới. File tải về đã chứa <strong>danh sách sinh viên của lớp học phần này</strong> với các cột: STT, Mã sinh viên, Họ và tên, Ngày sinh (dd/mm/yyyy), Lớp niên chế, Điểm 10%, Điểm 30%, Điểm 60%.
+                                </p>
+                                <p>
+                                    <strong>Bước 2 — Điền điểm:</strong> Chỉ cần nhập điểm vào 3 cột <strong>Điểm 10%</strong> (cột F), <strong>Điểm 30%</strong> (cột G), <strong>Điểm 60%</strong> (cột H). <strong>Không xóa hoặc sửa</strong> cột Mã sinh viên (cột B) — hệ thống dùng mã này để nhận diện sinh viên.
+                                </p>
+                                <p>
+                                    <strong>Bước 3 — Tải file lên:</strong> Lưu file Excel, quay lại đây và chọn file vừa chỉnh sửa để tải lên, sau đó bấm &quot;Nhập điểm&quot;.
+                                </p>
+                                <p>
+                                    <strong>Quy định điểm:</strong> Mỗi điểm phải trong khoảng <strong>0 đến 10</strong>. Điểm đã có sẵn trong file mẫu (nếu sinh viên đã có điểm trước đó) có thể giữ nguyên hoặc sửa lại khi nhập.
                                 </p>
                             </div>
                         </div>
@@ -582,10 +626,11 @@ const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
                     <Button
                         variant="outline"
                         onClick={handleDownloadTemplate}
+                        disabled={isDownloadingTemplate}
                         startIcon={<FontAwesomeIcon icon={faDownload} />}
                         className="w-full"
                     >
-                        Tải file Excel mẫu
+                        {isDownloadingTemplate ? "Đang tải..." : "Tải file Excel mẫu (theo lớp học phần)"}
                     </Button>
                 </div>
 
@@ -1305,6 +1350,7 @@ export default function ChiTietLopHocPhanPage() {
                 isOpen={isImportExcelModalOpen}
                 onClose={() => setIsImportExcelModalOpen(false)}
                 lopHocPhanId={lopHocPhanId}
+                maLopHocPhan={lopHocPhanInfo?.maLopHocPhan}
                 onSuccess={() => fetchDanhSachSinhVien(currentPage, searchKeyword)}
                 showAlert={showAlert}
             />
