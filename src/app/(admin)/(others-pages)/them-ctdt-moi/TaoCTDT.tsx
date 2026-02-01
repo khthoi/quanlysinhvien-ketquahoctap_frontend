@@ -249,6 +249,13 @@ export default function TaoCTDT() {
         );
     }, [sortedMonHocTrongCTDT, monHocTableSearchKeyword]);
 
+    // Tổng số môn và tổng tín chỉ trong CTĐT đang tạo
+    const ctdtStats = useMemo(() => {
+        const soMon = monHocTrongCTDT.length;
+        const tongTinChi = monHocTrongCTDT.reduce((sum, mh) => sum + mh.monHoc.soTinChi, 0);
+        return { soMon, tongTinChi };
+    }, [monHocTrongCTDT]);
+
     // Filter chuong trinhs for load modal
     const filteredChuongTrinhs = useMemo(() => {
         let filtered = chuongTrinhs;
@@ -883,6 +890,32 @@ export default function TaoCTDT() {
                         <Button onClick={handleCreateCTDT}>
                             Tạo Chương trình Đào tạo
                         </Button>
+                    </div>
+                </div>
+
+                {/* Thống kê CTĐT đang tạo: Số môn & Tổng tín chỉ */}
+                <div className="mb-6 flex flex-wrap gap-4">
+                    <div className="flex min-w-0 flex-1 basis-48 items-center gap-4 rounded-xl border border-gray-200 bg-gradient-to-br from-gray-50 to-white px-5 py-4 shadow-sm dark:border-gray-700 dark:from-gray-800/60 dark:to-gray-800/40">
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-brand-500/10 text-brand-600 dark:bg-brand-500/20 dark:text-brand-400">
+                            <span className="text-xl font-bold tabular-nums">{ctdtStats.soMon}</span>
+                        </div>
+                        <div className="min-w-0">
+                            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Số môn trong CTĐT</p>
+                            <p className="text-2xl font-semibold text-gray-800 dark:text-white/90 tabular-nums">
+                                {ctdtStats.soMon} môn
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex min-w-0 flex-1 basis-48 items-center gap-4 rounded-xl border border-gray-200 bg-gradient-to-br from-gray-50 to-white px-5 py-4 shadow-sm dark:border-gray-700 dark:from-gray-800/60 dark:to-gray-800/40">
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-success-500/10 text-success-600 dark:bg-success-500/20 dark:text-success-400">
+                            <span className="text-xl font-bold tabular-nums">{ctdtStats.tongTinChi}</span>
+                        </div>
+                        <div className="min-w-0">
+                            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Tổng tín chỉ</p>
+                            <p className="text-2xl font-semibold text-gray-800 dark:text-white/90 tabular-nums">
+                                {ctdtStats.tongTinChi} TC
+                            </p>
+                        </div>
                     </div>
                 </div>
 
