@@ -445,7 +445,7 @@ export default function TaoCTDT() {
     const validateMonHocForm = (): boolean => {
         const errors = {
             thuTuHocKy: !monHocFormData.thuTuHocKy,
-            loaiMon: !monHocFormData.loaiMon,
+            loaiMon: false, // Loại môn không bắt buộc, chỉ dùng để lọc
             monHocId: !monHocFormData.monHocId,
         };
         setMonHocFormErrors(errors);
@@ -462,9 +462,9 @@ export default function TaoCTDT() {
             }
         }
 
-        // Check if any field is empty
-        if (Object.values(errors).some((e) => e)) {
-            setAddMonHocError("Vui lòng điền đầy đủ thông tin bắt buộc");
+        // Chỉ bắt buộc thứ tự học kỳ và môn học
+        if (errors.thuTuHocKy || errors.monHocId) {
+            setAddMonHocError("Vui lòng chọn thứ tự học kỳ và môn học");
             return false;
         }
 
@@ -748,7 +748,7 @@ export default function TaoCTDT() {
                             message={alert.message}
                             dismissible
                             autoDismiss
-                            duration={15000}
+                            duration={600000}
                             onClose={() => setAlert(null)}
                         />
                     </div>
@@ -1108,9 +1108,10 @@ export default function TaoCTDT() {
                 </div>
             </div>
 
-            {/* Sticky Add Mon Hoc Button */}
-            <div className="fixed bottom-8 right-8 z-50">
+            {/* Nút Thêm môn học (FAB) - luôn hiển thị khi cuộn */}
+            <div className="fixed bottom-6 right-6 z-50">
                 <Button
+                    variant="primary"
                     onClick={() => {
                         setMonHocFormData({
                             thuTuHocKy: "",
@@ -1126,9 +1127,10 @@ export default function TaoCTDT() {
                         });
                         setIsAddMonHocModalOpen(true);
                     }}
-                    className="shadow-lg hover:shadow-xl transition-shadow rounded-full w-14 h-14 flex items-center justify-center"
+                    className="inline-flex items-center gap-2 rounded-full px-5 py-3.5 font-semibold shadow-lg ring-2 ring-white/20 dark:ring-black/20 hover:shadow-xl hover:scale-105 active:scale-100 transition-all"
                 >
-                    <FontAwesomeIcon icon={faPlus} className="w-6 h-6" />
+                    <FontAwesomeIcon icon={faPlus} className="h-5 w-5" />
+                    <span className="pr-1">Thêm môn học</span>
                 </Button>
             </div>
 
@@ -1191,31 +1193,28 @@ export default function TaoCTDT() {
                             )}
                         </div>
 
-                        {/* Loại môn */}
+                        {/* Loại môn (tùy chọn - lọc danh sách môn) */}
                         <div>
-                            <Label>Loại môn *</Label>
+                            <Label>Loại môn <span className="text-gray-400 font-normal">(tùy chọn – lọc danh sách)</span></Label>
                             <SearchableSelect
                                 options={[
                                     { value: "DAI_CUONG", label: "Đại cương" },
                                     { value: "CHUYEN_NGANH", label: "Chuyên ngành" },
                                     { value: "TU_CHON", label: "Tự chọn" },
                                 ]}
-                                placeholder="Chọn loại môn"
+                                placeholder="Tất cả loại môn"
                                 onChange={(value) => {
                                     setMonHocFormData((prev) => ({
                                         ...prev,
                                         loaiMon: value,
-                                        monHocId: "", // Reset mon hoc when loai mon changes
+                                        monHocId: "", // Reset môn học khi đổi loại môn
                                     }));
                                     setAddMonHocError("");
-                                    setMonHocFormErrors((prev) => ({ ...prev, loaiMon: false, monHocId: false }));
+                                    setMonHocFormErrors((prev) => ({ ...prev, monHocId: false }));
                                 }}
                                 defaultValue={monHocFormData.loaiMon}
                                 showSecondary={false}
                             />
-                            {monHocFormErrors.loaiMon && (
-                                <p className="mt-1 text-sm text-error-500">Vui lòng chọn loại môn</p>
-                            )}
                         </div>
 
                         {/* Môn học */}
@@ -1227,11 +1226,7 @@ export default function TaoCTDT() {
                                     label: mh.maMonHoc,
                                     secondary: mh.tenMonHoc,
                                 }))}
-                                placeholder={
-                                    monHocFormData.loaiMon
-                                        ? "Chọn môn học"
-                                        : "Vui lòng chọn loại môn trước"
-                                }
+                                placeholder="Chọn môn học"
                                 onChange={(value) => {
                                     setMonHocFormData((prev) => ({ ...prev, monHocId: value }));
                                     setAddMonHocError("");
@@ -1241,7 +1236,6 @@ export default function TaoCTDT() {
                                 showSecondary={true}
                                 maxDisplayOptions={10}
                                 searchPlaceholder="Tìm môn học..."
-                                disabled={!monHocFormData.loaiMon}
                             />
                             {monHocFormErrors.monHocId && (
                                 <p className="mt-1 text-sm text-error-500">Vui lòng chọn môn học</p>

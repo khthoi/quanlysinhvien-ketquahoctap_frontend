@@ -846,7 +846,7 @@ export default function QuanLyNganhPage() {
                             message={alert.message}
                             dismissible
                             autoDismiss
-                            duration={15000}
+                            duration={600000}
                             onClose={() => setAlert(null)}   // 🔥 unmount thật
                         />
                     </div>
@@ -963,7 +963,7 @@ export default function QuanLyNganhPage() {
                                             <TableCell className="px-5 py-4 text-gray-500 dark:text-gray-400">
                                                 <div
                                                     className="max-w-[220px] truncate overflow-hidden 
-                                     text-ellipsis whitespace-nowrap cursor-pointer"
+                                     text-ellipsis text-left whitespace-nowrap cursor-pointer"
                                                     title={nganh.moTa ?? undefined}
                                                 >
                                                     {nganh.moTa ?? "--"}

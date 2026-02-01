@@ -2826,7 +2826,7 @@ export default function QuanLySinhVienPage() {
                             message={alert.message}
                             dismissible
                             autoDismiss
-                            duration={15000}
+                            duration={600000}
                             onClose={() => setAlert(null)}   // 🔥 unmount thật
                         />
                     </div>

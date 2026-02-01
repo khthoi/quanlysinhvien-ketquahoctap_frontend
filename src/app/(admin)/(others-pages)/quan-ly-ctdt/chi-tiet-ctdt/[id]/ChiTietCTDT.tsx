@@ -1359,6 +1359,7 @@ export default function QuanLyMonHocChuongTrinhPage() {
     });
     const [monHocSearchKeyword, setMonHocSearchKeyword] = useState("");
     const [monHocFilterLoaiMon, setMonHocFilterLoaiMon] = useState("");
+    const [hocKyFilter, setHocKyFilter] = useState<string>("");
 
     // State cho modals
     const [isThemModalOpen, setIsThemModalOpen] = useState(false);
@@ -1828,8 +1829,20 @@ export default function QuanLyMonHocChuongTrinhPage() {
     const sortedChiTiet = chuongTrinh?.monHocs
         ? [...chuongTrinh.monHocs].sort((a, b) => a.thuTuHocKy - b.thuTuHocKy)
         : [];
-    // Tính tổng số tín chỉ
     const tongSoTinChi = sortedChiTiet.reduce((acc, ct) => acc + ct.monHoc.soTinChi, 0);
+
+    // Lọc theo thứ tự học kỳ
+    const filteredChiTiet =
+        hocKyFilter === ""
+            ? sortedChiTiet
+            : sortedChiTiet.filter((ct) => ct.thuTuHocKy === Number(hocKyFilter));
+    const filteredTongSoTinChi = filteredChiTiet.reduce((acc, ct) => acc + ct.monHoc.soTinChi, 0);
+    const hocKyFilterOptions = [
+        ...[...new Set(sortedChiTiet.map((ct) => ct.thuTuHocKy))].sort((a, b) => a - b).map((hk) => ({
+            value: String(hk),
+            label: `Học kỳ ${hk}`,
+        })),
+    ];
 
     if (isLoading) {
         return (
@@ -1868,7 +1881,7 @@ export default function QuanLyMonHocChuongTrinhPage() {
                             message={alert.message}
                             dismissible
                             autoDismiss
-                            duration={15000}
+                            duration={600000}
                             onClose={() => setAlert(null)}   // 🔥 unmount thật
                         />
                     </div>
@@ -1961,10 +1974,10 @@ export default function QuanLyMonHocChuongTrinhPage() {
 
 
                 {/* Header và Nút thêm */}
-                <div className="flex flex-col gap-4 mb-6 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-4 mb-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <h3 className="text-lg font-semibold text-gray-800 dark:text-white">
-                            Danh sách Môn học ({sortedChiTiet.length} môn - {tongSoTinChi} tín chỉ)
+                            Danh sách Môn học ({filteredChiTiet.length} môn - {filteredTongSoTinChi} tín chỉ)
                         </h3>
                     </div>
                     <div className="flex gap-3">
@@ -1977,6 +1990,35 @@ export default function QuanLyMonHocChuongTrinhPage() {
                         </Button>
                     </div>
                 </div>
+
+                {/* Bộ lọc theo thứ tự học kỳ - bên trái, dưới tiêu đề */}
+                {sortedChiTiet.length > 0 && (
+                    <div className="mb-4 flex flex-wrap items-center gap-3">
+                        <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                            Lọc theo học kỳ:
+                        </span>
+                        <div className="min-w-[180px]">
+                            <SearchableSelect
+                                options={hocKyFilterOptions}
+                                placeholder="Tất cả học kỳ"
+                                onChange={(value) => setHocKyFilter(value ?? "")}
+                                defaultValue={hocKyFilter}
+                                showSecondary={false}
+                                maxDisplayOptions={12}
+                                searchPlaceholder="Tìm học kỳ..."
+                            />
+                        </div>
+                        {hocKyFilter !== "" && (
+                            <button
+                                type="button"
+                                onClick={() => setHocKyFilter("")}
+                                className="text-sm text-brand-600 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300 font-medium"
+                            >
+                                Xóa bộ lọc
+                            </button>
+                        )}
+                    </div>
+                )}
 
                 {/* Table */}
                 <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
@@ -2033,14 +2075,16 @@ export default function QuanLyMonHocChuongTrinhPage() {
 
                                 {/* Table Body */}
                                 <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05] text-theme-sm">
-                                    {sortedChiTiet.length === 0 ? (
+                                    {filteredChiTiet.length === 0 ? (
                                         <TableRow>
                                             <TableCell cols={7} className="px-5 py-8 text-center text-gray-500 dark: text-gray-400">
-                                                Chưa có môn học nào trong chương trình
+                                                {sortedChiTiet.length === 0
+                                                    ? "Chưa có môn học nào trong chương trình"
+                                                    : "Không có môn học nào thuộc học kỳ đã chọn"}
                                             </TableCell>
                                         </TableRow>
                                     ) : (
-                                        sortedChiTiet.map((ct) => (
+                                        filteredChiTiet.map((ct) => (
                                             <TableRow
                                                 key={ct.id}
                                                 className="grid grid-cols-[10%_12%_25%_10%_13%_15%_15%] items-center hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors"
@@ -2145,26 +2189,29 @@ export default function QuanLyMonHocChuongTrinhPage() {
                 <div className="mt-4 px-5 py-3 border border-gray-200 rounded-lg bg-gray-50/50 dark:border-white/[0.05] dark:bg-white/[0.02]">
                     <div className="flex items-center justify-between flex-wrap gap-4">
                         <span className="text-sm text-gray-500 dark:text-gray-400">
-                            Tổng cộng:  <strong>{sortedChiTiet.length}</strong> môn học,{" "}
-                            <strong>{tongSoTinChi}</strong> tín chỉ
+                            Tổng cộng: <strong>{filteredChiTiet.length}</strong> môn học,{" "}
+                            <strong>{filteredTongSoTinChi}</strong> tín chỉ
+                            {hocKyFilter !== "" && (
+                                <span className="ml-2 text-brand-600 dark:text-brand-400">(đang lọc)</span>
+                            )}
                         </span>
                         <div className="flex items-center gap-4 text-sm">
                             <span className="flex items-center gap-2">
                                 <Badge variant="solid" color="success">ĐC</Badge>
                                 <span className="text-gray-500 dark:text-gray-400">
-                                    {sortedChiTiet.filter(ct => ct.monHoc.loaiMon === "DAI_CUONG").length} môn
+                                    {filteredChiTiet.filter(ct => ct.monHoc.loaiMon === "DAI_CUONG").length} môn
                                 </span>
                             </span>
                             <span className="flex items-center gap-2">
                                 <Badge variant="solid" color="primary">CN</Badge>
                                 <span className="text-gray-500 dark:text-gray-400">
-                                    {sortedChiTiet.filter(ct => ct.monHoc.loaiMon === "CHUYEN_NGANH").length} môn
+                                    {filteredChiTiet.filter(ct => ct.monHoc.loaiMon === "CHUYEN_NGANH").length} môn
                                 </span>
                             </span>
                             <span className="flex items-center gap-2">
                                 <Badge variant="solid" color="warning">TC</Badge>
                                 <span className="text-gray-500 dark:text-gray-400">
-                                    {sortedChiTiet.filter(ct => ct.monHoc.loaiMon === "TU_CHON").length} môn
+                                    {filteredChiTiet.filter(ct => ct.monHoc.loaiMon === "TU_CHON").length} môn
                                 </span>
                             </span>
                         </div>
@@ -2288,13 +2335,15 @@ export default function QuanLyMonHocChuongTrinhPage() {
                 chuongTrinhId={chuongTrinhId}
             />
 
-            {/* Sticky Add Mon Hoc Button */}
-            <div className="fixed bottom-8 right-8 z-50">
+            {/* Nút Thêm môn học (FAB) - giống trang Tạo CTĐT */}
+            <div className="fixed bottom-6 right-6 z-50">
                 <Button
+                    variant="primary"
                     onClick={openThemModal}
-                    className="shadow-lg hover:shadow-xl transition-shadow rounded-full w-14 h-14 flex items-center justify-center"
+                    className="inline-flex items-center gap-2 rounded-full px-5 py-3.5 font-semibold shadow-lg ring-2 ring-white/20 dark:ring-black/20 hover:shadow-xl hover:scale-105 active:scale-100 transition-all"
                 >
-                    <FontAwesomeIcon icon={faPlus} className="w-6 h-6" />
+                    <FontAwesomeIcon icon={faPlus} className="h-5 w-5" />
+                    <span className="pr-1">Thêm môn học</span>
                 </Button>
             </div>
         </div>

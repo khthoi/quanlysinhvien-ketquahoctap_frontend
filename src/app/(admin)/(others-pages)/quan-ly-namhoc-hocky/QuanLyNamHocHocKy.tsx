@@ -386,6 +386,95 @@ const HocKyModal: React.FC<HocKyModalProps> = ({
     );
 };
 
+// ==================== MODAL SỬA HỌC KỲ (chỉ ngày bắt đầu, ngày kết thúc) ====================
+interface EditHocKyModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    editingHocKy: { hocKy: HocKy; namHoc: NamHoc } | null;
+    formData: { ngayBatDau: string; ngayKetThuc: string };
+    onFormChange: (field: string, value: string) => void;
+    onSubmit: () => void;
+    errors: { ngayBatDau: boolean; ngayKetThuc: boolean };
+    isSubmitting: boolean;
+    getHocKyLabel: (hocKy: number) => string;
+}
+
+const EditHocKyModal: React.FC<EditHocKyModalProps> = ({
+    isOpen,
+    onClose,
+    editingHocKy,
+    formData,
+    onFormChange,
+    onSubmit,
+    errors,
+    isSubmitting,
+    getHocKyLabel,
+}) => {
+    if (!isOpen || !editingHocKy) return null;
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} className="max-w-lg">
+            <div className="p-6 sm:p-8">
+                <h3 className="mb-2 text-xl font-semibold text-gray-800 dark:text-white/90">
+                    Sửa Học kỳ
+                </h3>
+                <p className="mb-6 text-sm text-gray-500 dark:text-gray-400">
+                    {getHocKyLabel(editingHocKy.hocKy.hocKy)} · {editingHocKy.namHoc.tenNamHoc}
+                </p>
+
+                <div className="space-y-5">
+                    <div>
+                        <Label>Ngày Bắt đầu</Label>
+                        <DatePicker
+                            id="edit-hocky-ngayBatDau"
+                            defaultDate={formData.ngayBatDau ? new Date(formData.ngayBatDau) : undefined}
+                            onChange={(date: Date | Date[]) => {
+                                const selectedDate = Array.isArray(date) ? date[0] : date;
+                                if (selectedDate) {
+                                    onFormChange("ngayBatDau", formatDateNoTimezone(selectedDate));
+                                } else {
+                                    onFormChange("ngayBatDau", "");
+                                }
+                            }}
+                        />
+                        {errors.ngayBatDau && (
+                            <p className="mt-1 text-sm text-error-500">Ngày bắt đầu không được để trống</p>
+                        )}
+                    </div>
+
+                    <div>
+                        <Label>Ngày Kết thúc</Label>
+                        <DatePicker
+                            id="edit-hocky-ngayKetThuc"
+                            defaultDate={formData.ngayKetThuc ? new Date(formData.ngayKetThuc) : undefined}
+                            onChange={(date: Date | Date[]) => {
+                                const selectedDate = Array.isArray(date) ? date[0] : date;
+                                if (selectedDate) {
+                                    onFormChange("ngayKetThuc", formatDateNoTimezone(selectedDate));
+                                } else {
+                                    onFormChange("ngayKetThuc", "");
+                                }
+                            }}
+                        />
+                        {errors.ngayKetThuc && (
+                            <p className="mt-1 text-sm text-error-500">Ngày kết thúc không được để trống</p>
+                        )}
+                    </div>
+                </div>
+
+                <div className="mt-8 flex justify-end gap-3">
+                    <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
+                        Hủy
+                    </Button>
+                    <Button onClick={onSubmit} disabled={isSubmitting}>
+                        {isSubmitting ? "Đang lưu…" : "Lưu thay đổi"}
+                    </Button>
+                </div>
+            </div>
+        </Modal>
+    );
+};
+
 // ==================== TRANG CHÍNH QUẢN LÝ NĂM HỌC & HỌC KỲ ====================
 export default function QuanLyNamHocHocKyPage() {
     // State cho danh sách và pagination
@@ -406,10 +495,12 @@ export default function QuanLyNamHocHocKyPage() {
     const [isEditNamHocModalOpen, setIsEditNamHocModalOpen] = useState(false);
     const [isDeleteNamHocModalOpen, setIsDeleteNamHocModalOpen] = useState(false);
     const [isCreateHocKyModalOpen, setIsCreateHocKyModalOpen] = useState(false);
+    const [isEditHocKyModalOpen, setIsEditHocKyModalOpen] = useState(false);
     const [isDeleteHocKyModalOpen, setIsDeleteHocKyModalOpen] = useState(false);
 
     const [editingNamHoc, setEditingNamHoc] = useState<NamHoc | null>(null);
     const [deletingNamHoc, setDeletingNamHoc] = useState<NamHoc | null>(null);
+    const [editingHocKy, setEditingHocKy] = useState<{ hocKy: HocKy; namHoc: NamHoc } | null>(null);
     const [deletingHocKy, setDeletingHocKy] = useState<{ hocKy: HocKy; namHoc: NamHoc } | null>(null);
 
     // State cho form năm học
@@ -445,6 +536,10 @@ export default function QuanLyNamHocHocKyPage() {
         ngayKetThuc: false,
         namHocId: false,
     });
+
+    const [editHocKyFormData, setEditHocKyFormData] = useState({ ngayBatDau: "", ngayKetThuc: "" });
+    const [editHocKyErrors, setEditHocKyErrors] = useState({ ngayBatDau: false, ngayKetThuc: false });
+    const [isSubmittingHocKy, setIsSubmittingHocKy] = useState(false);
 
     const [alert, setAlert] = useState<{
         id: number;
@@ -862,6 +957,67 @@ export default function QuanLyNamHocHocKyPage() {
         setIsDeleteHocKyModalOpen(true);
     };
 
+    const openEditHocKyModal = (hocKy: HocKy, namHoc: NamHoc) => {
+        setEditingHocKy({ hocKy, namHoc });
+        setEditHocKyFormData({
+            ngayBatDau: hocKy.ngayBatDau ? String(hocKy.ngayBatDau).slice(0, 10) : "",
+            ngayKetThuc: hocKy.ngayKetThuc ? String(hocKy.ngayKetThuc).slice(0, 10) : "",
+        });
+        setEditHocKyErrors({ ngayBatDau: false, ngayKetThuc: false });
+        setIsEditHocKyModalOpen(true);
+    };
+
+    const handleEditHocKyFormChange = (field: string, value: string) => {
+        setEditHocKyFormData((prev) => ({ ...prev, [field]: value }));
+        setEditHocKyErrors((prev) => ({ ...prev, [field]: false }));
+    };
+
+    const validateEditHocKyForm = (): boolean => {
+        const ngayBatDau = !!editHocKyFormData.ngayBatDau?.trim();
+        const ngayKetThuc = !!editHocKyFormData.ngayKetThuc?.trim();
+        setEditHocKyErrors({ ngayBatDau: !ngayBatDau, ngayKetThuc: !ngayKetThuc });
+        return ngayBatDau && ngayKetThuc;
+    };
+
+    const handleUpdateHocKy = async () => {
+        if (!editingHocKy || !validateEditHocKyForm()) return;
+
+        setIsSubmittingHocKy(true);
+        try {
+            const accessToken = getCookie("access_token");
+            const body: { ngayBatDau?: string; ngayKetThuc?: string } = {};
+            if (editHocKyFormData.ngayBatDau?.trim()) body.ngayBatDau = editHocKyFormData.ngayBatDau.trim();
+            if (editHocKyFormData.ngayKetThuc?.trim()) body.ngayKetThuc = editHocKyFormData.ngayKetThuc.trim();
+
+            const res = await fetch(
+                `http://localhost:3000/dao-tao/hoc-ky/${editingHocKy.hocKy.id}`,
+                {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${accessToken}`,
+                    },
+                    body: JSON.stringify(body),
+                }
+            );
+
+            const data = await res.json();
+            if (res.ok) {
+                setIsEditHocKyModalOpen(false);
+                setEditingHocKy(null);
+                setEditHocKyFormData({ ngayBatDau: "", ngayKetThuc: "" });
+                showAlert("success", "Thành công", "Cập nhật học kỳ thành công");
+                fetchNamHocs(currentPage, searchKeyword.trim());
+            } else {
+                showAlert("error", "Lỗi", data.message || "Cập nhật học kỳ thất bại");
+            }
+        } catch {
+            showAlert("error", "Lỗi", "Có lỗi xảy ra khi cập nhật học kỳ");
+        } finally {
+            setIsSubmittingHocKy(false);
+        }
+    };
+
     // Get học kỳ label
     const getHocKyLabel = (hocKy: number): string => {
         switch (hocKy) {
@@ -891,7 +1047,7 @@ export default function QuanLyNamHocHocKyPage() {
                             message={alert.message}
                             dismissible
                             autoDismiss
-                            duration={15000}
+                            duration={600000}
                             onClose={() => setAlert(null)}   // 🔥 unmount thật
                         />
                     </div>
@@ -1126,7 +1282,15 @@ export default function QuanLyNamHocHocKyPage() {
                                                                 <TableCell className="px-5 py-3 text-gray-600 dark:text-gray-300 text-center">
                                                                     <span></span>
                                                                 </TableCell>
-                                                                <TableCell className="px-5 py-3 flex items-center justify-center">
+                                                                <TableCell className="px-5 py-3 flex items-center justify-center gap-2">
+                                                                    <Button
+                                                                        size="sm"
+                                                                        variant="outline"
+                                                                        onClick={() => openEditHocKyModal(hk, nh)}
+                                                                        className="p-2 text-brand-600 border-brand-300 hover:bg-brand-50 dark:text-brand-400 dark:border-brand-500/30 dark:hover:bg-brand-500/10"
+                                                                    >
+                                                                        <FontAwesomeIcon icon={faPenToSquare} className="w-4 h-4" />
+                                                                    </Button>
                                                                     <Button
                                                                         size="sm"
                                                                         variant="outline"
@@ -1238,6 +1402,25 @@ export default function QuanLyNamHocHocKyPage() {
                 namHocOptions={namHocOptionsForModal}
                 isLoadingNamHoc={isLoadingNamHoc}
                 handleSearchNamHoc={handleSearchNamHoc}
+            />
+
+            {/* Modal Sửa Học kỳ (chỉ ngày bắt đầu, ngày kết thúc) */}
+            <EditHocKyModal
+                key={editingHocKy?.hocKy.id ?? "edit-hocky"}
+                isOpen={isEditHocKyModalOpen}
+                onClose={() => {
+                    setIsEditHocKyModalOpen(false);
+                    setEditingHocKy(null);
+                    setEditHocKyFormData({ ngayBatDau: "", ngayKetThuc: "" });
+                    setEditHocKyErrors({ ngayBatDau: false, ngayKetThuc: false });
+                }}
+                editingHocKy={editingHocKy}
+                formData={editHocKyFormData}
+                onFormChange={handleEditHocKyFormChange}
+                onSubmit={handleUpdateHocKy}
+                errors={editHocKyErrors}
+                isSubmitting={isSubmittingHocKy}
+                getHocKyLabel={getHocKyLabel}
             />
 
             {/* Modal Xóa Năm học */}

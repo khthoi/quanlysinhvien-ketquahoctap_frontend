@@ -2477,10 +2477,15 @@ export default function QuanLyLopHocPhanPage() {
     ) => {
         try {
             const accessToken = getCookie("access_token");
+            const FILTER_CHUA_CO_GIANG_VIEN = "__none__";
             let url = `http://localhost:3000/giang-day/lop-hoc-phan?page=${page}&limit=10`;
             if (search) url += `&search=${encodeURIComponent(search)}`;
             if (monHocIdFilter) url += `&monHocId=${monHocIdFilter}`;
-            if (giangVienIdFilter) url += `&giangVienId=${giangVienIdFilter}`;
+            if (giangVienIdFilter === FILTER_CHUA_CO_GIANG_VIEN) {
+                url += `&chuaCoGiangVien=1`;
+            } else if (giangVienIdFilter) {
+                url += `&giangVienId=${giangVienIdFilter}`;
+            }
             if (hocKyIdFilter) url += `&hocKyId=${hocKyIdFilter}`;
             if (nienKhoaIdFilter) url += `&nienKhoaId=${nienKhoaIdFilter}`;
             if (nganhIdFilter) url += `&nganhId=${nganhIdFilter}`;
@@ -2932,7 +2937,7 @@ export default function QuanLyLopHocPhanPage() {
                             message={alert.message}
                             dismissible
                             autoDismiss
-                            duration={15000}
+                            duration={600000}
                             onClose={() => setAlert(null)}   // 🔥 unmount thật
                         />
                     </div>
@@ -3112,11 +3117,14 @@ export default function QuanLyLopHocPhanPage() {
                                             <div>
                                                 <Label className="block mb-2 text-sm">Giảng viên</Label>
                                                 <SearchableSelect
-                                                    options={giangVienOptions.map((gv) => ({
-                                                        value: gv.id.toString(),
-                                                        label: gv.maGiangVien,
-                                                        secondary: gv.hoTen,
-                                                    }))}
+                                                    options={[
+                                                        { value: "__none__", label: "Chưa có giảng viên", secondary: "LHP chưa phân công GV" },
+                                                        ...giangVienOptions.map((gv) => ({
+                                                            value: gv.id.toString(),
+                                                            label: gv.maGiangVien,
+                                                            secondary: gv.hoTen,
+                                                        })),
+                                                    ]}
                                                     placeholder="Tất cả giảng viên"
                                                     onChange={(value) => setFilterGiangVienId(value)}
                                                     defaultValue={filterGiangVienId}

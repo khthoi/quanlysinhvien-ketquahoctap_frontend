@@ -1125,11 +1125,26 @@ export default function ThemLopHocPhanPage() {
             });
 
             const result = await res.json();
-            setImportResult(result);
 
-            if (result.summary?.success > 0) {
+            if (!res.ok) {
+                const message = result?.message || (res.status === 401 ? "Phiên đăng nhập hết hạn, vui lòng đăng nhập lại." : "Có lỗi xảy ra khi tạo lớp học phần.");
+                showAlert("error", "Lỗi", message);
+                if (res.status === 401) {
+                    setIsConfirmCreateModalOpen(false);
+                }
+                return;
+            }
+
+            if (result?.summary == null) {
+                showAlert("error", "Lỗi", "Phản hồi từ máy chủ không hợp lệ.");
+                return;
+            }
+
+            setImportResult(result as ImportResult);
+
+            if (result.summary.success > 0) {
                 setResultTab("success");
-            } else if (result.summary?.failed > 0) {
+            } else if (result.summary.failed > 0) {
                 setResultTab("error");
             }
             // Fetch lại dữ liệu table sau khi tạo xong
@@ -1718,34 +1733,34 @@ export default function ThemLopHocPhanPage() {
                 <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
                     {/* Header */}
                     <div className="flex items-center gap-4 mb-6">
-                        <div className={`flex h-14 w-14 items-center justify-center rounded-full ${importResult
-                            ? importResult.summary.failed === 0
+                        <div className={`flex h-14 w-14 items-center justify-center rounded-full ${importResult?.summary != null
+                            ? (importResult.summary.failed === 0
                                 ? "bg-green-100 dark:bg-green-900/30"
-                                : "bg-amber-100 dark:bg-amber-900/30"
+                                : "bg-amber-100 dark:bg-amber-900/30")
                             : "bg-blue-100 dark:bg-blue-900/30"
                             }`}>
                             <FontAwesomeIcon
                                 icon={
-                                    importResult
-                                        ? importResult.summary.failed === 0
+                                    importResult?.summary != null
+                                        ? (importResult.summary.failed === 0
                                             ? faCircleCheck
-                                            : faTriangleExclamation
+                                            : faTriangleExclamation)
                                         : faPlus
                                 }
-                                className={`text-2xl ${importResult
-                                    ? importResult.summary.failed === 0
+                                className={`text-2xl ${importResult?.summary != null
+                                    ? (importResult.summary.failed === 0
                                         ? "text-green-600 dark:text-green-400"
-                                        : "text-amber-600 dark:text-amber-400"
+                                        : "text-amber-600 dark:text-amber-400")
                                     : "text-blue-600 dark:text-blue-400"
                                     }`}
                             />
                         </div>
                         <div>
                             <h3 className="text-xl font-semibold text-gray-800 dark:text-white/90">
-                                {importResult ? "Kết quả tạo lớp học phần" : "Xác nhận tạo lớp học phần"}
+                                {importResult?.summary != null ? "Kết quả tạo lớp học phần" : "Xác nhận tạo lớp học phần"}
                             </h3>
                             <p className="text-sm text-gray-500 dark:text-gray-400">
-                                {importResult
+                                {importResult?.summary != null
                                     ? importResult.message
                                     : `Tạo ${lopHocPhans.length} lớp học phần cho ${namHocId} - Học kỳ ${hocKyId}`
                                 }
@@ -1754,7 +1769,7 @@ export default function ThemLopHocPhanPage() {
                     </div>
 
                     {/* Nội dung trước khi tạo */}
-                    {!importResult && !isCreating && (
+                    {importResult?.summary == null && !isCreating && (
                         <>
                             {/* Summary */}
                             <div className="mb-6 grid grid-cols-3 gap-4">
@@ -1828,8 +1843,8 @@ export default function ThemLopHocPhanPage() {
                         </div>
                     )}
 
-                    {/* Kết quả sau khi tạo */}
-                    {importResult && (
+                    {/* Kết quả sau khi tạo - chỉ hiển thị khi có summary hợp lệ */}
+                    {importResult?.summary != null && (
                         <>
                             {/* Summary */}
                             <div className="mb-6 grid grid-cols-3 gap-4">
@@ -1977,7 +1992,7 @@ export default function ThemLopHocPhanPage() {
                             )}
 
                             {/* Thông báo tổng kết */}
-                            {importResult.summary.failed === 0 && importResult.summary.success > 0 && (
+                            {importResult?.summary && importResult.summary.failed === 0 && importResult.summary.success > 0 && (
                                 <div className="mt-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl border border-green-200 dark:border-green-800">
                                     <div className="flex items-center justify-center gap-3">
                                         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
@@ -1990,7 +2005,7 @@ export default function ThemLopHocPhanPage() {
                                 </div>
                             )}
 
-                            {importResult.summary.failed > 0 && importResult.summary.success > 0 && (
+                            {importResult?.summary && importResult.summary.failed > 0 && importResult.summary.success > 0 && (
                                 <div className="mt-4 p-4 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 rounded-xl border border-amber-200 dark:border-amber-800">
                                     <div className="flex items-center justify-center gap-3">
                                         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30">
@@ -2003,7 +2018,7 @@ export default function ThemLopHocPhanPage() {
                                 </div>
                             )}
 
-                            {importResult.summary.success === 0 && importResult.summary.failed > 0 && (
+                            {importResult?.summary && importResult.summary.success === 0 && importResult.summary.failed > 0 && (
                                 <div className="mt-4 p-4 bg-gradient-to-r from-red-50 to-rose-50 dark:from-red-900/20 dark:to-rose-900/20 rounded-xl border border-red-200 dark:border-red-800">
                                     <div className="flex items-center justify-center gap-3">
                                         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
@@ -2020,7 +2035,7 @@ export default function ThemLopHocPhanPage() {
 
                     {/* Buttons */}
                     <div className="flex justify-end gap-3 pt-6">
-                        {!importResult ? (
+                        {importResult?.summary == null ? (
                             <>
                                 <Button
                                     variant="outline"
