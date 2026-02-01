@@ -64,7 +64,6 @@ const SEARCH_ROUTES: SearchItem[] = [
   { label: "Quản lý SV LHP", path: "/quan-ly-lop-hoc-phan", category: "Quản lý lớp học phần" },
   { label: "Lớp học phần theo giảng viên", path: "/quan-ly-lop-hoc-phan-theo-giang-vien", category: "Quản lý lớp học phần" },
   { label: "Quản lý lớp học phần theo giảng viên", path: "/quan-ly-lop-hoc-phan-theo-giang-vien", category: "Quản lý lớp học phần" },
-  { label: "Thêm lớp học phần", path: "/them-lop-hoc-phan", category: "Quản lý lớp học phần" },
   { label: "Thêm sinh viên học lại", path: "/them-sinh-vien-hoc-lai", category: "Quản lý sinh viên" },
   { label: "Cấp tài khoản hàng loạt cho giảng viên", path: "/quan-ly-giang-vien", category: "Cơ cấu đào tạo", modal: "cap-tk-hang-loat" },
   { label: "Đăng nhập", path: "/signin", category: "Khác" },
