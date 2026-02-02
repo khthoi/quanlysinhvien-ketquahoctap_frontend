@@ -132,7 +132,6 @@ interface ThongTinSinhVienTruotMonResponse {
     hocKy: number;
     tenNamHoc: string;
     tongSinhVienTruot: number;
-    soSinhVienDaHocLai: number;
     soSinhVienChuaHocLai: number;
     danhSachSinhVienTruot: Array<{
         sinhVienId: number;
@@ -1082,7 +1081,8 @@ export default function ThemSinhvienPage() {
     // Thống kê từ API mới
     const tenNamHoc = thongKeData?.tenNamHoc ?? apiData?.tenNamHoc ?? "";
     const tongSinhVienTruot = thongKeData?.tongSinhVienTruot ?? apiData?.tongSinhVien ?? 0;
-    const soSinhVienDaHocLai = thongKeData?.soSinhVienDaHocLai ?? daHocLaiList.length;
+    // soSinhVienDaHocLai lấy từ API de-xuat-hoc-lai/json (tongSinhVien)
+    const soSinhVienDaHocLai = apiData?.tongSinhVien ?? daHocLaiList.length;
     const soSinhVienChuaHocLai = thongKeData?.soSinhVienChuaHocLai ?? displayItems.length;
 
     const isLoading = loadingThongKe;
@@ -1190,9 +1190,9 @@ export default function ThemSinhvienPage() {
                     <StatCard
                         icon={faRotateRight}
                         title="Đã/đang học lại"
-                        value={soSinhVienDaHocLai}
+                        value={loadingDeXuat ? "..." : soSinhVienDaHocLai}
                         color="amber"
-                        loading={isLoading}
+                        loading={false}
                     />
                     <StatCard
                         icon={faUserGraduate}
