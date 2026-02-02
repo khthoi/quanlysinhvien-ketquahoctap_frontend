@@ -194,10 +194,9 @@ const getCookie = (name: string): string | null => {
     return null;
 };
 
-const TRANG_THAI_OPTIONS: { label: string; value: TrangThai | "" }[] = [
-    { label: "Đang diễn ra", value: "DANG_HOC" },
-    { label: "Đã kết thúc", value: "DA_KET_THUC" },
-    { label: "Chưa bắt đầu", value: "CHUA_BAT_DAU" },
+const KHOA_DIEM_OPTIONS: { label: string; value: string }[] = [
+    { label: "Đã khóa", value: "true" },
+    { label: "Chưa khóa", value: "false" },
 ];
 
 // Hàm chuyển enum trangThai thành tên tiếng Việt
@@ -223,6 +222,15 @@ const getTrangThaiColor = (trangThai: TrangThai): "success" | "error" | "warning
         case "CHUA_BAT_DAU":
             return "warning";
     }
+};
+
+// Hàm chuyển trạng thái khóa điểm thành tên tiếng Việt
+const getKhoaDiemLabel = (khoaDiem: boolean): string => {
+    return khoaDiem ? "Đã khóa" : "Chưa khóa";
+};
+
+const getKhoaDiemColor = (khoaDiem: boolean): "error" | "success" => {
+    return khoaDiem ? "error" : "success";
 };
 
 // ==================== MODAL XEM CHI TIẾT ====================
@@ -2374,7 +2382,7 @@ export default function QuanLyLopHocPhanPage() {
     const [filterNienKhoaId, setFilterNienKhoaId] = useState("");
     const [filterNganhId, setFilterNganhId] = useState("");
     const [filterNamHocId, setFilterNamHocId] = useState("");
-    const [filterTrangThai, setFilterTrangThai] = useState<TrangThai | "">("");
+    const [filterKhoaDiem, setFilterKhoaDiem] = useState<string>("");
     const [filterExpanded, setFilterExpanded] = useState(false);
 
     // State cho form sửa
@@ -2473,7 +2481,7 @@ export default function QuanLyLopHocPhanPage() {
         hocKyIdFilter: string = "",
         nienKhoaIdFilter: string = "",
         nganhIdFilter: string = "",
-        trangThaiFilter: TrangThai | "" = "",
+        khoaDiemFilter: string = "",
     ) => {
         try {
             const accessToken = getCookie("access_token");
@@ -2489,7 +2497,7 @@ export default function QuanLyLopHocPhanPage() {
             if (hocKyIdFilter) url += `&hocKyId=${hocKyIdFilter}`;
             if (nienKhoaIdFilter) url += `&nienKhoaId=${nienKhoaIdFilter}`;
             if (nganhIdFilter) url += `&nganhId=${nganhIdFilter}`;
-            if (trangThaiFilter) url += `&trangThai=${trangThaiFilter}`;
+            if (khoaDiemFilter) url += `&khoaDiem=${khoaDiemFilter}`;
 
             const res = await fetch(url, {
                 headers: {
@@ -2645,14 +2653,65 @@ export default function QuanLyLopHocPhanPage() {
         fetchNganh();
     }, []);
 
+    // Tự động set bộ lọc năm học và học kỳ dựa trên thời gian hiện tại
+    useEffect(() => {
+        if (namHocOptions.length === 0) return;
+
+        const now = new Date();
+        let foundNamHoc: NamHocOption | null = null;
+        let foundHocKy: { id: number; hocKy: number; ngayBatDau: string; ngayKetThuc: string } | null = null;
+
+        // Tìm năm học và học kỳ mà thời gian hiện tại nằm trong khoảng
+        for (const namHoc of namHocOptions) {
+            for (const hocKy of namHoc.hocKys) {
+                const startDate = new Date(hocKy.ngayBatDau);
+                const endDate = new Date(hocKy.ngayKetThuc);
+                if (now >= startDate && now <= endDate) {
+                    foundNamHoc = namHoc;
+                    foundHocKy = hocKy;
+                    break;
+                }
+            }
+            if (foundNamHoc) break;
+        }
+
+        // Nếu không tìm thấy, tìm khoảng thời gian gần nhất
+        if (!foundNamHoc) {
+            let minDiff = Infinity;
+            for (const namHoc of namHocOptions) {
+                for (const hocKy of namHoc.hocKys) {
+                    const startDate = new Date(hocKy.ngayBatDau);
+                    const endDate = new Date(hocKy.ngayKetThuc);
+                    // Tính khoảng cách từ hiện tại đến học kỳ
+                    const diffStart = Math.abs(now.getTime() - startDate.getTime());
+                    const diffEnd = Math.abs(now.getTime() - endDate.getTime());
+                    const diff = Math.min(diffStart, diffEnd);
+                    if (diff < minDiff) {
+                        minDiff = diff;
+                        foundNamHoc = namHoc;
+                        foundHocKy = hocKy;
+                    }
+                }
+            }
+        }
+
+        // Set filter và áp dụng bộ lọc luôn nếu tìm thấy
+        if (foundNamHoc && foundHocKy) {
+            setFilterNamHocId(foundNamHoc.id.toString());
+            setFilterHocKyId(foundHocKy.id.toString());
+            // Áp dụng bộ lọc ngay lập tức
+            fetchLopHocPhans(1, "", "", "", foundHocKy.id.toString(), "", "", "");
+        }
+    }, [namHocOptions]);
+
     const handleSearch = () => {
         setCurrentPage(1);
-        fetchLopHocPhans(1, searchKeyword.trim(), filterMonHocId, filterGiangVienId, filterHocKyId, filterNienKhoaId, filterNganhId, filterTrangThai === "" ? "" : filterTrangThai);
+        fetchLopHocPhans(1, searchKeyword.trim(), filterMonHocId, filterGiangVienId, filterHocKyId, filterNienKhoaId, filterNganhId, filterKhoaDiem);
     };
 
     const handleFilter = () => {
         setCurrentPage(1);
-        fetchLopHocPhans(1, searchKeyword.trim(), filterMonHocId, filterGiangVienId, filterHocKyId, filterNienKhoaId, filterNganhId, filterTrangThai === "" ? "" : filterTrangThai);
+        fetchLopHocPhans(1, searchKeyword.trim(), filterMonHocId, filterGiangVienId, filterHocKyId, filterNienKhoaId, filterNganhId, filterKhoaDiem);
     };
 
     const handleResetFilter = () => {
@@ -2663,7 +2722,7 @@ export default function QuanLyLopHocPhanPage() {
         setFilterNganhId("");
         setFilterNamHocId("");
         setSearchKeyword("");
-        setFilterTrangThai("");
+        setFilterKhoaDiem("");
         setCurrentPage(1);
         fetchLopHocPhans(1, "", "", "", "", "", "");
     };
@@ -3050,7 +3109,7 @@ export default function QuanLyLopHocPhanPage() {
                         filterHocKyId,
                         filterNienKhoaId,
                         filterNganhId,
-                        filterTrangThai,
+                        filterKhoaDiem,
                     ].filter(Boolean).length;
                     return (
                         <div className="mb-6 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 overflow-hidden transition-shadow hover:shadow-sm">
@@ -3210,18 +3269,18 @@ export default function QuanLyLopHocPhanPage() {
                                                 />
                                             </div>
 
-                                            {/* Trạng thái */}
+                                            {/* Khóa điểm */}
                                             <div>
-                                                <Label className="block mb-2 text-sm">Trạng thái</Label>
+                                                <Label className="block mb-2 text-sm">Khóa điểm</Label>
                                                 <SearchableSelect
-                                                    options={TRANG_THAI_OPTIONS.map((opt) => ({
+                                                    options={KHOA_DIEM_OPTIONS.map((opt) => ({
                                                         value: opt.value,
                                                         label: opt.label,
                                                     }))}
-                                                    placeholder="Tất cả trạng thái"
-                                                    onChange={(value) => setFilterTrangThai(value as TrangThai | "")}
-                                                    defaultValue={filterTrangThai}
-                                                    showSecondary={true}
+                                                    placeholder="Tất cả"
+                                                    onChange={(value) => setFilterKhoaDiem(value)}
+                                                    defaultValue={filterKhoaDiem}
+                                                    showSecondary={false}
                                                     maxDisplayOptions={10}
                                                     searchPlaceholder="Tìm trạng thái..."
                                                 />
@@ -3266,7 +3325,7 @@ export default function QuanLyLopHocPhanPage() {
                                             Mã NK
                                         </TableCell>
                                         <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-theme-xs">
-                                            Trạng thái
+                                            Khóa điểm
                                         </TableCell>
                                         <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-theme-xs">
                                             Hành động
@@ -3304,8 +3363,8 @@ export default function QuanLyLopHocPhanPage() {
                                                     {lhp.nienKhoa.maNienKhoa}
                                                 </TableCell>
                                                 <TableCell className="px-5 py-4">
-                                                    <Badge variant="solid" color={getTrangThaiColor(lhp.trangThai)}>
-                                                        {getTrangThaiLabel(lhp.trangThai)}
+                                                    <Badge variant="solid" color={getKhoaDiemColor(lhp.khoaDiem)}>
+                                                        {getKhoaDiemLabel(lhp.khoaDiem)}
                                                     </Badge>
                                                 </TableCell>
                                                 <TableCell className="px-5 py-4 text-center">
