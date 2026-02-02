@@ -1230,85 +1230,34 @@ const XetTotNghiepModal: React.FC<XetTotNghiepModalProps> = ({
     onClose,
     nienKhoaOptions,
 }) => {
+    const router = useRouter();
     const [selectedNienKhoaId, setSelectedNienKhoaId] = useState("");
-    const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [isSuccess, setIsSuccess] = useState(false);
 
     const handleClose = () => {
         setSelectedNienKhoaId("");
         setError(null);
-        setIsLoading(false);
-        setIsSuccess(false);
         onClose();
-    };
-
-    const handleReset = () => {
-        setSelectedNienKhoaId("");
-        setError(null);
-        setIsSuccess(false);
     };
 
     const getSelectedNienKhoa = () => {
         return nienKhoaOptions.find(nk => nk.id.toString() === selectedNienKhoaId);
     };
 
-
-    const handleXetTotNghiep = async () => {
+    const handleXetTotNghiep = () => {
         if (!selectedNienKhoaId) {
             setError("Vui lòng chọn niên khóa");
             return;
         }
-        setIsLoading(true);
-        setError(null);
-
-        try {
-            const accessToken = getCookie("access_token");
-            const res = await fetch(
-                `http://localhost:3000/sinh-vien/xet-tot-nghiep/thong-ke`,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${accessToken}`,
-                    },
-                    body: JSON.stringify({
-                        nienKhoaId: Number(selectedNienKhoaId),
-                    }),
-                }
-            );
-
-            if (res.ok) {
-                // Xử lý tải file Excel
-                const blob = await res.blob();
-                const url = window.URL.createObjectURL(blob);
-                const link = document.createElement("a");
-                link.href = url;
-
-                const nienKhoa = getSelectedNienKhoa();
-                link.download = `Thống kê sinh viên tốt nghiệp Khoá ${nienKhoa?.maNienKhoa || ''}.xlsx`;
-
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                window.URL.revokeObjectURL(url);
-
-                setIsSuccess(true);
-            } else {
-                const err = await res.json();
-                setError(err.message || "Xét tốt nghiệp thất bại");
-            }
-        } catch (err) {
-            setError("Có lỗi xảy ra khi xét tốt nghiệp");
-        } finally {
-            setIsLoading(false);
-        }
+        // Chuyển hướng sang trang xét tốt nghiệp với nienKhoaId
+        handleClose();
+        router.push(`/quan-ly-sinh-vien/xet-tot-nghiep/${selectedNienKhoaId}`);
     };
 
     if (!isOpen) return null;
 
     return (
-        <Modal isOpen={isOpen} onClose={handleClose} className="max-w-2xl">
+        <Modal isOpen={isOpen} onClose={handleClose} className="max-w-xl">
             <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
                 {/* Header */}
                 <div className="flex items-center gap-4 mb-6">
@@ -1320,10 +1269,10 @@ const XetTotNghiepModal: React.FC<XetTotNghiepModalProps> = ({
                     </div>
                     <div>
                         <h3 className="text-xl font-semibold text-gray-800 dark:text-white/90">
-                            Xét Tốt Nghiệp & Xuất Thống Kê
+                            Xét Tốt Nghiệp
                         </h3>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Xét và xuất danh sách sinh viên tốt nghiệp theo niên khóa
+                            Chọn niên khóa để xem và xét tốt nghiệp sinh viên
                         </p>
                     </div>
                 </div>
@@ -1334,13 +1283,13 @@ const XetTotNghiepModal: React.FC<XetTotNghiepModalProps> = ({
                         <div className="flex items-start gap-3">
                             <div className="flex-shrink-0">
                                 <FontAwesomeIcon
-                                    icon={faCircleExclamation}
-                                    className="text-lg text-blue-600 dark: text-blue-400 mt-0.5"
+                                    icon={faCircleInfo}
+                                    className="text-lg text-blue-600 dark:text-blue-400 mt-0.5"
                                 />
                             </div>
                             <div className="flex-1">
                                 <h4 className="font-semibold text-blue-800 dark:text-blue-300 mb-2">
-                                    Hướng dẫn sử dụng
+                                    Hướng dẫn
                                 </h4>
                                 <ul className="text-sm text-blue-700/80 dark:text-blue-300/70 space-y-1.5">
                                     <li className="flex items-start gap-2">
@@ -1349,11 +1298,11 @@ const XetTotNghiepModal: React.FC<XetTotNghiepModalProps> = ({
                                     </li>
                                     <li className="flex items-start gap-2">
                                         <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 flex-shrink-0"></span>
-                                        <span>Hệ thống sẽ xét tốt nghiệp cho tất cả sinh viên thuộc niên khóa đã chọn</span>
+                                        <span>Hệ thống sẽ chuyển sang trang xét tốt nghiệp chi tiết</span>
                                     </li>
                                     <li className="flex items-start gap-2">
                                         <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 flex-shrink-0"></span>
-                                        <span>File Excel thống kê sẽ được trả về sau khi xét xong</span>
+                                        <span>Bạn có thể xem dự đoán, xác nhận và xuất Excel tại trang đó</span>
                                     </li>
                                 </ul>
                             </div>
@@ -1361,89 +1310,46 @@ const XetTotNghiepModal: React.FC<XetTotNghiepModalProps> = ({
                     </div>
                 </div>
 
-                {/* Form chọn Niên khóa và Ngành */}
-                {!isSuccess && (
-                    <div className="mb-6 p-5 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700">
-                        <h4 className="font-medium text-gray-800 dark:text-white mb-4 flex items-center gap-2">
-                            <FontAwesomeIcon icon={faMagnifyingGlass} className="text-gray-500" />
-                            Chọn niên khóa xét tốt nghiệp
-                        </h4>
+                {/* Form chọn Niên khóa */}
+                <div className="mb-6 p-5 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700">
+                    <h4 className="font-medium text-gray-800 dark:text-white mb-4 flex items-center gap-2">
+                        <FontAwesomeIcon icon={faGraduationCap} className="text-gray-500" />
+                        Chọn niên khóa
+                    </h4>
 
-                        {/* Chọn Niên khóa */}
-                        <div>
-                            <Label className="mb-2 block text-sm font-medium">
-                                Niên khóa <span className="text-red-500">*</span>
-                            </Label>
-                            <SearchableSelect
-                                options={nienKhoaOptions.map((nk) => ({
-                                    value: nk.id.toString(),
-                                    label: nk.maNienKhoa,
-                                    secondary: nk.tenNienKhoa,
-                                }))}
-                                placeholder="Chọn niên khóa..."
-                                onChange={(value) => {
-                                    setSelectedNienKhoaId(value);
-                                    setError(null);
-                                }}
-                                defaultValue={selectedNienKhoaId}
-                                showSecondary={true}
-                                maxDisplayOptions={10}
-                                searchPlaceholder="Tìm niên khóa..."
-                            />
-                        </div>
-
-                        {/* Hiển thị thông tin đã chọn */}
-                        {(selectedNienKhoaId) && (
-                            <div className="mt-4 p-3 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
-                                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Thông tin đã chọn: </p>
-                                <div className="flex flex-wrap gap-2">
-                                    {selectedNienKhoaId && (
-                                        <Badge variant="solid" color="primary">
-                                            Niên khóa: {getSelectedNienKhoa()?.tenNienKhoa}
-                                        </Badge>
-                                    )}
-                                </div>
-                            </div>
-                        )}
+                    {/* Chọn Niên khóa */}
+                    <div>
+                        <Label className="mb-2 block text-sm font-medium">
+                            Niên khóa <span className="text-red-500">*</span>
+                        </Label>
+                        <SearchableSelect
+                            options={nienKhoaOptions.map((nk) => ({
+                                value: nk.id.toString(),
+                                label: nk.maNienKhoa,
+                                secondary: nk.tenNienKhoa,
+                            }))}
+                            placeholder="Chọn niên khóa..."
+                            onChange={(value) => {
+                                setSelectedNienKhoaId(value);
+                                setError(null);
+                            }}
+                            defaultValue={selectedNienKhoaId}
+                            showSecondary={true}
+                            maxDisplayOptions={10}
+                            searchPlaceholder="Tìm niên khóa..."
+                        />
                     </div>
-                )}
 
-                {/* Thông tin file sẽ xuất */}
-                {!isSuccess && selectedNienKhoaId && (
-                    <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 dark:border-emerald-800/50 dark:bg-emerald-900/20">
-                        <div className="p-4">
-                            <div className="flex items-start gap-3">
-                                <div className="flex-shrink-0">
-                                    <FontAwesomeIcon
-                                        icon={faFileExcel}
-                                        className="text-lg text-emerald-600 dark:text-emerald-400 mt-0.5"
-                                    />
-                                </div>
-                                <div className="flex-1">
-                                    <h4 className="font-semibold text-emerald-800 dark:text-emerald-300 mb-2">
-                                        Thông tin file xuất
-                                    </h4>
-                                    <ul className="text-sm text-emerald-700/80 dark:text-emerald-300/70 space-y-1.5">
-                                        <li className="flex items-center gap-2">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                            <span>Định dạng:  <strong>Excel (.xlsx)</strong></span>
-                                        </li>
-                                        <li className="flex items-center gap-2">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                            <span>
-                                                Tên file: <strong>Thống kê sinh viên tốt nghiệp Khoá {getSelectedNienKhoa()?.maNienKhoa}.xlsx</strong>
-                                            </span>
-                                        </li>
-                                        <li className="flex items-center gap-2">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                            <span>Nội dung:  Danh sách sinh viên đạt/không đạt tốt nghiệp & xếp loại TN</span>
-                                        </li>
-                                    </ul>
-                                </div>
-                            </div>
+                    {/* Hiển thị thông tin đã chọn */}
+                    {selectedNienKhoaId && (
+                        <div className="mt-4 p-3 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-600">
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Đã chọn:</p>
+                            <Badge variant="solid" color="primary">
+                                {getSelectedNienKhoa()?.tenNienKhoa}
+                            </Badge>
                         </div>
-                    </div>
-                )}
+                    )}
+                </div>
 
                 {/* Hiển thị lỗi */}
                 {error && (
@@ -1456,84 +1362,18 @@ const XetTotNghiepModal: React.FC<XetTotNghiepModalProps> = ({
                     </div>
                 )}
 
-                {/* Hiển thị thành công */}
-                {isSuccess && (
-                    <div className="mb-6">
-                        <div className="rounded-xl border border-emerald-200 bg-emerald-50 dark:border-emerald-800/50 dark: bg-emerald-900/20 p-6">
-                            <div className="flex flex-col items-center text-center">
-                                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-800/50 mb-4">
-                                    <FontAwesomeIcon
-                                        icon={faCircleCheck}
-                                        className="text-3xl text-emerald-600 dark:text-emerald-400"
-                                    />
-                                </div>
-                                <h4 className="text-lg font-semibold text-emerald-800 dark:text-emerald-300 mb-2">
-                                    Xét tốt nghiệp thành công!
-                                </h4>
-                                <p className="text-sm text-emerald-700/80 dark:text-emerald-300/70 mb-3">
-                                    File thống kê đã được tải xuống tự động.
-                                </p>
-                                <div className="flex flex-wrap justify-center gap-2">
-                                    <Badge variant="solid" color="primary">
-                                        Niên khóa: {getSelectedNienKhoa()?.tenNienKhoa}
-                                    </Badge>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Loading state */}
-                {isLoading && (
-                    <div className="mb-6 p-6 bg-gray-50 dark:bg-gray-800 rounded-xl flex flex-col items-center justify-center">
-                        <div className="relative mb-4">
-                            <div className="h-16 w-16 rounded-full border-4 border-emerald-100 dark:border-emerald-900/50"></div>
-                            <div className="absolute top-0 left-0 h-16 w-16 rounded-full border-4 border-emerald-500 border-t-transparent animate-spin"></div>
-                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                                <FontAwesomeIcon
-                                    icon={faGraduationCap}
-                                    className="text-xl text-emerald-500"
-                                />
-                            </div>
-                        </div>
-                        <p className="text-gray-700 dark:text-gray-300 font-medium">
-                            Đang xét tốt nghiệp và tạo báo cáo...
-                        </p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                            Vui lòng đợi trong giây lát
-                        </p>
-                    </div>
-                )}
-
                 {/* Buttons */}
                 <div className="flex justify-end gap-3 pt-2">
-                    {isSuccess ? (
-                        <>
-                            <Button variant="outline" onClick={handleReset}>
-                                Xét niên khóa/ngành khác
-                            </Button>
-                            <Button variant="primary" onClick={handleClose}>
-                                Đóng
-                            </Button>
-                        </>
-                    ) : (
-                        <>
-                            <Button variant="outline" onClick={handleClose} disabled={isLoading}>
-                                Hủy
-                            </Button>
-                            <Button
-                                onClick={handleXetTotNghiep}
-                                disabled={!selectedNienKhoaId || isLoading}
-                                startIcon={
-                                    isLoading
-                                        ? <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
-                                        : <FontAwesomeIcon icon={faGraduationCap} />
-                                }
-                            >
-                                {isLoading ? "Đang xử lý..." : "Xét Tốt Nghiệp"}
-                            </Button>
-                        </>
-                    )}
+                    <Button variant="outline" onClick={handleClose}>
+                        Hủy
+                    </Button>
+                    <Button
+                        onClick={handleXetTotNghiep}
+                        disabled={!selectedNienKhoaId}
+                        startIcon={<FontAwesomeIcon icon={faGraduationCap} />}
+                    >
+                        Tiếp tục
+                    </Button>
                 </div>
             </div>
         </Modal>
@@ -1665,10 +1505,10 @@ const ThongKeSVTruotMonModal: React.FC<ThongKeSVTruotMonModalProps> = ({
                     </div>
                     <div>
                         <h3 className="text-xl font-semibold text-gray-800 dark:text:white/90 dark:text-white">
-                            Thống kê SV trượt môn
+                            Xem sinh viên trượt môn
                         </h3>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Xuất danh sách sinh viên trượt và đề xuất học lại
+                            Chọn năm học và học kỳ để xem danh sách sinh viên trượt môn
                         </p>
                     </div>
                 </div>
@@ -1682,21 +1522,13 @@ const ThongKeSVTruotMonModal: React.FC<ThongKeSVTruotMonModalProps> = ({
                         />
                         <div className="space-y-1.5 text-sm text-blue-800 dark:text-blue-100">
                             <p>
-                                Chọn <strong>Năm học</strong> và <strong>Học kỳ</strong> để hệ thống thống kê
-                                sinh viên trượt môn và đề xuất học lại.
+                                Chọn <strong>Năm học</strong> và <strong>Học kỳ</strong> để xem danh sách
+                                sinh viên trượt môn và quản lý đề xuất học lại.
                             </p>
                             <p className="text-blue-700/80 dark:text-blue-200/80">
-                                Sau khi chọn xong, bạn có thể:
+                                Sau khi chọn xong, nhấn <strong>Xem</strong> để chuyển sang giao diện quản
+                                lý sinh viên trượt môn theo năm học và học kỳ đã chọn.
                             </p>
-                            <ul className="list-disc list-inside text-blue-700/80 dark:text-blue-200/80 space-y-0.5">
-                                <li>
-                                    Nhấn <strong>Xuất thống kê</strong> để tải file Excel, bao gồm thông tin SV và các môn học bị trượt.
-                                </li>
-                                <li>
-                                    Hoặc nhấn <strong>Xem</strong> để chuyển sang giao diện hệ thống hỗ trợ quản
-                                    lý đề xuất học lại theo năm học và học kỳ đã chọn.
-                                </li>
-                            </ul>
                         </div>
                     </div>
                 </div>
@@ -1766,29 +1598,15 @@ const ThongKeSVTruotMonModal: React.FC<ThongKeSVTruotMonModalProps> = ({
 
                 {/* Buttons */}
                 <div className="flex justify-end gap-3">
-                    <Button variant="outline" onClick={handleClose} disabled={isLoading}>
+                    <Button variant="outline" onClick={handleClose}>
                         Hủy
                     </Button>
                     <Button
-                        variant="outline"
                         onClick={handleViewUI}
-                        disabled={isLoading || !selectedNamHocId || !selectedHocKy}
+                        disabled={!selectedNamHocId || !selectedHocKy}
                         startIcon={<FontAwesomeIcon icon={faEye} />}
                     >
                         Xem
-                    </Button>
-                    <Button
-                        onClick={handleSubmit}
-                        disabled={isLoading}
-                        startIcon={
-                            isLoading ? (
-                                <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
-                            ) : (
-                                <FontAwesomeIcon icon={faDownload} />
-                            )
-                        }
-                    >
-                        {isLoading ? "Đang xuất..." : "Xuất thống kê"}
                     </Button>
                 </div>
             </div>
@@ -2935,7 +2753,7 @@ export default function QuanLySinhVienPage() {
                                     className="flex items-center gap-2 px-3 py-2 rounded-md transition-colors duration-200 hover:bg-red-100 hover:text-red-700 dark:hover:bg-red-900/30 dark:hover:text-red-300"
                                 >
                                     <FontAwesomeIcon icon={faUserXmark} className="w-4" />
-                                    TK SV trượt môn
+                                    Xem SV trượt môn
                                 </DropdownItem>
                             </div>
                         </Dropdown>

@@ -1046,8 +1046,8 @@ export default function QuanLyLopHocPhanPage() {
                                                                     href={`http://localhost:3001/quan-ly-lop-hoc-phan-theo-giang-vien/quan-ly-diem/${lhp.id}`}
                                                                     onItemClick={closeDropdown}
                                                                 >
-                                                                    <FontAwesomeIcon icon={faFileExcel} className="mr-2 w-4" />
-                                                                    Nhập điểm
+                                                                    <FontAwesomeIcon icon={lhp.khoaDiem ? faEye : faFileExcel} className="mr-2 w-4" />
+                                                                    {lhp.khoaDiem ? "Xem điểm" : "Nhập điểm"}
                                                                 </DropdownItem>
 
                                                                 {/* THÊM MỚI - Tải xuống Excel */}

@@ -18,7 +18,7 @@ import Input from "@/components/form/input/InputField";
 import Label from "@/components/form/Label";
 import Badge from "@/components/ui/badge/Badge";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faMagnifyingGlass, faEye, faEdit, faTriangleExclamation, faCircleInfo } from "@fortawesome/free-solid-svg-icons";
+import { faMagnifyingGlass, faEye, faEdit, faTriangleExclamation, faCircleInfo, faCircleCheck, faCircleExclamation } from "@fortawesome/free-solid-svg-icons";
 import { DropdownItem } from "@/components/ui/dropdown/DropdownItem";
 import { Dropdown } from "@/components/ui/dropdown/Dropdown";
 import { FaAngleDown } from "react-icons/fa6";
@@ -415,6 +415,15 @@ const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
     const [uploadSuccess, setUploadSuccess] = useState<number>(0);
     const [uploadFailed, setUploadFailed] = useState<number>(0);
     const [isDownloadingTemplate, setIsDownloadingTemplate] = useState(false);
+    const [activeTab, setActiveTab] = useState<"success" | "error">("success");
+    const [hasImported, setHasImported] = useState(false);
+    const [successRows, setSuccessRows] = useState<{
+        row: number;
+        maSinhVien: string;
+        diemQuaTrinh: number;
+        diemThanhPhan: number;
+        diemThi: number;
+    }[]>([]);
 
     const onDrop = (acceptedFiles: File[], rejectedFiles: any[]) => {
         setFileError("");
@@ -517,18 +526,19 @@ const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
             if (res.ok) {
                 setUploadSuccess(data.success || 0);
                 setUploadFailed(data.failed || 0);
+                setHasImported(true);
+
+                // Lưu successRows nếu có
+                if (data.successRows && data.successRows.length > 0) {
+                    setSuccessRows(data.successRows);
+                }
 
                 // Kiểm tra nếu có lỗi trong response
                 if (data.errors && data.errors.length > 0) {
                     setUploadErrors(data.errors);
-                    showAlert(
-                        "warning",
-                        "Nhập điểm hoàn tất với một số lỗi",
-                        `Thành công: ${data.success}, Thất bại: ${data.failed}`
-                    );
+                    setActiveTab("error"); // Tự động chọn tab lỗi nếu có lỗi
                 } else {
-                    showAlert("success", "Thành công", `Nhập điểm từ Excel thành công. Đã nhập: ${data.success} sinh viên`);
-                    // handleClose();
+                    setActiveTab("success");
                 }
                 onSuccess();
             } else {
@@ -543,17 +553,40 @@ const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
     };
 
     const handleClose = () => {
+        if (hasImported && uploadSuccess > 0) {
+            showAlert(
+                uploadFailed > 0 ? "warning" : "success",
+                uploadFailed > 0 ? "Hoàn tất với cảnh báo" : "Thành công",
+                `Đã nhập điểm ${uploadSuccess} sinh viên${uploadFailed > 0 ? `, ${uploadFailed} lỗi` : ""}`
+            );
+        }
         setSelectedFile(null);
         setFileError("");
         setUploadErrors([]);
         setUploadSuccess(0);
         setUploadFailed(0);
+        setActiveTab("success");
+        setHasImported(false);
+        setSuccessRows([]);
         onClose();
+        window.scrollTo({ top: 0, behavior: "smooth" });
     };
 
     const removeFile = () => {
         setSelectedFile(null);
         setFileError("");
+        setActiveTab("success");
+    };
+
+    const resetForNewUpload = () => {
+        setSelectedFile(null);
+        setFileError("");
+        setUploadErrors([]);
+        setUploadSuccess(0);
+        setUploadFailed(0);
+        setActiveTab("success");
+        setHasImported(false);
+        setSuccessRows([]);
     };
 
     if (!isOpen) return null;
@@ -709,78 +742,282 @@ const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
                     {fileError && (
                         <p className="mt-2 text-sm text-red-500">{fileError}</p>
                     )}
+                </div>
 
-                    {/* Hiển thị kết quả upload */}
-                    {(uploadSuccess > 0 || uploadFailed > 0) && (
-                        <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
-                            <div className="flex items-center justify-center gap-4 mb-2">
-                                <div className="flex items-center gap-2">
-                                    <FontAwesomeIcon icon={faFileExcel} className="text-green-500" />
-                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                        Thành công: <span className="text-green-600 dark:text-green-400">{uploadSuccess}</span>
-                                    </span>
+                {/* ==================== HIỂN THỊ KẾT QUẢ IMPORT ==================== */}
+                {hasImported && (uploadSuccess > 0 || uploadFailed > 0) && (
+                    <div className="mb-6 space-y-4">
+                        {/* Thống kê tổng quan */}
+                        <div className={`p-5 rounded-xl border ${uploadFailed === 0
+                                ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 dark:from-green-900/20 dark:to-emerald-900/20 dark:border-green-800/50'
+                                : 'bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-200 dark:from-yellow-900/20 dark:to-amber-900/20 dark:border-yellow-800/50'
+                            }`}>
+                            <div className="flex items-center gap-4 mb-4">
+                                <div className={`flex h-12 w-12 items-center justify-center rounded-full ${uploadFailed === 0
+                                        ? 'bg-green-100 dark:bg-green-800/50'
+                                        : 'bg-yellow-100 dark:bg-yellow-800/50'
+                                    }`}>
+                                    <FontAwesomeIcon
+                                        icon={uploadFailed === 0 ? faCircleCheck : faCircleExclamation}
+                                        className={`text-xl ${uploadFailed === 0
+                                                ? 'text-green-600 dark:text-green-400'
+                                                : 'text-yellow-600 dark:text-yellow-400'
+                                            }`}
+                                    />
                                 </div>
-                                {uploadFailed > 0 && (
-                                    <div className="flex items-center gap-2">
-                                        <FontAwesomeIcon icon={faFileExcel} className="text-red-500" />
-                                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                            Thất bại: <span className="text-red-600 dark:text-red-400">{uploadFailed}</span>
-                                        </span>
+                                <div>
+                                    <h4 className={`text-lg font-semibold ${uploadFailed === 0
+                                            ? 'text-green-800 dark:text-green-300'
+                                            : 'text-yellow-800 dark:text-yellow-300'
+                                        }`}>
+                                        {uploadFailed === 0 ? 'Nhập điểm thành công!' : 'Hoàn tất với một số lỗi'}
+                                    </h4>
+                                    <p className={`text-sm ${uploadFailed === 0
+                                            ? 'text-green-600 dark:text-green-400'
+                                            : 'text-yellow-600 dark:text-yellow-400'
+                                        }`}>
+                                        Đã xử lý {uploadSuccess + uploadFailed} sinh viên
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Grid thống kê */}
+                            <div className="grid grid-cols-3 gap-4">
+                                <div className="bg-white dark:bg-gray-800 rounded-xl p-4 text-center border border-gray-200 dark:border-gray-700 shadow-sm">
+                                    <p className="text-3xl font-bold text-gray-800 dark:text-white">
+                                        {uploadSuccess + uploadFailed}
+                                    </p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Tổng số dòng</p>
+                                </div>
+                                <div className="bg-white dark:bg-gray-800 rounded-xl p-4 text-center border border-green-200 dark:border-green-700 shadow-sm">
+                                    <p className="text-3xl font-bold text-green-600 dark:text-green-400">
+                                        {uploadSuccess}
+                                    </p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Thành công</p>
+                                </div>
+                                <div className="bg-white dark:bg-gray-800 rounded-xl p-4 text-center border border-red-200 dark:border-red-700 shadow-sm">
+                                    <p className="text-3xl font-bold text-red-600 dark:text-red-400">
+                                        {uploadFailed}
+                                    </p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Thất bại</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Tabs chuyển đổi */}
+                        {((successRows && successRows.length > 0) ||
+                            (uploadErrors && uploadErrors.length > 0)) && (
+                                <div className="flex gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                                    <button
+                                        type="button"
+                                        onClick={() => setActiveTab("success")}
+                                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium rounded-md transition-all ${activeTab === "success"
+                                                ? "bg-white dark:bg-gray-700 text-green-600 dark:text-green-400 shadow-sm"
+                                                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                                            }`}
+                                    >
+                                        <FontAwesomeIcon icon={faCircleCheck} className={activeTab === "success" ? "text-green-500" : ""} />
+                                        Thành công ({successRows?.length || uploadSuccess || 0})
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setActiveTab("error")}
+                                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium rounded-md transition-all ${activeTab === "error"
+                                                ? "bg-white dark:bg-gray-700 text-red-600 dark:text-red-400 shadow-sm"
+                                                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                                            }`}
+                                    >
+                                        <FontAwesomeIcon icon={faCircleExclamation} className={activeTab === "error" ? "text-red-500" : ""} />
+                                        Thất bại ({uploadErrors?.length || 0})
+                                    </button>
+                                </div>
+                            )}
+
+                        {/* ==================== TABLE THÀNH CÔNG ==================== */}
+                        {activeTab === "success" && (
+                            <div className="rounded-xl border border-green-200 dark:border-green-800/50 overflow-hidden">
+                                <div className="bg-green-50 dark:bg-green-900/20 px-4 py-3 border-b border-green-200 dark:border-green-800/50">
+                                    <h4 className="font-semibold text-green-800 dark:text-green-300 flex items-center gap-2">
+                                        <FontAwesomeIcon icon={faCircleCheck} className="text-green-500" />
+                                        Chi tiết các sinh viên nhập điểm thành công
+                                    </h4>
+                                </div>
+
+                                {successRows && successRows.length > 0 ? (
+                                    <div className="max-h-64 overflow-y-auto">
+                                        <Table>
+                                            <TableHeader className="bg-gray-50 dark:bg-gray-800 sticky top-0 z-10">
+                                                <TableRow className="grid grid-cols-[10%_20%_20%_20%_30%]">
+                                                    <TableCell
+                                                        isHeader
+                                                        className="px-4 py-3 font-medium text-gray-600 dark:text-gray-300 text-center text-xs uppercase tracking-wider"
+                                                    >
+                                                        Dòng
+                                                    </TableCell>
+                                                    <TableCell
+                                                        isHeader
+                                                        className="px-4 py-3 font-medium text-gray-600 dark:text-gray-300 text-left text-xs uppercase tracking-wider"
+                                                    >
+                                                        Mã sinh viên
+                                                    </TableCell>
+                                                    <TableCell
+                                                        isHeader
+                                                        className="px-4 py-3 font-medium text-gray-600 dark:text-gray-300 text-center text-xs uppercase tracking-wider"
+                                                    >
+                                                        Điểm QT
+                                                    </TableCell>
+                                                    <TableCell
+                                                        isHeader
+                                                        className="px-4 py-3 font-medium text-gray-600 dark:text-gray-300 text-center text-xs uppercase tracking-wider"
+                                                    >
+                                                        Điểm TP
+                                                    </TableCell>
+                                                    <TableCell
+                                                        isHeader
+                                                        className="px-4 py-3 font-medium text-gray-600 dark:text-gray-300 text-center text-xs uppercase tracking-wider"
+                                                    >
+                                                        Điểm Thi
+                                                    </TableCell>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody className="divide-y divide-gray-100 dark:divide-gray-700">
+                                                {successRows.map((row, idx) => (
+                                                    <TableRow
+                                                        key={idx}
+                                                        className="grid grid-cols-[10%_20%_20%_20%_30%] bg-white dark:bg-gray-900 hover:bg-green-50/50 dark:hover:bg-green-900/10 transition-colors"
+                                                    >
+                                                        <TableCell className="px-4 py-3 text-center">
+                                                            <Badge variant="light" color="success">
+                                                                {row.row}
+                                                            </Badge>
+                                                        </TableCell>
+                                                        <TableCell className="px-4 py-3 text-left">
+                                                            <span className="font-mono text-sm text-gray-800 dark:text-gray-200">
+                                                                {row.maSinhVien}
+                                                            </span>
+                                                        </TableCell>
+                                                        <TableCell className="px-4 py-3 text-center text-gray-700 dark:text-gray-300">
+                                                            {row.diemQuaTrinh}
+                                                        </TableCell>
+                                                        <TableCell className="px-4 py-3 text-center text-gray-700 dark:text-gray-300">
+                                                            {row.diemThanhPhan}
+                                                        </TableCell>
+                                                        <TableCell className="px-4 py-3 text-center text-gray-700 dark:text-gray-300">
+                                                            {row.diemThi}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center py-12 text-gray-500 dark:text-gray-400">
+                                        {uploadSuccess > 0 ? (
+                                            <>
+                                                <FontAwesomeIcon icon={faCircleCheck} className="text-4xl mb-3 text-green-400" />
+                                                <p className="text-green-600 dark:text-green-400">
+                                                    Đã nhập điểm thành công {uploadSuccess} sinh viên
+                                                </p>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <FontAwesomeIcon icon={faFileExcel} className="text-4xl mb-3 text-gray-300 dark:text-gray-600" />
+                                                <p>Không có sinh viên nào được nhập điểm thành công</p>
+                                            </>
+                                        )}
                                     </div>
                                 )}
                             </div>
-                        </div>
-                    )}
+                        )}
 
-                    {/* Table hiển thị lỗi */}
-                    {uploadErrors.length > 0 && (
-                        <div className="mb-6">
-                            <h4 className="mb-3 text-base font-semibold text-gray-800 dark:text-white/90 flex items-center gap-2">
-                                <FontAwesomeIcon icon={faFileExcel} className="text-red-500" />
-                                Chi tiết lỗi ({uploadErrors.length})
-                            </h4>
-                            <div className="overflow-hidden rounded-xl border border-red-200 bg-white dark:border-red-900/30 dark:bg-white/[0.03] max-h-80 overflow-y-auto">
-                                <Table>
-                                    <TableHeader className="border-b border-red-100 dark:border-red-900/30 top-0 bg-red-50 dark:bg-red-900/10">
-                                        <TableRow className="grid grid-cols-[10%_22%_68%]">
-                                            <TableCell isHeader className="px-4 py-3 font-medium text-gray-700 dark:text-gray-300 text-xs text-center">
-                                                Dòng
-                                            </TableCell>
-                                            <TableCell isHeader className="px-4 py-3 font-medium text-gray-700 dark:text-gray-300 text-xs text-center">
-                                                Mã SV
-                                            </TableCell>
-                                            <TableCell isHeader className="px-4 py-3 font-medium text-gray-700 dark:text-gray-300 text-xs">
-                                                Lỗi
-                                            </TableCell>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody className="divide-y divide-red-100 dark:divide-red-900/30 text-theme-sm">
-                                        {uploadErrors.map((error, index) => (
-                                            <TableRow key={index} className="hover:bg-red-50/50 dark:hover:bg-red-900/5 grid grid-cols-[10%_22%_68%]">
-                                                <TableCell className="px-4 py-3 text-gray-800 dark:text-white/90 text-sm text-center">
-                                                    {error.row}
-                                                </TableCell>
-                                                <TableCell className="px-4 py-3 text-gray-800 dark:text-white/90 text-sm text-center font-medium">
-                                                    {error.maSinhVien}
-                                                </TableCell>
-                                                <TableCell className="px-4 py-3 text-red-600 dark:text-red-400 text-sm">
-                                                    {error.error}
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
+                        {/* ==================== TABLE LỖI ==================== */}
+                        {activeTab === "error" && (
+                            <div className="rounded-xl border border-red-200 dark:border-red-800/50 overflow-hidden">
+                                <div className="bg-red-50 dark:bg-red-900/20 px-4 py-3 border-b border-red-200 dark:border-red-800/50">
+                                    <h4 className="font-semibold text-red-800 dark:text-red-300 flex items-center gap-2">
+                                        <FontAwesomeIcon icon={faCircleExclamation} className="text-red-500" />
+                                        Chi tiết các dòng bị lỗi
+                                    </h4>
+                                </div>
+
+                                {uploadErrors && uploadErrors.length > 0 ? (
+                                    <div className="max-h-64 overflow-y-auto">
+                                        <Table>
+                                            <TableHeader className="bg-gray-50 dark:bg-gray-800 sticky top-0 z-10">
+                                                <TableRow className="grid grid-cols-[12%_23%_65%]">
+                                                    <TableCell
+                                                        isHeader
+                                                        className="px-4 py-3 font-medium text-gray-600 dark:text-gray-300 text-center text-xs uppercase tracking-wider"
+                                                    >
+                                                        Dòng
+                                                    </TableCell>
+                                                    <TableCell
+                                                        isHeader
+                                                        className="px-4 py-3 font-medium text-gray-600 dark:text-gray-300 text-left text-xs uppercase tracking-wider"
+                                                    >
+                                                        Mã sinh viên
+                                                    </TableCell>
+                                                    <TableCell
+                                                        isHeader
+                                                        className="px-4 py-3 font-medium text-gray-600 dark:text-gray-300 text-left text-xs uppercase tracking-wider"
+                                                    >
+                                                        Mô tả lỗi
+                                                    </TableCell>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody className="divide-y divide-gray-100 dark:divide-gray-700">
+                                                {uploadErrors.map((err, idx) => (
+                                                    <TableRow
+                                                        key={idx}
+                                                        className="grid grid-cols-[12%_23%_65%] bg-white dark:bg-gray-900 hover:bg-red-50/50 dark:hover:bg-red-900/10 transition-colors"
+                                                    >
+                                                        <TableCell className="px-4 py-3 text-center">
+                                                            <Badge variant="light" color="error">
+                                                                {err.row}
+                                                            </Badge>
+                                                        </TableCell>
+                                                        <TableCell className="px-4 py-3 text-left">
+                                                            <span className="font-mono text-sm text-gray-600 dark:text-gray-400">
+                                                                {err.maSinhVien || 'N/A'}
+                                                            </span>
+                                                        </TableCell>
+                                                        <TableCell className="px-4 py-3 text-left">
+                                                            <span className="text-sm text-red-600 dark:text-red-400">
+                                                                {err.error}
+                                                            </span>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center py-12 text-gray-500 dark:text-gray-400">
+                                        <FontAwesomeIcon icon={faCircleCheck} className="text-4xl mb-3 text-green-400" />
+                                        <p className="text-green-600 dark:text-green-400">Tất cả sinh viên đều nhập điểm thành công!</p>
+                                    </div>
+                                )}
                             </div>
-                        </div>
-                    )}
-                </div>
+                        )}
 
-                {/* Buttons */}
-                <div className="flex justify-end gap-3">
-                    <Button variant="outline" onClick={handleClose} disabled={isUploading}>
-                        {uploadErrors.length > 0 ? "Đóng" : "Hủy"}
-                    </Button>
-                    {uploadErrors.length === 0 && (
+                        {/* Buttons sau khi import */}
+                        <div className="flex justify-end gap-3 pt-2">
+                            <Button variant="outline" onClick={resetForNewUpload}>
+                                Nhập file khác
+                            </Button>
+                            <Button onClick={handleClose}>
+                                Hoàn tất
+                            </Button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Buttons - chỉ hiển thị khi chưa import */}
+                {!hasImported && (
+                    <div className="flex justify-end gap-3">
+                        <Button variant="outline" onClick={handleClose} disabled={isUploading}>
+                            Hủy
+                        </Button>
                         <Button
                             onClick={handleUpload}
                             disabled={!selectedFile || isUploading}
@@ -788,8 +1025,8 @@ const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
                         >
                             {isUploading ? "Đang xử lý..." : "Nhập điểm"}
                         </Button>
-                    )}
-                </div>
+                    </div>
+                )}
             </div>
         </Modal>
     );
@@ -1020,9 +1257,9 @@ export default function ChiTietLopHocPhanPage() {
     const openEditModal = (sinhVienDiem: SinhVienDiem) => {
         setEditingSinhVien(sinhVienDiem);
         if (sinhVienDiem.diem) {
-            setDiemQuaTrinh(sinhVienDiem.diem.diemQuaTrinh || "");
-            setDiemThanhPhan(sinhVienDiem.diem.diemThanhPhan || "");
-            setDiemThi(sinhVienDiem.diem.diemThi || "");
+            setDiemQuaTrinh(sinhVienDiem.diem.diemQuaTrinh ?? "");
+            setDiemThanhPhan(sinhVienDiem.diem.diemThanhPhan ?? "");
+            setDiemThi(sinhVienDiem.diem.diemThi ?? "");
         } else {
             resetForm();
         }
@@ -1208,21 +1445,21 @@ export default function ChiTietLopHocPhanPage() {
                                                     {item.chuaCoDiem || !item.diem ? (
                                                         <span className="text-gray-400 dark:text-gray-500">-</span>
                                                     ) : (
-                                                        item.diem.diemQuaTrinh || "-"
+                                                        item.diem.diemQuaTrinh ?? "-"
                                                     )}
                                                 </TableCell>
                                                 <TableCell className="px-5 py-4 text-center text-gray-800 dark:text-white/90">
                                                     {item.chuaCoDiem || !item.diem ? (
                                                         <span className="text-gray-400 dark:text-gray-500">-</span>
                                                     ) : (
-                                                        item.diem.diemThanhPhan || "-"
+                                                        item.diem.diemThanhPhan ?? "-"
                                                     )}
                                                 </TableCell>
                                                 <TableCell className="px-5 py-4 text-center text-gray-800 dark:text-white/90">
                                                     {item.chuaCoDiem || !item.diem ? (
                                                         <span className="text-gray-400 dark:text-gray-500">-</span>
                                                     ) : (
-                                                        item.diem.diemThi || "-"
+                                                        item.diem.diemThi ?? "-"
                                                     )}
                                                 </TableCell>
                                                 <TableCell className="px-5 py-4 text-center text-gray-800 dark:text-white/90">
@@ -1244,7 +1481,7 @@ export default function ChiTietLopHocPhanPage() {
                                                         <span className="text-gray-400 dark:text-gray-500">-</span>
                                                     ) : (
                                                         <Badge variant="solid" color="success">
-                                                            {item.diem.DiemChu || "-"}
+                                                            {item.diem.DiemChu ?? "-"}
                                                         </Badge>
                                                     )}
                                                 </TableCell>

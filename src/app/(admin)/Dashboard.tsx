@@ -419,7 +419,7 @@ export default function DashboardOverview() {
             </div>
 
             {/* Môn học - Full width */}
-            <div className="col-span-2 p-4 rounded-xl bg-gradient-to-br from-pink-50 to-pink-100 dark:from-pink-900/20 dark:to-pink-800/20 border border-pink-200 dark: border-pink-800">
+            <div className="col-span-2 p-4 rounded-xl bg-gradient-to-br from-pink-50 to-pink-100 dark:from-pink-900/20 dark:to-pink-800/20 border border-pink-200 dark:border-pink-800">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-pink-500/20">

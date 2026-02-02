@@ -884,21 +884,21 @@ export default function ChiTietLopHocPhanPage() {
                                                     {item.chuaCoDiem || !item.diem ? (
                                                         <span className="text-gray-400 dark:text-gray-500">-</span>
                                                     ) : (
-                                                        item.diem.diemQuaTrinh || "-"
+                                                        item.diem.diemQuaTrinh ?? "-"
                                                     )}
                                                 </TableCell>
                                                 <TableCell className="px-5 py-4 text-center text-gray-800 dark:text-white/90">
                                                     {item.chuaCoDiem || !item.diem ? (
                                                         <span className="text-gray-400 dark:text-gray-500">-</span>
                                                     ) : (
-                                                        item.diem.diemThanhPhan || "-"
+                                                        item.diem.diemThanhPhan ?? "-"
                                                     )}
                                                 </TableCell>
                                                 <TableCell className="px-5 py-4 text-center text-gray-800 dark:text-white/90">
                                                     {item.chuaCoDiem || !item.diem ? (
                                                         <span className="text-gray-400 dark:text-gray-500">-</span>
                                                     ) : (
-                                                        item.diem.diemThi || "-"
+                                                        item.diem.diemThi ?? "-"
                                                     )}
                                                 </TableCell>
                                                 <TableCell className="px-5 py-4 text-center text-gray-800 dark:text-white/90">
@@ -920,7 +920,7 @@ export default function ChiTietLopHocPhanPage() {
                                                         <span className="text-gray-400 dark:text-gray-500">-</span>
                                                     ) : (
                                                         <Badge variant="solid" color="success">
-                                                            {item.diem.DiemChu || "-"}
+                                                            {item.diem.DiemChu ?? "-"}
                                                         </Badge>
                                                     )}
                                                 </TableCell>

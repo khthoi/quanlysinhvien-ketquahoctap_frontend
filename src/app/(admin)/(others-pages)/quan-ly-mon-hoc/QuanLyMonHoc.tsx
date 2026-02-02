@@ -20,7 +20,7 @@ import TextArea from "@/components/form/input/TextArea";
 import Badge from "@/components/ui/badge/Badge";
 import Select from "@/components/form/Select";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faMagnifyingGlass, faChevronDown, faChevronUp, faUnlink } from "@fortawesome/free-solid-svg-icons";
+import { faMagnifyingGlass, faChevronDown, faChevronUp, faUnlink, faCircleCheck, faCircleExclamation } from "@fortawesome/free-solid-svg-icons";
 import { ChevronDownIcon } from "@/icons";
 import { Dropdown } from "@/components/ui/dropdown/Dropdown";
 import { DropdownItem } from "@/components/ui/dropdown/DropdownItem";
@@ -296,14 +296,6 @@ const ItemsCountInfo: React.FC<ItemsCountInfoProps> = ({ pagination }) => {
 };
 
 // ==================== MODAL NHẬP MÔN HỌC EXCEL ====================
-interface ImportMonHocExcelModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-    onSuccess: () => void;
-    showAlert: (variant: "success" | "error" | "warning" | "info", title: string, message: string) => void;
-}
-
-// ==================== MODAL NHẬP MÔN HỌC EXCEL ====================
 interface ImportResult {
     totalRows: number;
     success: number;
@@ -312,6 +304,11 @@ interface ImportResult {
         row: number;
         maMonHoc?: string;
         error: string;
+    }>;
+    successRows?: Array<{
+        row: number;
+        maMonHoc: string;
+        tenMonHoc: string;
     }>;
 }
 
@@ -333,6 +330,8 @@ const ImportMonHocExcelModal: React.FC<ImportMonHocExcelModalProps> = ({
     const [isUploading, setIsUploading] = useState(false);
     const [importResult, setImportResult] = useState<ImportResult | null>(null);
     const [importError, setImportError] = useState<string>("");
+    const [activeTab, setActiveTab] = useState<"success" | "error">("success");
+    const [hasImported, setHasImported] = useState(false);
 
     const onDrop = (acceptedFiles: File[], rejectedFiles: any[]) => {
         setFileError("");
@@ -400,6 +399,13 @@ const ImportMonHocExcelModal: React.FC<ImportMonHocExcelModalProps> = ({
 
             if (res.ok) {
                 setImportResult(result);
+                setHasImported(true);
+                // Tự động chọn tab dựa trên kết quả
+                if (result.failed > 0) {
+                    setActiveTab("error");
+                } else {
+                    setActiveTab("success");
+                }
                 onSuccess(); // Refresh danh sách
             } else {
                 setImportError(result.message || "Nhập môn học thất bại");
@@ -412,11 +418,21 @@ const ImportMonHocExcelModal: React.FC<ImportMonHocExcelModalProps> = ({
     };
 
     const handleClose = () => {
+        if (hasImported && importResult && importResult.success > 0) {
+            showAlert(
+                importResult.errors?.length > 0 ? "warning" : "success",
+                importResult.errors?.length > 0 ? "Hoàn tất với cảnh báo" : "Thành công",
+                `Đã thêm ${importResult.success} môn học${importResult.failed > 0 ? `, ${importResult.failed} lỗi` : ""}`
+            );
+        }
         setSelectedFile(null);
         setFileError("");
         setImportResult(null);
         setImportError("");
+        setActiveTab("success");
+        setHasImported(false);
         onClose();
+        window.scrollTo({ top: 0, behavior: "smooth" });
     };
 
     const handleCloseAndNotify = () => {
@@ -436,6 +452,7 @@ const ImportMonHocExcelModal: React.FC<ImportMonHocExcelModalProps> = ({
         setFileError("");
         setImportResult(null);
         setImportError("");
+        setActiveTab("success");
     };
 
     const resetForNewUpload = () => {
@@ -443,12 +460,14 @@ const ImportMonHocExcelModal: React.FC<ImportMonHocExcelModalProps> = ({
         setFileError("");
         setImportResult(null);
         setImportError("");
+        setActiveTab("success");
+        setHasImported(false);
     };
 
     if (!isOpen) return null;
 
     return (
-        <Modal isOpen={isOpen} onClose={handleClose} className="max-w-2xl">
+        <Modal isOpen={isOpen} onClose={handleClose} className="max-w-4xl">
             <div className="p-6 sm:p-8 max-h-[85vh] overflow-y-auto">
                 <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
                     Nhập môn học bằng Excel
@@ -458,105 +477,237 @@ const ImportMonHocExcelModal: React.FC<ImportMonHocExcelModalProps> = ({
                 {importResult && (
                     <div className="mb-6 space-y-4">
                         {/* Thống kê tổng quan */}
-                        <div className={`p-4 rounded-xl border ${importResult.failed === 0
-                            ? 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800/50'
-                            : 'bg-yellow-50 border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800/50'
+                        <div className={`p-5 rounded-xl border ${importResult.failed === 0
+                                ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 dark:from-green-900/20 dark:to-emerald-900/20 dark:border-green-800/50'
+                                : 'bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-200 dark:from-yellow-900/20 dark:to-amber-900/20 dark:border-yellow-800/50'
                             }`}>
-                            <div className="flex items-center gap-3 mb-3">
-                                <div className={`flex h-10 w-10 items-center justify-center rounded-full ${importResult.failed === 0
-                                    ? 'bg-green-100 dark:bg-green-800/50'
-                                    : 'bg-yellow-100 dark:bg-yellow-800/50'
+                            <div className="flex items-center gap-4 mb-4">
+                                <div className={`flex h-12 w-12 items-center justify-center rounded-full ${importResult.failed === 0
+                                        ? 'bg-green-100 dark:bg-green-800/50'
+                                        : 'bg-yellow-100 dark:bg-yellow-800/50'
                                     }`}>
                                     <FontAwesomeIcon
-                                        icon={importResult.failed === 0 ? faFileExcel : faLightbulb}
-                                        className={`text-lg ${importResult.failed === 0
-                                            ? 'text-green-600 dark:text-green-400'
-                                            : 'text-yellow-600 dark:text-yellow-400'
+                                        icon={importResult.failed === 0 ? faCircleCheck : faCircleExclamation}
+                                        className={`text-xl ${importResult.failed === 0
+                                                ? 'text-green-600 dark:text-green-400'
+                                                : 'text-yellow-600 dark:text-yellow-400'
                                             }`}
                                     />
                                 </div>
                                 <div>
-                                    <h4 className={`font-semibold ${importResult.failed === 0
-                                        ? 'text-green-800 dark:text-green-300'
-                                        : 'text-yellow-800 dark:text-yellow-300'
+                                    <h4 className={`text-lg font-semibold ${importResult.failed === 0
+                                            ? 'text-green-800 dark:text-green-300'
+                                            : 'text-yellow-800 dark:text-yellow-300'
                                         }`}>
-                                        {importResult.failed === 0 ? 'Nhập thành công!' : 'Hoàn tất với một số lỗi'}
+                                        {importResult.failed === 0 ? 'Nhập dữ liệu thành công!' : 'Hoàn tất với một số lỗi'}
                                     </h4>
                                     <p className={`text-sm ${importResult.failed === 0
-                                        ? 'text-green-600 dark:text-green-400'
-                                        : 'text-yellow-600 dark:text-yellow-400'
+                                            ? 'text-green-600 dark:text-green-400'
+                                            : 'text-yellow-600 dark:text-yellow-400'
                                         }`}>
-                                        Đã xử lý {importResult.totalRows} dòng dữ liệu
+                                        Đã xử lý {(importResult.success || 0) + (importResult.failed || 0)} dòng dữ liệu
                                     </p>
                                 </div>
                             </div>
 
                             {/* Grid thống kê */}
-                            <div className="grid grid-cols-3 gap-3 mt-4">
-                                <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-center border border-gray-200 dark:border-gray-700">
-                                    <p className="text-2xl font-bold text-gray-800 dark:text-white">
-                                        {importResult.totalRows}
+                            <div className="grid grid-cols-3 gap-4">
+                                <div className="bg-white dark:bg-gray-800 rounded-xl p-4 text-center border border-gray-200 dark:border-gray-700 shadow-sm">
+                                    <p className="text-3xl font-bold text-gray-800 dark:text-white">
+                                        {(importResult.success || 0) + (importResult.failed || 0)}
                                     </p>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">Tổng dòng</p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Tổng số dòng</p>
                                 </div>
-                                <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-center border border-green-200 dark:border-green-700">
-                                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                                        {importResult.success}
+                                <div className="bg-white dark:bg-gray-800 rounded-xl p-4 text-center border border-green-200 dark:border-green-700 shadow-sm">
+                                    <p className="text-3xl font-bold text-green-600 dark:text-green-400">
+                                        {importResult.success || 0}
                                     </p>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">Thành công</p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Thành công</p>
                                 </div>
-                                <div className="bg-white dark:bg-gray-800 rounded-lg p-3 text-center border border-red-200 dark:border-red-700">
-                                    <p className="text-2xl font-bold text-red-600 dark:text-red-400">
-                                        {importResult.failed}
+                                <div className="bg-white dark:bg-gray-800 rounded-xl p-4 text-center border border-red-200 dark:border-red-700 shadow-sm">
+                                    <p className="text-3xl font-bold text-red-600 dark:text-red-400">
+                                        {importResult.failed || 0}
                                     </p>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">Thất bại</p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Thất bại</p>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Bảng chi tiết lỗi */}
-                        {importResult.errors && importResult.errors.length > 0 && (
+                        {/* Tabs chuyển đổi */}
+                        {((importResult.successRows && importResult.successRows.length > 0) ||
+                            (importResult.errors && importResult.errors.length > 0)) && (
+                                <div className="flex gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                                    <button
+                                        type="button"
+                                        onClick={() => setActiveTab("success")}
+                                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium rounded-md transition-all ${activeTab === "success"
+                                                ? "bg-white dark:bg-gray-700 text-green-600 dark:text-green-400 shadow-sm"
+                                                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                                            }`}
+                                    >
+                                        <FontAwesomeIcon icon={faCircleCheck} className={activeTab === "success" ? "text-green-500" : ""} />
+                                        Thành công ({importResult.successRows?.length || importResult.success || 0})
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setActiveTab("error")}
+                                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium rounded-md transition-all ${activeTab === "error"
+                                                ? "bg-white dark:bg-gray-700 text-red-600 dark:text-red-400 shadow-sm"
+                                                : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                                            }`}
+                                    >
+                                        <FontAwesomeIcon icon={faCircleExclamation} className={activeTab === "error" ? "text-red-500" : ""} />
+                                        Thất bại ({importResult.errors?.length || 0})
+                                    </button>
+                                </div>
+                            )}
+
+                        {/* ==================== TABLE THÀNH CÔNG ==================== */}
+                        {activeTab === "success" && (
+                            <div className="rounded-xl border border-green-200 dark:border-green-800/50 overflow-hidden">
+                                <div className="bg-green-50 dark:bg-green-900/20 px-4 py-3 border-b border-green-200 dark:border-green-800/50">
+                                    <h4 className="font-semibold text-green-800 dark:text-green-300 flex items-center gap-2">
+                                        <FontAwesomeIcon icon={faCircleCheck} className="text-green-500" />
+                                        Chi tiết các dòng nhập thành công
+                                    </h4>
+                                </div>
+
+                                {importResult.successRows && importResult.successRows.length > 0 ? (
+                                    <div className="max-h-64 overflow-y-auto">
+                                        <Table>
+                                            <TableHeader className="bg-gray-50 dark:bg-gray-800 sticky top-0 z-10">
+                                                <TableRow className="grid grid-cols-[15%_35%_50%]">
+                                                    <TableCell
+                                                        isHeader
+                                                        className="px-4 py-3 font-medium text-gray-600 dark:text-gray-300 text-center text-xs uppercase tracking-wider"
+                                                    >
+                                                        Dòng
+                                                    </TableCell>
+                                                    <TableCell
+                                                        isHeader
+                                                        className="px-4 py-3 font-medium text-gray-600 dark:text-gray-300 text-left text-xs uppercase tracking-wider"
+                                                    >
+                                                        Mã môn học
+                                                    </TableCell>
+                                                    <TableCell
+                                                        isHeader
+                                                        className="px-4 py-3 font-medium text-gray-600 dark:text-gray-300 text-left text-xs uppercase tracking-wider"
+                                                    >
+                                                        Tên môn học
+                                                    </TableCell>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody className="divide-y divide-gray-100 dark:divide-gray-700">
+                                                {importResult.successRows.map((row, idx) => (
+                                                    <TableRow
+                                                        key={idx}
+                                                        className="grid grid-cols-[15%_35%_50%] bg-white dark:bg-gray-900 hover:bg-green-50/50 dark:hover:bg-green-900/10 transition-colors"
+                                                    >
+                                                        <TableCell className="px-4 py-3 text-center">
+                                                            <Badge variant="light" color="success">
+                                                                {row.row}
+                                                            </Badge>
+                                                        </TableCell>
+                                                        <TableCell className="px-4 py-3 text-left">
+                                                            <span className="font-mono text-sm text-gray-800 dark:text-gray-200">
+                                                                {row.maMonHoc}
+                                                            </span>
+                                                        </TableCell>
+                                                        <TableCell className="px-4 py-3 text-left text-gray-700 dark:text-gray-300">
+                                                            {row.tenMonHoc}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center py-12 text-gray-500 dark:text-gray-400">
+                                        {importResult.success > 0 ? (
+                                            <>
+                                                <FontAwesomeIcon icon={faCircleCheck} className="text-4xl mb-3 text-green-400" />
+                                                <p className="text-green-600 dark:text-green-400">
+                                                    Đã nhập thành công {importResult.success} môn học
+                                                </p>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <FontAwesomeIcon icon={faFileExcel} className="text-4xl mb-3 text-gray-300 dark:text-gray-600" />
+                                                <p>Không có dòng nào được nhập thành công</p>
+                                            </>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* ==================== TABLE LỖI ==================== */}
+                        {activeTab === "error" && (
                             <div className="rounded-xl border border-red-200 dark:border-red-800/50 overflow-hidden">
                                 <div className="bg-red-50 dark:bg-red-900/20 px-4 py-3 border-b border-red-200 dark:border-red-800/50">
                                     <h4 className="font-semibold text-red-800 dark:text-red-300 flex items-center gap-2">
-                                        <FontAwesomeIcon icon={faLightbulb} className="text-red-500" />
-                                        Chi tiết các dòng lỗi ({importResult.errors.length})
+                                        <FontAwesomeIcon icon={faCircleExclamation} className="text-red-500" />
+                                        Chi tiết các dòng bị lỗi
                                     </h4>
                                 </div>
-                                <div className="max-h-48 overflow-y-auto">
-                                    <table className="w-full">
-                                        <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
-                                            <tr className="grid grid-cols-[15%_25%_60%]">
-                                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                                                    Dòng
-                                                </th>
-                                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                                                    Mã môn
-                                                </th>
-                                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                                                    Lỗi
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                                            {importResult.errors.map((err, idx) => (
-                                                <tr key={idx} className="grid grid-cols-[15%_25%_60%] bg-white dark:bg-gray-900">
-                                                    <td className="px-4 py-2 text-sm text-gray-800 dark:text-gray-200">
-                                                        <Badge variant="light" color="error">
-                                                            {err.row}
-                                                        </Badge>
-                                                    </td>
-                                                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 font-mono">
-                                                        {err.maMonHoc || '-'}
-                                                    </td>
-                                                    <td className="px-4 py-2 text-sm text-red-600 dark:text-red-400">
-                                                        {err.error}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
+
+                                {importResult.errors && importResult.errors.length > 0 ? (
+                                    <div className="max-h-64 overflow-y-auto">
+                                        <Table>
+                                            <TableHeader className="bg-gray-50 dark:bg-gray-800 sticky top-0 z-10">
+                                                <TableRow className="grid grid-cols-[12%_23%_65%]">
+                                                    <TableCell
+                                                        isHeader
+                                                        className="px-4 py-3 font-medium text-gray-600 dark:text-gray-300 text-center text-xs uppercase tracking-wider"
+                                                    >
+                                                        Dòng
+                                                    </TableCell>
+                                                    <TableCell
+                                                        isHeader
+                                                        className="px-4 py-3 font-medium text-gray-600 dark:text-gray-300 text-left text-xs uppercase tracking-wider"
+                                                    >
+                                                        Mã môn học
+                                                    </TableCell>
+                                                    <TableCell
+                                                        isHeader
+                                                        className="px-4 py-3 font-medium text-gray-600 dark:text-gray-300 text-left text-xs uppercase tracking-wider"
+                                                    >
+                                                        Mô tả lỗi
+                                                    </TableCell>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody className="divide-y divide-gray-100 dark:divide-gray-700">
+                                                {importResult.errors.map((err, idx) => (
+                                                    <TableRow
+                                                        key={idx}
+                                                        className="grid grid-cols-[12%_23%_65%] bg-white dark:bg-gray-900 hover:bg-red-50/50 dark:hover:bg-red-900/10 transition-colors"
+                                                    >
+                                                        <TableCell className="px-4 py-3 text-center">
+                                                            <Badge variant="light" color="error">
+                                                                {err.row}
+                                                            </Badge>
+                                                        </TableCell>
+                                                        <TableCell className="px-4 py-3 text-left">
+                                                            <span className="font-mono text-sm text-gray-600 dark:text-gray-400">
+                                                                {err.maMonHoc || 'N/A'}
+                                                            </span>
+                                                        </TableCell>
+                                                        <TableCell className="px-4 py-3 text-left">
+                                                            <span className="text-sm text-red-600 dark:text-red-400">
+                                                                {err.error}
+                                                            </span>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center py-12 text-gray-500 dark:text-gray-400">
+                                        <FontAwesomeIcon icon={faCircleCheck} className="text-4xl mb-3 text-green-400" />
+                                        <p className="text-green-600 dark:text-green-400">Tất cả các dòng đều nhập thành công!</p>
+                                    </div>
+                                )}
                             </div>
                         )}
 
@@ -565,7 +716,7 @@ const ImportMonHocExcelModal: React.FC<ImportMonHocExcelModalProps> = ({
                             <Button variant="outline" onClick={resetForNewUpload}>
                                 Nhập file khác
                             </Button>
-                            <Button onClick={handleCloseAndNotify}>
+                            <Button onClick={handleClose}>
                                 Hoàn tất
                             </Button>
                         </div>
@@ -573,27 +724,30 @@ const ImportMonHocExcelModal: React.FC<ImportMonHocExcelModalProps> = ({
                 )}
 
                 {/* Hiển thị lỗi tổng quát */}
-                {importError && (
-                    <div className="mb-6 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50">
-                        <div className="flex items-center gap-3">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 dark:bg-red-800/50">
+                {importError && importResult === null && (
+                    <div className="mb-6 p-5 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50">
+                        <div className="flex items-center gap-4">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-800/50">
                                 <FontAwesomeIcon
-                                    icon={faLightbulb}
-                                    className="text-lg text-red-600 dark:text-red-400"
+                                    icon={faCircleExclamation}
+                                    className="text-xl text-red-600 dark:text-red-400"
                                 />
                             </div>
-                            <div>
+                            <div className="flex-1">
                                 <h4 className="font-semibold text-red-800 dark:text-red-300">
                                     Lỗi nhập dữ liệu
                                 </h4>
-                                <p className="text-sm text-red-600 dark:text-red-400">
+                                <p className="text-sm text-red-600 dark:text-red-400 mt-1">
                                     {importError}
                                 </p>
                             </div>
                         </div>
-                        <div className="mt-4 flex justify-end">
+                        <div className="mt-4 flex justify-end gap-3">
                             <Button variant="outline" size="sm" onClick={resetForNewUpload}>
                                 Thử lại
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={handleClose}>
+                                Đóng
                             </Button>
                         </div>
                     </div>

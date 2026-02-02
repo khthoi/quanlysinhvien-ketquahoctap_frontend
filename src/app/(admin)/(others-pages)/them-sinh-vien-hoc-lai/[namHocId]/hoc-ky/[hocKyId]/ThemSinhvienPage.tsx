@@ -34,6 +34,8 @@ import {
     faUserClock,
     faUserGraduate,
     faRefresh,
+    faDownload,
+    faFileExcel,
 } from "@fortawesome/free-solid-svg-icons";
 import { FaAngleDown } from "react-icons/fa6";
 
@@ -773,6 +775,53 @@ export default function ThemSinhvienPage() {
     // Tab active: "de-xuat" | "da-hoc-lai"
     const [activeMainTab, setActiveMainTab] = useState<"de-xuat" | "da-hoc-lai">("de-xuat");
 
+    // State cho xuất thống kê Excel
+    const [isExporting, setIsExporting] = useState(false);
+    const [exportSuccess, setExportSuccess] = useState<string | null>(null);
+    const [exportError, setExportError] = useState<string | null>(null);
+
+    // Hàm xuất thống kê sinh viên trượt môn
+    const handleExportThongKe = async () => {
+        if (!namHocId || !hocKyNum) return;
+        setIsExporting(true);
+        setExportSuccess(null);
+        setExportError(null);
+        try {
+            const accessToken = getCookie("access_token");
+            const res = await fetch("http://localhost:3000/bao-cao/de-xuat-hoc-lai", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${accessToken}`,
+                },
+                body: JSON.stringify({
+                    maNamHoc: namHocId,
+                    hocKy: hocKyNum,
+                }),
+            });
+
+            if (res.ok) {
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = `thong-ke-sv-truot-mon-${namHocId}-HK${hocKyNum}.xlsx`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+                setExportSuccess("Đã xuất file thống kê sinh viên trượt môn và đề xuất học lại thành công!");
+            } else {
+                const err = await res.json();
+                setExportError(err.message || "Không thể xuất thống kê");
+            }
+        } catch {
+            setExportError("Có lỗi xảy ra khi xuất thống kê");
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
     // Fetch API thống kê (nhanh - không có đề xuất lớp)
     const fetchThongKe = useCallback(async () => {
         if (!namHocId || !hocKyId) return;
@@ -1064,16 +1113,62 @@ export default function ThemSinhvienPage() {
                                 Quản lý sinh viên trượt môn và đăng ký học lại
                             </p>
                         </div>
-                        <Button
-                            variant="outline"
-                            onClick={handleRefresh}
-                            disabled={isLoading || loadingDeXuat}
-                            startIcon={<FontAwesomeIcon icon={faRefresh} className={isLoading || loadingDeXuat ? "animate-spin" : ""} />}
-                        >
-                            Làm mới
-                        </Button>
+                        <div className="flex gap-3">
+                            <Button
+                                variant="outline"
+                                onClick={handleExportThongKe}
+                                disabled={isLoading || isExporting}
+                                startIcon={
+                                    isExporting ? (
+                                        <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
+                                    ) : (
+                                        <FontAwesomeIcon icon={faDownload} />
+                                    )
+                                }
+                            >
+                                {isExporting ? "Đang xuất..." : "Xuất thống kê"}
+                            </Button>
+                            <Button
+                                variant="outline"
+                                onClick={handleRefresh}
+                                disabled={isLoading || loadingDeXuat}
+                                startIcon={<FontAwesomeIcon icon={faRefresh} className={isLoading || loadingDeXuat ? "animate-spin" : ""} />}
+                            >
+                                Làm mới
+                            </Button>
+                        </div>
                     </div>
                 </div>
+
+                {/* Thông báo xuất thống kê */}
+                {exportSuccess && (
+                    <div className="mb-6 p-4 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/50 text-green-700 dark:text-green-300 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <FontAwesomeIcon icon={faCircleCheck} />
+                            <span>{exportSuccess}</span>
+                        </div>
+                        <button
+                            onClick={() => setExportSuccess(null)}
+                            className="text-green-500 hover:text-green-700 dark:text-green-400 dark:hover:text-green-200"
+                        >
+                            ✕
+                        </button>
+                    </div>
+                )}
+                {exportError && (
+                    <div className="mb-6 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 text-red-700 dark:text-red-300 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <FontAwesomeIcon icon={faCircleExclamation} />
+                            <span>{exportError}</span>
+                        </div>
+                        <button
+                            onClick={() => setExportError(null)}
+                            className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-200"
+                        >
+                            ✕
+                        </button>
+                    </div>
+                )}
 
                 {/* Stats Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
