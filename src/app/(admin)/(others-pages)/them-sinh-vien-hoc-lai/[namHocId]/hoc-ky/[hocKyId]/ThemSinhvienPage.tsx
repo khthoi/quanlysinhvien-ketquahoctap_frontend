@@ -30,6 +30,10 @@ import {
     faUserPlus,
     faEye,
     faRotateRight,
+    faUsers,
+    faUserClock,
+    faUserGraduate,
+    faRefresh,
 } from "@fortawesome/free-solid-svg-icons";
 import { FaAngleDown } from "react-icons/fa6";
 
@@ -118,7 +122,40 @@ interface DeXuatResponse {
     tenNamHoc: string;
     tongSinhVien: number;
     items: DeXuatItem[];
-    sinhVienDaHocLaiHoacDangHoc?: SinhVienDaHocLaiItem[];
+}
+
+// --- Types for API mới: thong-tin-sinh-vien-truot-mon ---
+interface ThongTinSinhVienTruotMonResponse {
+    maNamHoc: string;
+    hocKy: number;
+    tenNamHoc: string;
+    tongSinhVienTruot: number;
+    soSinhVienDaHocLai: number;
+    soSinhVienChuaHocLai: number;
+    danhSachSinhVienTruot: Array<{
+        sinhVienId: number;
+        maSinhVien: string;
+        hoTen: string;
+        gioiTinh?: string;
+        sdt?: string;
+        tinhTrang: string;
+        lopHocPhanId: number;
+        maLopHocPhan: string;
+        monHocId: number;
+        maMonHoc: string;
+        tenMonHoc: string;
+        soTinChi: number;
+        diemQuaTrinh: number;
+        diemThanhPhan: number;
+        diemThi: number;
+        diemTBCHP: string;
+        diemSo: string;
+        diemChu: string;
+        daHocLai: boolean;
+        dangHocLai: boolean;
+        daDat: boolean;
+    }>;
+    danhSachSinhVienDaHocLai: SinhVienDaHocLaiItem[];
 }
 
 const DANH_GIA_TRUOT = "Trượt môn";
@@ -655,14 +692,67 @@ const ConfirmAddResultModal: React.FC<ConfirmAddResultModalProps> = ({
     );
 };
 
+// --- Stat Card Component ---
+interface StatCardProps {
+    icon: typeof faUsers;
+    title: string;
+    value: number | string;
+    color: "blue" | "green" | "amber" | "red" | "purple";
+    subtitle?: string;
+    loading?: boolean;
+}
+
+const StatCard: React.FC<StatCardProps> = ({ icon, title, value, color, subtitle, loading }) => {
+    const colorClasses = {
+        blue: "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800/50 text-blue-600 dark:text-blue-400",
+        green: "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800/50 text-green-600 dark:text-green-400",
+        amber: "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/50 text-amber-600 dark:text-amber-400",
+        red: "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800/50 text-red-600 dark:text-red-400",
+        purple: "bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800/50 text-purple-600 dark:text-purple-400",
+    };
+
+    const iconBgClasses = {
+        blue: "bg-blue-100 dark:bg-blue-800/50",
+        green: "bg-green-100 dark:bg-green-800/50",
+        amber: "bg-amber-100 dark:bg-amber-800/50",
+        red: "bg-red-100 dark:bg-red-800/50",
+        purple: "bg-purple-100 dark:bg-purple-800/50",
+    };
+
+    return (
+        <div className={`rounded-xl border p-4 ${colorClasses[color]}`}>
+            <div className="flex items-center gap-3">
+                <div className={`flex h-12 w-12 items-center justify-center rounded-full ${iconBgClasses[color]}`}>
+                    <FontAwesomeIcon icon={icon} className="text-xl" />
+                </div>
+                <div>
+                    {loading ? (
+                        <div className="h-7 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                    ) : (
+                        <p className="text-2xl font-bold">{value}</p>
+                    )}
+                    <p className="text-sm opacity-90">{title}</p>
+                    {subtitle && <p className="text-xs opacity-70 mt-0.5">{subtitle}</p>}
+                </div>
+            </div>
+        </div>
+    );
+};
+
 export default function ThemSinhvienPage() {
     const params = useParams();
     const namHocId = (params?.namHocId as string) ?? "";
     const hocKyId = (params?.hocKyId as string) ?? "";
     const hocKyNum = parseInt(hocKyId, 10) || 0;
 
+    // State cho API thống kê (API mới - nhanh hơn)
+    const [thongKeData, setThongKeData] = useState<ThongTinSinhVienTruotMonResponse | null>(null);
+    const [loadingThongKe, setLoadingThongKe] = useState(true);
+
+    // State cho API đề xuất (API cũ - chậm hơn vì tính best choice)
     const [apiData, setApiData] = useState<DeXuatResponse | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [loadingDeXuat, setLoadingDeXuat] = useState(false);
+
     const [fetchError, setFetchError] = useState<string | null>(null);
     const [removedIds, setRemovedIds] = useState<Set<number>>(new Set());
     const [selectedLHPMap, setSelectedLHPMap] = useState<Record<number, number>>({});
@@ -680,10 +770,40 @@ export default function ThemSinhvienPage() {
     const [confirmSuccessList, setConfirmSuccessList] = useState<ConfirmResultRow[]>([]);
     const [confirmErrorList, setConfirmErrorList] = useState<ConfirmResultRow[]>([]);
 
+    // Tab active: "de-xuat" | "da-hoc-lai"
+    const [activeMainTab, setActiveMainTab] = useState<"de-xuat" | "da-hoc-lai">("de-xuat");
+
+    // Fetch API thống kê (nhanh - không có đề xuất lớp)
+    const fetchThongKe = useCallback(async () => {
+        if (!namHocId || !hocKyId) return;
+        setLoadingThongKe(true);
+        try {
+            const accessToken = getCookie("access_token");
+            const res = await fetch("http://localhost:3000/bao-cao/thong-tin-sinh-vien-truot-mon", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${accessToken}`,
+                },
+                body: JSON.stringify({ maNamHoc: namHocId, hocKy: hocKyNum }),
+            });
+            const data = await res.json() as ThongTinSinhVienTruotMonResponse & { message?: string };
+            if (res.ok) {
+                setThongKeData(data);
+            } else {
+                setFetchError(data.message ?? "Không tải được dữ liệu thống kê");
+            }
+        } catch {
+            setFetchError("Lỗi kết nối khi tải thống kê");
+        } finally {
+            setLoadingThongKe(false);
+        }
+    }, [namHocId, hocKyId, hocKyNum]);
+
+    // Fetch API đề xuất (chậm hơn - có đề xuất lớp)
     const fetchDeXuat = useCallback(async (idsToKeepRemoved?: number[]) => {
         if (!namHocId || !hocKyId) return;
-        setLoading(true);
-        setFetchError(null);
+        setLoadingDeXuat(true);
         try {
             const accessToken = getCookie("access_token");
             const res = await fetch("http://localhost:3000/bao-cao/de-xuat-hoc-lai/json", {
@@ -702,7 +822,6 @@ export default function ThemSinhvienPage() {
                     tenNamHoc: data.tenNamHoc,
                     tongSinhVien: data.tongSinhVien ?? 0,
                     items: data.items ?? [],
-                    sinhVienDaHocLaiHoacDangHoc: data.sinhVienDaHocLaiHoacDangHoc ?? [],
                 });
                 setRemovedIds(idsToKeepRemoved?.length ? new Set(idsToKeepRemoved) : new Set());
                 const nextMap: Record<number, number> = {};
@@ -713,19 +832,25 @@ export default function ThemSinhvienPage() {
                         null;
                 });
                 setSelectedLHPMap(nextMap);
-            } else {
-                setFetchError(data.message ?? "Không tải được dữ liệu");
             }
         } catch {
-            setFetchError("Lỗi kết nối");
+            // Silent error for de-xuat, thong-ke already handled
         } finally {
-            setLoading(false);
+            setLoadingDeXuat(false);
         }
     }, [namHocId, hocKyId, hocKyNum]);
 
+    // Fetch cả 2 API khi mount
     useEffect(() => {
+        setFetchError(null);
+        fetchThongKe();
         fetchDeXuat();
-    }, [fetchDeXuat]);
+    }, [fetchThongKe, fetchDeXuat]);
+
+    const handleRefresh = async () => {
+        setFetchError(null);
+        await Promise.all([fetchThongKe(), fetchDeXuat()]);
+    };
 
     const displayItems = useMemo(() => {
         if (!apiData?.items) return [];
@@ -767,8 +892,8 @@ export default function ThemSinhvienPage() {
     }, [displayItems, selectedLHPMap]);
 
     const daHocLaiList = useMemo(
-        () => apiData?.sinhVienDaHocLaiHoacDangHoc ?? [],
-        [apiData?.sinhVienDaHocLaiHoacDangHoc]
+        () => thongKeData?.danhSachSinhVienDaHocLai ?? [],
+        [thongKeData?.danhSachSinhVienDaHocLai]
     );
     const filteredDaHocLai = useMemo(() => {
         if (!searchKeywordDaHocLai.trim()) return daHocLaiList;
@@ -901,12 +1026,17 @@ export default function ThemSinhvienPage() {
                 return next;
             });
         }
-        await fetchDeXuat(successIds);
+        // Refresh cả 2 API
+        await Promise.all([fetchThongKe(), fetchDeXuat(successIds)]);
     };
 
-    const tenNamHoc = apiData?.tenNamHoc ?? "";
-    const tongSinhVien = apiData?.tongSinhVien ?? 0;
-    const soSinhVienHienThi = displayItems.length;
+    // Thống kê từ API mới
+    const tenNamHoc = thongKeData?.tenNamHoc ?? apiData?.tenNamHoc ?? "";
+    const tongSinhVienTruot = thongKeData?.tongSinhVienTruot ?? apiData?.tongSinhVien ?? 0;
+    const soSinhVienDaHocLai = thongKeData?.soSinhVienDaHocLai ?? daHocLaiList.length;
+    const soSinhVienChuaHocLai = thongKeData?.soSinhVienChuaHocLai ?? displayItems.length;
+
+    const isLoading = loadingThongKe;
 
     return (
         <div>
@@ -914,33 +1044,100 @@ export default function ThemSinhvienPage() {
 
             <div className="rounded-2xl border border-gray-200 bg-white px-5 py-7 dark:border-gray-800 dark:bg-white/[0.03] xl:px-10 xl:py-12">
                 {fetchError && (
-                    <div className="mb-6 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 text-red-700 dark:text-red-300">
-                        {fetchError}
+                    <div className="mb-6 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 text-red-700 dark:text-red-300 flex items-center justify-between">
+                        <span>{fetchError}</span>
+                        <Button variant="outline" size="sm" onClick={handleRefresh}>
+                            <FontAwesomeIcon icon={faRefresh} className="mr-2" />
+                            Thử lại
+                        </Button>
                     </div>
                 )}
 
-                {/* Header */}
-                <div className="mb-6 p-5 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Header với thông tin năm học */}
+                <div className="mb-6 p-5 rounded-xl bg-gradient-to-r from-brand-50 to-blue-50 dark:from-brand-900/20 dark:to-blue-900/20 border border-brand-200 dark:border-brand-800/50">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                         <div>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Năm học</p>
-                            <p className="font-semibold text-gray-800 dark:text-white">{apiData?.maNamHoc ?? namHocId}</p>
-                        </div>
-                        <div>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Tên năm học</p>
-                            <p className="font-semibold text-gray-800 dark:text-white">{tenNamHoc || "—"}</p>
-                        </div>
-                        <div>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Học kỳ · Số SV cần học lại</p>
-                            <p className="font-semibold text-gray-800 dark:text-white">
-                                Học kỳ {hocKyNum} — {soSinhVienHienThi} sinh viên cần học lại
-                                {apiData?.sinhVienDaHocLaiHoacDangHoc?.length ? ` · ${apiData.sinhVienDaHocLaiHoacDangHoc.length} đã/đang học lại` : ""}
+                            <h2 className="text-xl font-bold text-gray-800 dark:text-white">
+                                Học kỳ {hocKyNum} - {tenNamHoc || namHocId}
+                            </h2>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                Quản lý sinh viên trượt môn và đăng ký học lại
                             </p>
                         </div>
+                        <Button
+                            variant="outline"
+                            onClick={handleRefresh}
+                            disabled={isLoading || loadingDeXuat}
+                            startIcon={<FontAwesomeIcon icon={faRefresh} className={isLoading || loadingDeXuat ? "animate-spin" : ""} />}
+                        >
+                            Làm mới
+                        </Button>
                     </div>
                 </div>
 
-                {/* Toolbar: search + confirm button */}
+                {/* Stats Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <StatCard
+                        icon={faUsers}
+                        title="Tổng SV trượt môn"
+                        value={tongSinhVienTruot}
+                        color="blue"
+                        loading={isLoading}
+                    />
+                    <StatCard
+                        icon={faUserClock}
+                        title="Cần học lại"
+                        value={soSinhVienChuaHocLai}
+                        color="red"
+                        subtitle="Chưa đăng ký LHP mới"
+                        loading={isLoading}
+                    />
+                    <StatCard
+                        icon={faRotateRight}
+                        title="Đã/đang học lại"
+                        value={soSinhVienDaHocLai}
+                        color="amber"
+                        loading={isLoading}
+                    />
+                    <StatCard
+                        icon={faUserGraduate}
+                        title="Có thể thêm vào LHP"
+                        value={loadingDeXuat ? "..." : displayItems.length}
+                        color="green"
+                        subtitle={loadingDeXuat ? "Đang tải đề xuất..." : "Sinh viên có LHP đề xuất"}
+                        loading={false}
+                    />
+                </div>
+
+                {/* Main Tabs */}
+                <div className="flex gap-1 p-1.5 bg-gray-100 dark:bg-gray-800 rounded-xl mb-6">
+                    <button
+                        type="button"
+                        onClick={() => setActiveMainTab("de-xuat")}
+                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${activeMainTab === "de-xuat"
+                            ? "bg-white dark:bg-gray-700 text-brand-600 dark:text-brand-400 shadow-sm"
+                            : "text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                            }`}
+                    >
+                        <FontAwesomeIcon icon={faUserPlus} />
+                        Sinh viên cần học lại ({loadingDeXuat ? "..." : displayItems.length})
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setActiveMainTab("da-hoc-lai")}
+                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${activeMainTab === "da-hoc-lai"
+                            ? "bg-white dark:bg-gray-700 text-brand-600 dark:text-brand-400 shadow-sm"
+                            : "text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                            }`}
+                    >
+                        <FontAwesomeIcon icon={faRotateRight} />
+                        Đã/đang học lại ({daHocLaiList.length})
+                    </button>
+                </div>
+
+                {/* Tab Content: Sinh viên cần học lại */}
+                {activeMainTab === "de-xuat" && (
+                    <>
                 <div className="flex flex-col gap-4 mb-6 sm:flex-row sm:items-center sm:justify-between">
                     <div className="w-full sm:max-w-md">
                         <div className="relative">
@@ -959,7 +1156,7 @@ export default function ThemSinhvienPage() {
                     <Button
                         startIcon={<FontAwesomeIcon icon={faUserPlus} />}
                         onClick={openConfirmAddModal}
-                        disabled={displayItems.length === 0}
+                        disabled={displayItems.length === 0 || loadingDeXuat}
                     >
                         Xác nhận thêm sinh viên vào các lớp học phần
                     </Button>
@@ -997,11 +1194,18 @@ export default function ThemSinhvienPage() {
                                 {paginatedItems.length === 0 ? (
                                     <TableRow>
                                         <TableCell cols={9} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
-                                            {displayItems.length === 0
-                                                ? (apiData?.sinhVienDaHocLaiHoacDangHoc?.length
-                                                    ? "Không có sinh viên cần học lại trong kỳ này (xem phần Sinh viên đã/đang học lại bên dưới)"
-                                                    : "Không có sinh viên cần học lại")
-                                                : "Không có kết quả tìm kiếm"}
+                                            {loadingDeXuat
+                                                ? (
+                                                    <div className="flex flex-col items-center justify-center py-4">
+                                                        <FontAwesomeIcon icon={faSpinner} className="animate-spin text-2xl text-brand-500 dark:text-brand-400 mb-2" />
+                                                        <p className="text-sm">Đang tải đề xuất...</p>
+                                                    </div>
+                                                )
+                                                : displayItems.length === 0
+                                                    ? (daHocLaiList.length > 0
+                                                        ? "Không có sinh viên cần học lại trong kỳ này (xem tab Đã/đang học lại)"
+                                                        : "Không có sinh viên cần học lại")
+                                                    : "Không có kết quả tìm kiếm"}
                                         </TableCell>
                                     </TableRow>
                                 ) : (
@@ -1104,17 +1308,12 @@ export default function ThemSinhvienPage() {
                         </div>
                     )}
                 </div>
+                    </>
+                )}
 
-                {/* Section: Sinh viên đã học lại / đang học lại */}
-                {daHocLaiList.length > 0 && (
-                    <div className="mt-10">
-                        <div className="mb-4 flex items-center gap-2">
-                            <FontAwesomeIcon icon={faRotateRight} className="text-brand-500 dark:text-brand-400" />
-                            <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
-                                Sinh viên đã học lại / đang học lại
-                            </h3>
-                            <Badge variant="light" color="info">{totalDaHocLai}</Badge>
-                        </div>
+                {/* Tab Content: Sinh viên đã/đang học lại */}
+                {activeMainTab === "da-hoc-lai" && (
+                    <>
                         <div className="mb-4 w-full sm:max-w-md">
                             <div className="relative">
                                 <button type="button" className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
@@ -1214,7 +1413,7 @@ export default function ThemSinhvienPage() {
                                 </div>
                             )}
                         </div>
-                    </div>
+                    </>
                 )}
             </div>
 
