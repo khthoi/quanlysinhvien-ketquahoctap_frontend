@@ -38,6 +38,8 @@ import {
     faFilter,
     faTimes,
     faChartPie,
+    faFileInvoice,
+    faCircleInfo,
 } from "@fortawesome/free-solid-svg-icons";
 
 const getCookie = (name: string): string | null => {
@@ -328,8 +330,22 @@ const DetailModal: React.FC<DetailModalProps> = ({ isOpen, onClose, item, type }
                             </div>
                             {isDuDoan && duDoanItem.lyDo && (
                                 <div className="sm:col-span-2">
-                                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Lý do</p>
-                                    <p className="mt-1 text-red-600 dark:text-red-400">{duDoanItem.lyDo}</p>
+                                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                        Lý do
+                                    </p>
+                                    <div className="mt-2 rounded-xl border border-red-200 dark:border-red-800/60 bg-red-50/80 dark:bg-red-900/10 px-4 py-3">
+                                        <ul className="list-disc list-outside space-y-1.5 pl-5 text-sm text-red-700 dark:text-red-300">
+                                            {duDoanItem.lyDo
+                                                .split(";")
+                                                .map((reason) => reason.trim())
+                                                .filter((reason) => reason.length > 0)
+                                                .map((reason, index) => (
+                                                    <li key={index} className="leading-relaxed">
+                                                        {reason}
+                                                    </li>
+                                                ))}
+                                        </ul>
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -676,6 +692,90 @@ const StatisticsModal: React.FC<StatisticsModalProps> = ({
     );
 };
 
+// --- View Bang Diem Modal ---
+interface ViewBangDiemModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    sinhVien: SinhVienXetTotNghiep | SinhVienTotNghiep | null;
+}
+
+const ViewBangDiemModal: React.FC<ViewBangDiemModalProps> = ({ isOpen, onClose, sinhVien }) => {
+    if (!isOpen || !sinhVien) return null;
+
+    const handleConfirm = () => {
+        const url = `http://localhost:3001/quan-ly-sinh-vien/bang-diem/${sinhVien.id}`;
+        window.open(url, '_blank');
+        onClose();
+    };
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} className="max-w-xl">
+            <div className="p-6 sm:p-8 bg-white dark:bg-gray-900 rounded-3xl">
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30">
+                        <FontAwesomeIcon icon={faFileInvoice} className="text-xl text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-semibold text-gray-800 dark:text-white">
+                            Xem bảng điểm
+                        </h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">{sinhVien.maSinhVien}</p>
+                    </div>
+                </div>
+
+                <div className="mb-6 space-y-4">
+                    <div className="p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Họ và tên</p>
+                                <p className="mt-1 font-semibold text-gray-800 dark:text-white">{sinhVien.hoTen}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Lớp</p>
+                                <p className="mt-1 font-mono text-gray-800 dark:text-white">{sinhVien.maLop}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50">
+                        <h4 className="text-sm font-semibold text-blue-700 dark:text-blue-300 mb-3 flex items-center gap-2">
+                            <FontAwesomeIcon icon={faCircleInfo} />
+                            Hướng dẫn
+                        </h4>
+                        <ul className="space-y-2 text-sm text-blue-800 dark:text-blue-300">
+                            <li className="flex items-start gap-2">
+                                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 flex-shrink-0"></span>
+                                <span>Trang bảng điểm sẽ được mở trong <strong>tab mới</strong> của trình duyệt.</span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 flex-shrink-0"></span>
+                                <span>Trang bảng điểm sẽ hiển thị <strong>thông tin cá nhân</strong> và <strong>bảng điểm chi tiết</strong> tất cả các môn học của sinh viên.</span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 flex-shrink-0"></span>
+                                <span>Bạn có thể <strong>xuất phiếu điểm</strong> từ trang bảng điểm nếu cần.</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div className="flex justify-end gap-3">
+                    <Button variant="outline" onClick={onClose}>
+                        Hủy
+                    </Button>
+                    <Button
+                        variant="primary"
+                        onClick={handleConfirm}
+                        startIcon={<FontAwesomeIcon icon={faEye} />}
+                    >
+                        Xem bảng điểm
+                    </Button>
+                </div>
+            </div>
+        </Modal>
+    );
+};
+
 // --- Filter Option Type ---
 interface FilterOption {
     value: string;
@@ -717,6 +817,8 @@ export default function XetTotNghiepPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [confirmResult, setConfirmResult] = useState<XacNhanXetTotNghiepResponse | null>(null);
     const [confirmError, setConfirmError] = useState<string | null>(null);
+    const [isViewBangDiemModalOpen, setIsViewBangDiemModalOpen] = useState(false);
+    const [selectedSinhVienForBangDiem, setSelectedSinhVienForBangDiem] = useState<SinhVienXetTotNghiep | SinhVienTotNghiep | null>(null);
 
     // Fetch niên khóa info
     const fetchNienKhoaInfo = useCallback(async () => {
@@ -1344,16 +1446,28 @@ export default function XetTotNghiepPage() {
                                                     </Badge>
                                                 </TableCell>
                                                 <TableCell className="px-4 py-3 text-center">
-                                                    <button
-                                                        onClick={() => {
-                                                            setDetailItem(sv);
-                                                            setDetailType(isDuDoan ? 'du-doan' : 'da-tot-nghiep');
-                                                        }}
-                                                        className="inline-flex items-center justify-center h-8 w-8 rounded-lg text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
-                                                        title="Xem chi tiết"
-                                                    >
-                                                        <FontAwesomeIcon icon={faEye} />
-                                                    </button>
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <button
+                                                            onClick={() => {
+                                                                setDetailItem(sv);
+                                                                setDetailType(isDuDoan ? 'du-doan' : 'da-tot-nghiep');
+                                                            }}
+                                                            className="inline-flex items-center justify-center h-8 w-8 rounded-lg text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
+                                                            title="Xem chi tiết"
+                                                        >
+                                                            <FontAwesomeIcon icon={faEye} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => {
+                                                                setSelectedSinhVienForBangDiem(sv);
+                                                                setIsViewBangDiemModalOpen(true);
+                                                            }}
+                                                            className="inline-flex items-center justify-center h-8 w-8 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                                                            title="Xem bảng điểm"
+                                                        >
+                                                            <FontAwesomeIcon icon={faFileInvoice} />
+                                                        </button>
+                                                    </div>
                                                 </TableCell>
                                             </TableRow>
                                         );
@@ -1454,6 +1568,15 @@ export default function XetTotNghiepPage() {
                 loading={activeTab === "du-doan" ? loadingDuDoan : loadingDanhSach}
                 type={activeTab}
                 nienKhoaInfo={nienKhoaInfo}
+            />
+
+            <ViewBangDiemModal
+                isOpen={isViewBangDiemModalOpen}
+                onClose={() => {
+                    setIsViewBangDiemModalOpen(false);
+                    setSelectedSinhVienForBangDiem(null);
+                }}
+                sinhVien={selectedSinhVienForBangDiem}
             />
         </>
     );

@@ -666,7 +666,7 @@ export default function QuanLyLopHocPhanPage() {
     };
 
     useEffect(() => {
-        fetchLopHocPhans(currentPage, searchKeyword, filterMonHocId, filterGiangVienId, filterHocKyId, filterNienKhoaId, filterNganhId);
+        fetchLopHocPhans(currentPage, searchKeyword, filterMonHocId, filterGiangVienId, filterHocKyId, filterNienKhoaId, filterNganhId, filterKhoaDiem);
     }, [currentPage]);
 
     useEffect(() => {

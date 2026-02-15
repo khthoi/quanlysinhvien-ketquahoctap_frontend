@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter, usePathname } from "next/navigation";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import {
     Table,
@@ -170,7 +170,7 @@ const ViewSinhVienModal: React.FC<ViewSinhVienModalProps> = ({
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Mã sinh viên</p>
-                            <p className="font-medium text-gray-800 dark: text-white">{sinhVien.maSinhVien}</p>
+                            <p className="font-medium text-gray-800 dark:text-white">{sinhVien.maSinhVien}</p>
                         </div>
                         <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Họ tên</p>
@@ -184,7 +184,7 @@ const ViewSinhVienModal: React.FC<ViewSinhVienModalProps> = ({
                         </div>
                         <div>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Ngành</p>
-                            <p className="font-medium text-gray-800 dark: text-white">
+                            <p className="font-medium text-gray-800 dark:text-white">
                                 {sinhVien.manganh} - {sinhVien.nganh}
                             </p>
                         </div>
@@ -323,6 +323,8 @@ const ItemsCountInfo: React.FC<ItemsCountInfoProps> = ({ pagination }) => {
 // ==================== TRANG CHÍNH ====================
 export default function ChiTietLopHocPhanPage() {
     const params = useParams();
+    const router = useRouter();
+    const pathname = usePathname();
     const lopHocPhanId = params?.id as string;
 
     const [lopHocPhanInfo, setLopHocPhanInfo] = useState<LopHocPhanInfo | null>(null);
@@ -361,6 +363,10 @@ export default function ChiTietLopHocPhanPage() {
 
     // State để theo dõi dropdown đang mở
     const [activeDropdownId, setActiveDropdownId] = useState<number | null>(null);
+
+    // State cho modal xem bảng điểm
+    const [isViewBangDiemModalOpen, setIsViewBangDiemModalOpen] = useState(false);
+    const [viewingBangDiemSinhVien, setViewingBangDiemSinhVien] = useState<SinhVienDiem | null>(null);
 
     const toggleDropdown = (sinhVienId: number) => {
         setActiveDropdownId((prev) =>
@@ -487,6 +493,31 @@ export default function ChiTietLopHocPhanPage() {
     const openViewModal = (sinhVienDiem: SinhVienDiem) => {
         setViewingSinhVien(sinhVienDiem);
         setIsViewModalOpen(true);
+    };
+
+    // Mở modal xem bảng điểm
+    const openViewBangDiemModal = (sinhVienDiem: SinhVienDiem) => {
+        setViewingBangDiemSinhVien(sinhVienDiem);
+        setIsViewBangDiemModalOpen(true);
+    };
+
+    // Đóng modal xem bảng điểm
+    const closeViewBangDiemModal = () => {
+        setIsViewBangDiemModalOpen(false);
+        setViewingBangDiemSinhVien(null);
+    };
+
+    // Xử lý chuyển trang xem bảng điểm
+    const handleViewBangDiem = () => {
+        if (!viewingBangDiemSinhVien) return;
+
+        // Tạo returnUrl để BackButton có thể quay lại
+        const currentPath = pathname;
+        const returnUrl = encodeURIComponent(currentPath);
+        const bangDiemUrl = `/quan-ly-sinh-vien/bang-diem/${viewingBangDiemSinhVien.sinhVien.id}?returnUrl=${returnUrl}`;
+        
+        closeViewBangDiemModal();
+        router.push(bangDiemUrl);
     };
 
     // ==================== CHECKBOX & BULK DELETE HANDLERS ====================
@@ -811,7 +842,7 @@ export default function ChiTietLopHocPhanPage() {
                         <div className="min-w-[800px]">
                             <Table>
                                 <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
-                                    <TableRow className="grid grid-cols-[3%_12%_12%_10%_10%_10%_10%_10%_10%_12%]">
+                                    <TableRow className="grid grid-cols-[3%_12%_20%_12%_10%_10%_10%_10%_12%]">
                                         {/* Checkbox chọn tất cả */}
                                         <TableCell isHeader className="px-3 py-3 font-medium text-gray-500 text-theme-xs flex items-center justify-center">
                                             <Checkbox
@@ -823,6 +854,9 @@ export default function ChiTietLopHocPhanPage() {
                                         </TableCell>
                                         <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-theme-xs">
                                             Mã sinh viên
+                                        </TableCell>
+                                        <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-theme-xs">
+                                            Họ và tên
                                         </TableCell>
                                         <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-theme-xs">
                                             Loại tham gia
@@ -840,12 +874,6 @@ export default function ChiTietLopHocPhanPage() {
                                             TBCHP
                                         </TableCell>
                                         <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-theme-xs text-center">
-                                            Điểm số
-                                        </TableCell>
-                                        <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-theme-xs text-center">
-                                            Điểm chữ
-                                        </TableCell>
-                                        <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-theme-xs text-center">
                                             Hành động
                                         </TableCell>
                                     </TableRow>
@@ -853,7 +881,7 @@ export default function ChiTietLopHocPhanPage() {
                                 <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05] text-theme-sm text-center">
                                     {danhSachSinhVien.length === 0 ? (
                                         <TableRow>
-                                            <TableCell className="px-5 py-8 text-center text-gray-500 dark:text-gray-400 col-span-10">
+                                            <TableCell className="px-5 py-8 text-center text-gray-500 dark:text-gray-400 col-span-9">
                                                 Không có dữ liệu sinh viên
                                             </TableCell>
                                         </TableRow>
@@ -861,7 +889,7 @@ export default function ChiTietLopHocPhanPage() {
                                         danhSachSinhVien.map((item) => (
                                             <TableRow
                                                 key={item.sinhVien.id}
-                                                className={`grid grid-cols-[3%_12%_12%_10%_10%_10%_10%_10%_10%_12%] items-center ${isSelected(item.sinhVien.id) ? "bg-brand-50 dark: bg-brand-900/10" : ""
+                                                className={`grid grid-cols-[3%_12%_20%_12%_10%_10%_10%_10%_12%] items-center ${isSelected(item.sinhVien.id) ? "bg-brand-50 dark: bg-brand-900/10" : ""
                                                     }`}
                                             >
                                                 {/* Checkbox - disabled nếu đã có điểm */}
@@ -874,6 +902,9 @@ export default function ChiTietLopHocPhanPage() {
                                                 </TableCell>
                                                 <TableCell className="px-5 py-4 text-gray-800 dark:text-white/90">
                                                     {item.sinhVien.maSinhVien}
+                                                </TableCell>
+                                                <TableCell className="px-5 py-4 text-gray-800 dark:text-white/90">
+                                                    {item.sinhVien.hoTen}
                                                 </TableCell>
                                                 <TableCell className="px-5 py-4">
                                                     <Badge variant="solid" color={getLoaiThamGiaColor(item.loaiThamGia)}>
@@ -908,22 +939,6 @@ export default function ChiTietLopHocPhanPage() {
                                                         item.diem.TBCHP ?? "-"
                                                     )}
                                                 </TableCell>
-                                                <TableCell className="px-5 py-4 text-center text-gray-800 dark:text-white/90">
-                                                    {item.chuaCoDiem || !item.diem ? (
-                                                        <span className="text-gray-400 dark:text-gray-500">-</span>
-                                                    ) : (
-                                                        item.diem.DiemSo ?? "-"
-                                                    )}
-                                                </TableCell>
-                                                <TableCell className="px-5 py-4 text-center">
-                                                    {item.chuaCoDiem || !item.diem ? (
-                                                        <span className="text-gray-400 dark:text-gray-500">-</span>
-                                                    ) : (
-                                                        <Badge variant="solid" color="success">
-                                                            {item.diem.DiemChu ?? "-"}
-                                                        </Badge>
-                                                    )}
-                                                </TableCell>
                                                 <TableCell className="px-5 py-4 text-center">
                                                     <div className="relative inline-block">
                                                         <Button
@@ -952,6 +967,16 @@ export default function ChiTietLopHocPhanPage() {
                                                                 >
                                                                     <FontAwesomeIcon icon={faEye} className="mr-2 w-4" />
                                                                     Xem chi tiết
+                                                                </DropdownItem>
+
+                                                                {/* Xem bảng điểm */}
+                                                                <DropdownItem
+                                                                    tag="button"
+                                                                    onItemClick={closeDropdown}
+                                                                    onClick={() => openViewBangDiemModal(item)}
+                                                                >
+                                                                    <FontAwesomeIcon icon={faEye} className="mr-2 w-4" />
+                                                                    Xem bảng điểm
                                                                 </DropdownItem>
 
                                                                 {/* THÊM MỚI - Divider và DropdownItem Xóa sinh viên */}
@@ -1008,6 +1033,172 @@ export default function ChiTietLopHocPhanPage() {
                 }}
                 sinhVienDiem={viewingSinhVien}
             />
+
+            {/* Modal Xem bảng điểm */}
+            <Modal
+                isOpen={isViewBangDiemModalOpen}
+                onClose={closeViewBangDiemModal}
+                className="max-w-2xl"
+            >
+                <div className="p-6 sm:p-8">
+                    {/* Header */}
+                    <div className="flex items-center gap-4 mb-6">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30">
+                            <FontAwesomeIcon
+                                icon={faEye}
+                                className="text-2xl text-blue-600 dark:text-blue-400"
+                            />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-semibold text-gray-800 dark:text-white/90">
+                                Xem bảng điểm sinh viên
+                            </h3>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                                Xem chi tiết bảng điểm học tập của sinh viên
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Thông tin sinh viên */}
+                    {viewingBangDiemSinhVien && (
+                        <div className="mb-6 p-5 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800/50 dark:to-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-700">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">
+                                        Mã sinh viên
+                                    </p>
+                                    <p className="text-base font-semibold text-gray-900 dark:text-white">
+                                        {viewingBangDiemSinhVien.sinhVien.maSinhVien}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">
+                                        Họ tên
+                                    </p>
+                                    <p className="text-base font-semibold text-gray-900 dark:text-white">
+                                        {viewingBangDiemSinhVien.sinhVien.hoTen}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">
+                                        Lớp
+                                    </p>
+                                    <p className="text-base font-medium text-gray-800 dark:text-gray-200">
+                                        {viewingBangDiemSinhVien.sinhVien.malop} - {viewingBangDiemSinhVien.sinhVien.tenlop}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">
+                                        Ngành
+                                    </p>
+                                    <p className="text-base font-medium text-gray-800 dark:text-gray-200">
+                                        {viewingBangDiemSinhVien.sinhVien.manganh} - {viewingBangDiemSinhVien.sinhVien.nganh}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">
+                                        Niên khóa
+                                    </p>
+                                    <p className="text-base font-medium text-gray-800 dark:text-gray-200">
+                                        {viewingBangDiemSinhVien.sinhVien.nienKhoa}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">
+                                        Loại tham gia
+                                    </p>
+                                    <Badge variant="solid" color={getLoaiThamGiaColor(viewingBangDiemSinhVien.loaiThamGia)}>
+                                        {getLoaiThamGiaLabel(viewingBangDiemSinhVien.loaiThamGia)}
+                                    </Badge>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Hướng dẫn sử dụng */}
+                    <div className="mb-6 rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 dark:border-blue-800/50 dark:from-blue-900/20 dark:to-indigo-900/20">
+                        <div className="p-5">
+                            <div className="flex items-start gap-3">
+                                <div className="flex-shrink-0">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-800/50">
+                                        <FontAwesomeIcon
+                                            icon={faCircleInfo}
+                                            className="text-lg text-blue-600 dark:text-blue-400"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="flex-1">
+                                    <h4 className="font-semibold text-blue-800 dark:text-blue-300 mb-3">
+                                        Hướng dẫn sử dụng
+                                    </h4>
+                                    <ul className="text-sm text-blue-700/80 dark:text-blue-300/70 space-y-2">
+                                        <li className="flex items-start gap-2">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 flex-shrink-0"></span>
+                                            <span>Chuyển sang trang <strong>bảng điểm</strong> để xem chi tiết bảng điểm học tập của sinh viên.</span>
+                                        </li>
+                                        <li className="flex items-start gap-2">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 flex-shrink-0"></span>
+                                            <span>Bạn có thể <strong>mở rộng từng môn học</strong> để xem chi tiết các lớp học phần đã học.</span>
+                                        </li>
+                                        <li className="flex items-start gap-2">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 flex-shrink-0"></span>
+                                            <span>Trang cũng hiển thị <strong>GPA, điểm TBCHP</strong> và <strong>xếp loại học lực</strong> của sinh viên.</span>
+                                        </li>
+                                        <li className="flex items-start gap-2">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 flex-shrink-0"></span>
+                                            <span>Bạn có thể <strong>tải xuống bảng điểm</strong> dưới dạng Excel từ trang bảng điểm.</span>
+                                        </li>
+                                        <li className="flex items-start gap-2">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 flex-shrink-0"></span>
+                                            <span>Sử dụng nút <strong>"Quay lại"</strong> để trở về trang quản lý lớp học phần.</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Thông tin bổ sung */}
+                    <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50/70 dark:border-emerald-800/50 dark:bg-emerald-900/20">
+                        <div className="p-4">
+                            <div className="flex items-start gap-3">
+                                <div className="flex-shrink-0">
+                                    <FontAwesomeIcon
+                                        icon={faCircleCheck}
+                                        className="text-lg text-emerald-600 dark:text-emerald-400 mt-0.5"
+                                    />
+                                </div>
+                                <div className="flex-1">
+                                    <h4 className="font-semibold text-emerald-800 dark:text-emerald-300 mb-1">
+                                        Lưu ý
+                                    </h4>
+                                    <p className="text-sm text-emerald-700/80 dark:text-emerald-300/70">
+                                        Dữ liệu bảng điểm được cập nhật theo thời gian thực. Nếu có thay đổi về điểm số, 
+                                        vui lòng làm mới trang để xem thông tin mới nhất.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Buttons */}
+                    <div className="flex justify-end gap-3">
+                        <Button
+                            variant="outline"
+                            onClick={closeViewBangDiemModal}
+                        >
+                            Hủy
+                        </Button>
+                        <Button
+                            variant="primary"
+                            onClick={handleViewBangDiem}
+                            startIcon={<FontAwesomeIcon icon={faEye} />}
+                        >
+                            Xem bảng điểm
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
 
             {/* Modal Xóa sinh viên khỏi lớp học phần */}
             <Modal

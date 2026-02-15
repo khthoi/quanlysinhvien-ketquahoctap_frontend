@@ -4,7 +4,7 @@ import Link from "next/link";
 interface ButtonProps {
   children: ReactNode; // Button text or content
   size?: "sm" | "md"; // Button size
-  variant?: "primary" | "outline" | "warning" | "danger" | "info"; // Button variant
+  variant?: "primary" | "outline" | "warning" | "danger" | "info" | "success"; // Button variant
   startIcon?: ReactNode; // Icon before the text
   endIcon?: ReactNode; // Icon after the text
   onClick?: (e: React.MouseEvent<HTMLButtonElement | HTMLAnchorElement>) => void; // Click handler
@@ -46,6 +46,8 @@ const Button: React.FC<ButtonProps> = ({
       "bg-red-400 text-white shadow-theme-xs hover:bg-red-500 disabled:bg-red-200",
     info:
       "bg-blue-400 text-white shadow-theme-xs hover:bg-blue-500 disabled:bg-blue-200",
+    success:
+      "bg-green-400 text-white shadow-theme-xs hover:bg-green-500 disabled:bg-green-200",
   };
 
   // Combined classes

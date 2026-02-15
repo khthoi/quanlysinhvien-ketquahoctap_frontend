@@ -1290,7 +1290,7 @@ export default function ChiTietLopHocPhanPage() {
                 {/* Thông tin lớp học phần */}
                 {lopHocPhanInfo && (
                     <div className="mb-6 p-6 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
-                        <h3 className="mb-4 text-lg font-semibold text-gray-800 dark: text-white/90">
+                        <h3 className="mb-4 text-lg font-semibold text-gray-800 dark:text-white/90">
                             Thông tin Lớp Học Phần
                         </h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1306,7 +1306,7 @@ export default function ChiTietLopHocPhanPage() {
                             </div>
                             <div>
                                 <p className="text-sm text-gray-500 dark:text-gray-400">Giảng viên</p>
-                                <p className="font-medium text-gray-800 dark: text-white">
+                                <p className="font-medium text-gray-800 dark:text-white">
                                     {lopHocPhanInfo.maGiangVien} - {lopHocPhanInfo.giangVien}
                                 </p>
                             </div>
@@ -1330,7 +1330,7 @@ export default function ChiTietLopHocPhanPage() {
                             </div>
                             <div>
                                 <p className="text-sm text-gray-500 dark:text-gray-400">Thời gian</p>
-                                <p className="font-medium text-gray-800 dark: text-white">
+                                <p className="font-medium text-gray-800 dark:text-white">
                                     {new Date(lopHocPhanInfo.ngayBatDau).toLocaleDateString("vi-VN")} - {new Date(lopHocPhanInfo.ngayKetThuc).toLocaleDateString("vi-VN")}
                                 </p>
                             </div>
@@ -1369,7 +1369,7 @@ export default function ChiTietLopHocPhanPage() {
                                 value={searchKeyword}
                                 onChange={(e) => setSearchKeyword(e.target.value)}
                                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                                className="h-11 w-full rounded-lg border border-gray-200 bg-transparent py-2.5 pl-12 pr-4 text-sm text-gray-800 shadow-theme-xs placeholder: text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-800 dark:bg-gray-900 dark: text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
+                                className="h-11 w-full rounded-lg border border-gray-200 bg-transparent py-2.5 pl-12 pr-4 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-800 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
                             />
                         </div>
                     </div>
@@ -1393,9 +1393,12 @@ export default function ChiTietLopHocPhanPage() {
                         <div className="min-w-[800px]">
                             <Table>
                                 <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
-                                    <TableRow className="grid grid-cols-[15%_12%_10%_10%_10%_10%_10%_10%_13%]">
+                                     <TableRow className="grid grid-cols-[15%_20%_12%_10%_10%_10%_10%_13%]">
                                         <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-theme-xs">
                                             Mã sinh viên
+                                        </TableCell>
+                                        <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-theme-xs">
+                                            Họ và tên
                                         </TableCell>
                                         <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-theme-xs">
                                             Loại tham gia
@@ -1412,12 +1415,6 @@ export default function ChiTietLopHocPhanPage() {
                                         <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-theme-xs text-center">
                                             TBCHP
                                         </TableCell>
-                                        <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-theme-xs text-center">
-                                            Điểm số
-                                        </TableCell>
-                                        <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-theme-xs text-center">
-                                            Điểm chữ
-                                        </TableCell>
                                         <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-theme-xs">
                                             Hành động
                                         </TableCell>
@@ -1426,15 +1423,18 @@ export default function ChiTietLopHocPhanPage() {
                                 <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05] text-theme-sm text-center">
                                     {danhSachSinhVien.length === 0 ? (
                                         <TableRow>
-                                            <TableCell className="px-5 py-8 text-center text-gray-500 dark:text-gray-400 col-span-9">
+                                            <TableCell className="px-5 py-8 text-center text-gray-500 dark:text-gray-400 col-span-8">
                                                 Không có dữ liệu sinh viên
                                             </TableCell>
                                         </TableRow>
                                     ) : (
                                         danhSachSinhVien.map((item) => (
-                                            <TableRow key={item.sinhVien.id} className="grid grid-cols-[15%_12%_10%_10%_10%_10%_10%_10%_13%] items-center">
+                                            <TableRow key={item.sinhVien.id} className="grid grid-cols-[15%_20%_12%_10%_10%_10%_10%_13%] items-center">
                                                 <TableCell className="px-5 py-4 text-gray-800 dark:text-white/90">
                                                     {item.sinhVien.maSinhVien}
+                                                </TableCell>
+                                                <TableCell className="px-5 py-4 text-gray-800 dark:text-white/90">
+                                                    {item.sinhVien.hoTen}
                                                 </TableCell>
                                                 <TableCell className="px-5 py-4">
                                                     <Badge variant="solid" color={getLoaiThamGiaColor(item.loaiThamGia)}>
@@ -1467,22 +1467,6 @@ export default function ChiTietLopHocPhanPage() {
                                                         <span className="text-gray-400 dark:text-gray-500">-</span>
                                                     ) : (
                                                         item.diem.TBCHP ?? "-"
-                                                    )}
-                                                </TableCell>
-                                                <TableCell className="px-5 py-4 text-center text-gray-800 dark:text-white/90">
-                                                    {item.chuaCoDiem || !item.diem ? (
-                                                        <span className="text-gray-400 dark:text-gray-500">-</span>
-                                                    ) : (
-                                                        item.diem.DiemSo ?? "-"
-                                                    )}
-                                                </TableCell>
-                                                <TableCell className="px-5 py-4 text-center">
-                                                    {item.chuaCoDiem || !item.diem ? (
-                                                        <span className="text-gray-400 dark:text-gray-500">-</span>
-                                                    ) : (
-                                                        <Badge variant="solid" color="success">
-                                                            {item.diem.DiemChu ?? "-"}
-                                                        </Badge>
                                                     )}
                                                 </TableCell>
                                                 <TableCell className="px-5 py-4 text-center">

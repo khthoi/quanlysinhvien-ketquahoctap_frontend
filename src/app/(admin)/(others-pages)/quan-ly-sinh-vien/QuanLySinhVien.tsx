@@ -30,11 +30,13 @@ import {
     faMedal,
     faGraduationCap,
     faUserPlus,
+    faTrashCan,
 } from "@fortawesome/free-solid-svg-icons";
 import TextArea from "@/components/form/input/TextArea";
 import { DropdownItem } from "@/components/ui/dropdown/DropdownItem";
 import { Dropdown } from "@/components/ui/dropdown/Dropdown";
 import { FaAngleDown } from "react-icons/fa6";
+import Checkbox from "@/components/form/input/Checkbox";
 import { useDropzone } from "react-dropzone";
 import {
     faCloudArrowUp,
@@ -44,7 +46,6 @@ import {
     faCircleCheck,
     faCircleExclamation,
     faSpinner,
-    faFileInvoice,  // THÊM MỚI - icon cho xuất phiếu điểm
     faUserXmark,
     faCircleInfo,
     faTriangleExclamation,
@@ -1380,6 +1381,93 @@ const XetTotNghiepModal: React.FC<XetTotNghiepModalProps> = ({
     );
 };
 
+// ==================== MODAL DUYỆT YÊU CẦU CỦA SINH VIÊN ====================
+interface DuyetYCSinhVienModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+}
+
+const DuyetYCSinhVienModal: React.FC<DuyetYCSinhVienModalProps> = ({
+    isOpen,
+    onClose,
+}) => {
+    const router = useRouter();
+
+    const handleConfirm = () => {
+        router.push("/quan-ly-lop-hoc-phan/yeu-cau-sinh-vien");
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} className="max-w-4xl">
+            <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
+                {/* Header */}
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
+                        <FontAwesomeIcon icon={faCircleCheck} className="text-xl" />
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-semibold text-gray-800 dark:text-white/90 dark:text-white">
+                            Duyệt yêu cầu của sinh viên
+                        </h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                            Xét duyệt yêu cầu tham gia lớp học phần của sinh viên
+                        </p>
+                    </div>
+                </div>
+
+                {/* Thông tin hỗ trợ */}
+                <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <div className="flex gap-3">
+                        <FontAwesomeIcon
+                            icon={faCircleInfo}
+                            className="text-blue-500 dark:text-blue-400 mt-0.5 flex-shrink-0"
+                        />
+                        <div className="space-y-1.5 text-sm text-blue-800 dark:text-blue-100">
+                            <p className="font-medium mb-2">Thông tin hỗ trợ:</p>
+                            <ul className="list-disc list-inside space-y-1 text-blue-700 dark:text-blue-200">
+                                <li>Trang này cho phép bạn xem và xét duyệt các yêu cầu tham gia lớp học phần của sinh viên</li>
+                                <li>Bạn có thể duyệt hoặc từ chối các yêu cầu đăng ký lớp học phần</li>
+                                <li>Hệ thống sẽ hiển thị danh sách các yêu cầu đang chờ xét duyệt</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Hướng dẫn */}
+                <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                    <div className="flex gap-3">
+                        <FontAwesomeIcon
+                            icon={faTriangleExclamation}
+                            className="text-amber-500 dark:text-amber-400 mt-0.5 flex-shrink-0"
+                        />
+                        <div className="space-y-1.5 text-sm text-amber-800 dark:text-amber-100">
+                            <p className="font-medium mb-2">Hướng dẫn sử dụng:</p>
+                            <ul className="list-disc list-inside space-y-1 text-amber-700 dark:text-amber-300">
+                                <li>Xem danh sách yêu cầu: Trang sẽ hiển thị tất cả các yêu cầu đăng ký lớp học phần đang chờ xét duyệt</li>
+                                <li>Xét duyệt yêu cầu: Bạn có thể duyệt hoặc từ chối từng yêu cầu dựa trên thông tin sinh viên và lớp học phần</li>
+                                <li>Lọc và tìm kiếm: Sử dụng các bộ lọc để tìm kiếm yêu cầu theo sinh viên, lớp học phần, hoặc trạng thái</li>
+                                <li>Xem chi tiết: Nhấp vào từng yêu cầu để xem thông tin chi tiết trước khi quyết định</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Buttons */}
+                <div className="flex justify-end gap-3">
+                    <Button variant="outline" onClick={onClose}>
+                        Hủy
+                    </Button>
+                    <Button onClick={handleConfirm}>
+                        Xác nhận
+                    </Button>
+                </div>
+            </div>
+        </Modal>
+    );
+};
+
 // ==================== MODAL THỐNG KÊ SINH VIÊN TRƯỢT MÔN ====================
 interface ThongKeSVTruotMonModalProps {
     isOpen: boolean;
@@ -1725,10 +1813,9 @@ export default function QuanLySinhVienPage() {
     const [activeDropdownId, setActiveDropdownId] = useState<number | null>(null);
     const [isHeaderDropdownOpen, setIsHeaderDropdownOpen] = useState(false);
 
-    // State cho modal xuất phiếu điểm
-    const [isExportPhieuDiemModalOpen, setIsExportPhieuDiemModalOpen] = useState(false);
-    const [exportingPhieuDiemSinhVien, setExportingPhieuDiemSinhVien] = useState<SinhVien | null>(null);
-    const [isExportingPhieuDiem, setIsExportingPhieuDiem] = useState(false);
+    // State cho modal xem bảng điểm
+    const [isViewBangDiemModalOpen, setIsViewBangDiemModalOpen] = useState(false);
+    const [viewingBangDiemSinhVien, setViewingBangDiemSinhVien] = useState<SinhVien | null>(null);
 
     // State cho modal cấp tài khoản hàng loạt
     const [isBulkCreateAccountModalOpen, setIsBulkCreateAccountModalOpen] = useState(false);
@@ -1747,6 +1834,21 @@ export default function QuanLySinhVienPage() {
 
     // State cho modal thống kê sinh viên trượt môn
     const [isThongKeSVTruotMonModalOpen, setIsThongKeSVTruotMonModalOpen] = useState(false);
+    // State cho modal duyệt yêu cầu của sinh viên
+    const [isDuyetYCSinhVienModalOpen, setIsDuyetYCSinhVienModalOpen] = useState(false);
+
+    // State cho bulk delete (giữ selection khi chuyển trang)
+    const [selectedSinhVienIds, setSelectedSinhVienIds] = useState<number[]>([]);
+    const [selectedSinhVienMap, setSelectedSinhVienMap] = useState<Record<number, { maSinhVien: string; hoTen: string; malop?: string }>>({});
+    const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
+    const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+    const [bulkDeleteResults, setBulkDeleteResults] = useState<Array<{
+        id: number;
+        maSinhVien: string;
+        hoTen: string;
+        status: "success" | "failed";
+        message: string;
+    }> | null>(null);
 
     // Mở modal từ thanh search header (?modal=cap-tk-hang-loat | xet-tot-nghiep | thong-ke-truot-mon | nhap-excel)
     useEffect(() => {
@@ -2251,6 +2353,171 @@ export default function QuanLySinhVienPage() {
         }
     };
 
+    // ==================== CHECKBOX & BULK DELETE HANDLERS ====================
+
+    // Kiểm tra xem tất cả sinh viên trên trang hiện tại đã được chọn chưa
+    const currentPageIds = sinhViens.map(sv => sv.id);
+    const selectedOnCurrentPage = selectedSinhVienIds.filter(id => currentPageIds.includes(id));
+    const isAllSelected = sinhViens.length > 0 && selectedOnCurrentPage.length === sinhViens.length;
+    const isIndeterminate = selectedOnCurrentPage.length > 0 && selectedOnCurrentPage.length < sinhViens.length;
+
+    // Toggle chọn tất cả trên trang hiện tại (merge với selection đã có từ trang khác)
+    const handleSelectAll = (checked: boolean) => {
+        if (checked) {
+            const idsToAdd = sinhViens.map(sv => sv.id);
+            const newMap: Record<number, { maSinhVien: string; hoTen: string; malop?: string }> = { ...selectedSinhVienMap };
+            sinhViens.forEach(sv => {
+                newMap[sv.id] = {
+                    maSinhVien: sv.maSinhVien,
+                    hoTen: sv.hoTen,
+                    malop: sv.lop.maLop,
+                };
+            });
+            setSelectedSinhVienIds(prev => [...new Set([...prev, ...idsToAdd])]);
+            setSelectedSinhVienMap(newMap);
+        } else {
+            const idsToRemove = new Set(currentPageIds);
+            setSelectedSinhVienIds(prev => prev.filter(id => !idsToRemove.has(id)));
+            setSelectedSinhVienMap(prev => {
+                const next = { ...prev };
+                idsToRemove.forEach(id => delete next[id]);
+                return next;
+            });
+        }
+    };
+
+    // Toggle chọn một sinh viên
+    const handleSelectOne = (sinhVienId: number, checked: boolean, sv?: SinhVien) => {
+        if (checked) {
+            setSelectedSinhVienIds(prev => (prev.includes(sinhVienId) ? prev : [...prev, sinhVienId]));
+            if (sv) {
+                setSelectedSinhVienMap(prev => ({
+                    ...prev,
+                    [sinhVienId]: {
+                        maSinhVien: sv.maSinhVien,
+                        hoTen: sv.hoTen,
+                        malop: sv.lop.maLop,
+                    },
+                }));
+            }
+        } else {
+            setSelectedSinhVienIds(prev => prev.filter(id => id !== sinhVienId));
+            setSelectedSinhVienMap(prev => {
+                const next = { ...prev };
+                delete next[sinhVienId];
+                return next;
+            });
+        }
+    };
+
+    // Kiểm tra một sinh viên có được chọn không
+    const isSelected = (sinhVienId: number) => selectedSinhVienIds.includes(sinhVienId);
+
+    // Clear toàn bộ selection (gọi sau khi xóa hàng loạt xong)
+    const clearSelection = () => {
+        setSelectedSinhVienIds([]);
+        setSelectedSinhVienMap({});
+    };
+
+    // Mở modal xóa hàng loạt
+    const openBulkDeleteModal = () => {
+        if (selectedSinhVienIds.length === 0) {
+            showAlert("warning", "Cảnh báo", "Vui lòng chọn ít nhất một sinh viên để xóa");
+            return;
+        }
+        setBulkDeleteResults(null);
+        setIsBulkDeleteModalOpen(true);
+    };
+
+    // Đóng modal xóa hàng loạt
+    const closeBulkDeleteModal = () => {
+        const hadResults = bulkDeleteResults !== null;
+        setIsBulkDeleteModalOpen(false);
+        setBulkDeleteResults(null);
+        // Nếu đã xóa xong, reset selection và refresh data
+        if (hadResults) {
+            clearSelection();
+            fetchSinhViens(currentPage, searchKeyword, filterTinhTrang, filterLopId, filterNganhId, filterNienKhoaId);
+        }
+    };
+
+    // Xử lý xóa hàng loạt
+    const handleBulkDelete = async () => {
+        setIsBulkDeleting(true);
+        const results: Array<{
+            id: number;
+            maSinhVien: string;
+            hoTen: string;
+            status: "success" | "failed";
+            message: string;
+        }> = [];
+
+        const accessToken = getCookie("access_token");
+
+        // Xóa theo danh sách ID đã chọn (giữ selection khi chuyển trang)
+        const displayInfo = (id: number) => selectedSinhVienMap[id] ?? { maSinhVien: `#${id}`, hoTen: "N/A" };
+
+        // 👉 Cuộn lên đầu trang
+        window.scrollTo({
+            top: 0,
+            behavior: "smooth",
+        });
+
+        for (const sinhVienId of selectedSinhVienIds) {
+            const { maSinhVien, hoTen } = displayInfo(sinhVienId);
+            try {
+                const res = await fetch(
+                    `http://localhost:3000/sinh-vien/${sinhVienId}`,
+                    {
+                        method: "DELETE",
+                        headers: {
+                            Authorization: `Bearer ${accessToken}`,
+                        },
+                    }
+                );
+
+                if (res.ok) {
+                    results.push({
+                        id: sinhVienId,
+                        maSinhVien,
+                        hoTen,
+                        status: "success",
+                        message: "Xóa thành công",
+                    });
+                } else {
+                    const err = await res.json();
+                    results.push({
+                        id: sinhVienId,
+                        maSinhVien,
+                        hoTen,
+                        status: "failed",
+                        message: err.message || "Xóa thất bại",
+                    });
+                }
+            } catch (err) {
+                results.push({
+                    id: sinhVienId,
+                    maSinhVien,
+                    hoTen,
+                    status: "failed",
+                    message: "Lỗi kết nối",
+                });
+            }
+        }
+
+        setBulkDeleteResults(results);
+        setIsBulkDeleting(false);
+    };
+
+    // Đếm số thành công/thất bại
+    const getDeleteSummary = () => {
+        if (!bulkDeleteResults) return { success: 0, failed: 0 };
+        return {
+            success: bulkDeleteResults.filter(r => r.status === "success").length,
+            failed: bulkDeleteResults.filter(r => r.status === "failed").length,
+        };
+    };
+
     // Xử lý tạo tài khoản hàng loạt
     const handleBulkCreateAccounts = async () => {
         setIsBulkCreatingAccounts(true);
@@ -2297,67 +2564,29 @@ export default function QuanLySinhVienPage() {
         setBulkCreateResult(null);
     };
 
-    // Mở modal xuất phiếu điểm
-    const openExportPhieuDiemModal = (sinhVien: SinhVien) => {
-        setExportingPhieuDiemSinhVien(sinhVien);
-        setIsExportPhieuDiemModalOpen(true);
+    // Mở modal xem bảng điểm
+    const openViewBangDiemModal = (sinhVien: SinhVien) => {
+        setViewingBangDiemSinhVien(sinhVien);
+        setIsViewBangDiemModalOpen(true);
     };
 
-    // Đóng modal xuất phiếu điểm
-    const closeExportPhieuDiemModal = () => {
-        setIsExportPhieuDiemModalOpen(false);
-        setExportingPhieuDiemSinhVien(null);
+    // Đóng modal xem bảng điểm
+    const closeViewBangDiemModal = () => {
+        setIsViewBangDiemModalOpen(false);
+        setViewingBangDiemSinhVien(null);
     };
 
-    // Xử lý xuất phiếu điểm
-    const handleExportPhieuDiem = async () => {
-        if (!exportingPhieuDiemSinhVien) return;
+    // Xử lý chuyển trang xem bảng điểm
+    const handleViewBangDiem = () => {
+        if (!viewingBangDiemSinhVien) return;
 
-        setIsExportingPhieuDiem(true);
-
-        try {
-            const accessToken = getCookie("access_token");
-            const res = await fetch(
-                `http://localhost:3000/bao-cao/phieu-diem/${exportingPhieuDiemSinhVien.id}`,
-                {
-                    method: "GET",
-                    headers: {
-                        Authorization: `Bearer ${accessToken}`,
-                    },
-                }
-            );
-
-            if (res.ok) {
-                // Xử lý tải file Excel
-                const blob = await res.blob();
-                const url = window.URL.createObjectURL(blob);
-                const link = document.createElement("a");
-                link.href = url;
-                link.download = `Bảng điểm cá nhân của SV ${exportingPhieuDiemSinhVien.maSinhVien}.xlsx`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                window.URL.revokeObjectURL(url);
-
-                showAlert("success", "Thành công", `Đã xuất phiếu điểm cho sinh viên ${exportingPhieuDiemSinhVien.hoTen}`);
-                closeExportPhieuDiemModal();
-            } else {
-                const err = await res.json();
-                closeExportPhieuDiemModal();
-                showAlert("error", "Lỗi", err.message || "Không thể xuất phiếu điểm");
-            }
-        } catch (err) {
-            console.error("Lỗi xuất phiếu điểm:", err);
-            closeExportPhieuDiemModal();
-            showAlert("error", "Lỗi", "Có lỗi xảy ra khi xuất phiếu điểm");
-        } finally {
-            setIsExportingPhieuDiem(false);
-            // 👉 Cuộn lên đầu trang
-            window.scrollTo({
-                top: 0,
-                behavior: "smooth",
-            });
-        }
+        // Tạo returnUrl để BackButton có thể quay lại
+        const currentPath = pathname;
+        const returnUrl = encodeURIComponent(currentPath);
+        const bangDiemUrl = `/quan-ly-sinh-vien/bang-diem/${viewingBangDiemSinhVien.id}?returnUrl=${returnUrl}`;
+        
+        closeViewBangDiemModal();
+        router.push(bangDiemUrl);
     };
 
     const openEditModal = (sinhVien: SinhVien) => {
@@ -2753,7 +2982,19 @@ export default function QuanLySinhVienPage() {
                                     className="flex items-center gap-2 px-3 py-2 rounded-md transition-colors duration-200 hover:bg-red-100 hover:text-red-700 dark:hover:bg-red-900/30 dark:hover:text-red-300"
                                 >
                                     <FontAwesomeIcon icon={faUserXmark} className="w-4" />
-                                    Xem SV trượt môn
+                                    TK trượt môn
+                                </DropdownItem>
+
+                                <DropdownItem
+                                    tag="button"
+                                    onClick={() => {
+                                        setIsDuyetYCSinhVienModalOpen(true);
+                                        closeHeaderDropdown();
+                                    }}
+                                    className="flex items-center gap-2 px-3 py-2 rounded-md transition-colors duration-200 hover:bg-blue-100 hover:text-blue-700 dark:hover:bg-blue-900/30 dark:hover:text-blue-300"
+                                >
+                                    <FontAwesomeIcon icon={faCircleCheck} className="w-4" />
+                                    Duyệt YC của sinh viên
                                 </DropdownItem>
                             </div>
                         </Dropdown>
@@ -2838,6 +3079,16 @@ export default function QuanLySinhVienPage() {
                         <Button variant="outline" onClick={handleResetFilter} className="h-10">
                             Đặt lại
                         </Button>
+                        {selectedSinhVienIds.length > 0 && (
+                            <Button
+                                variant="danger"
+                                onClick={openBulkDeleteModal}
+                                startIcon={<FontAwesomeIcon icon={faTrashCan} />}
+                                className="h-10"
+                            >
+                                Xóa ({selectedSinhVienIds.length})
+                            </Button>
+                        )}
                     </div>
                 </div>
 
@@ -2847,7 +3098,16 @@ export default function QuanLySinhVienPage() {
                         <div className="min-w-[1000px]">
                             <Table>
                                 <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
-                                    <TableRow className="grid grid-cols-[12%_21%_14%_14%_12%_12%_15%]">
+                                    <TableRow className="grid grid-cols-[3%_12%_18%_14%_14%_12%_12%_15%]">
+                                        {/* Checkbox chọn tất cả */}
+                                        <TableCell isHeader className="px-3 py-3 font-medium text-gray-500 text-theme-xs flex items-center justify-center">
+                                            <Checkbox
+                                                checked={isAllSelected}
+                                                indeterminate={isIndeterminate}
+                                                onChange={handleSelectAll}
+                                                disabled={sinhViens.length === 0}
+                                            />
+                                        </TableCell>
                                         <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-theme-xs">
                                             Mã SV
                                         </TableCell>
@@ -2874,13 +3134,25 @@ export default function QuanLySinhVienPage() {
                                 <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05] text-theme-sm text-center">
                                     {sinhViens.length === 0 ? (
                                         <TableRow>
-                                            <TableCell className="px-5 py-8 text-center text-gray-500 dark:text-gray-400 col-span-7">
+                                            <TableCell className="px-5 py-8 text-center text-gray-500 dark:text-gray-400 col-span-8">
                                                 Không có dữ liệu sinh viên
                                             </TableCell>
                                         </TableRow>
                                     ) : (
                                         sinhViens.map((sv) => (
-                                            <TableRow key={sv.id} className="grid grid-cols-[12%_21%_14%_14%_12%_12%_15%] items-center">
+                                            <TableRow
+                                                key={sv.id}
+                                                className={`grid grid-cols-[3%_12%_18%_14%_14%_12%_12%_15%] items-center ${
+                                                    isSelected(sv.id) ? "bg-blue-50/50 dark:bg-blue-900/10" : ""
+                                                }`}
+                                            >
+                                                {/* Checkbox */}
+                                                <TableCell className="px-3 py-4 flex items-center justify-center">
+                                                    <Checkbox
+                                                        checked={isSelected(sv.id)}
+                                                        onChange={(checked) => handleSelectOne(sv.id, checked, sv)}
+                                                    />
+                                                </TableCell>
                                                 <TableCell className="px-5 py-4 text-gray-800 dark:text-white/90">
                                                     {sv.maSinhVien}
                                                 </TableCell>
@@ -2972,14 +3244,14 @@ export default function QuanLySinhVienPage() {
                                                                     Xem thành tích
                                                                 </DropdownItem>
 
-                                                                {/* THÊM MỚI - Xuất phiếu điểm */}
+                                                                {/* Xem bảng điểm */}
                                                                 <DropdownItem
                                                                     tag="button"
                                                                     onItemClick={closeDropdown}
-                                                                    onClick={() => openExportPhieuDiemModal(sv)}
+                                                                    onClick={() => openViewBangDiemModal(sv)}
                                                                 >
-                                                                    <FontAwesomeIcon icon={faFileInvoice} className="mr-2 w-4" />
-                                                                    Xuất phiếu điểm
+                                                                    <FontAwesomeIcon icon={faEye} className="mr-2 w-4" />
+                                                                    Xem bảng điểm
                                                                 </DropdownItem>
 
                                                                 <div className="my-1 border-t border-gray-100 dark:border-gray-700" />
@@ -3288,6 +3560,12 @@ export default function QuanLySinhVienPage() {
                 isOpen={isXetTotNghiepModalOpen}
                 onClose={() => setIsXetTotNghiepModalOpen(false)}
                 nienKhoaOptions={nienKhoaOptions}
+            />
+
+            {/* Modal Duyệt YC của sinh viên */}
+            <DuyetYCSinhVienModal
+                isOpen={isDuyetYCSinhVienModalOpen}
+                onClose={() => setIsDuyetYCSinhVienModalOpen(false)}
             />
 
             {/* Modal Thống kê SV trượt môn */}
@@ -3621,105 +3899,123 @@ export default function QuanLySinhVienPage() {
                 </div>
             </Modal>
 
-            {/* Modal Xuất phiếu điểm cá nhân */}
+            {/* Modal Xem bảng điểm */}
             <Modal
-                isOpen={isExportPhieuDiemModalOpen}
-                onClose={() => {
-                    if (!isExportingPhieuDiem) {
-                        closeExportPhieuDiemModal();
-                    }
-                }}
-                className="max-w-lg"
+                isOpen={isViewBangDiemModalOpen}
+                onClose={closeViewBangDiemModal}
+                className="max-w-2xl"
             >
                 <div className="p-6 sm:p-8">
                     {/* Header */}
                     <div className="flex items-center gap-4 mb-6">
-                        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-brand-100 dark:bg-brand-900/30">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30">
                             <FontAwesomeIcon
-                                icon={faFileInvoice}
-                                className="text-2xl text-brand-600 dark:text-brand-400"
+                                icon={faEye}
+                                className="text-2xl text-blue-600 dark:text-blue-400"
                             />
                         </div>
                         <div>
                             <h3 className="text-xl font-semibold text-gray-800 dark:text-white/90">
-                                Xuất phiếu điểm cá nhân
+                                Xem bảng điểm sinh viên
                             </h3>
                             <p className="text-sm text-gray-500 dark:text-gray-400">
-                                Tải xuống bảng điểm chi tiết của sinh viên
+                                Xem chi tiết bảng điểm học tập của sinh viên
                             </p>
                         </div>
                     </div>
 
                     {/* Thông tin sinh viên */}
-                    {exportingPhieuDiemSinhVien && (
-                        <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700">
-                            <div className="space-y-3">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-sm text-gray-500 dark:text-gray-400">Mã sinh viên:</span>
-                                    <span className="font-semibold text-gray-800 dark:text-white">
-                                        {exportingPhieuDiemSinhVien.maSinhVien}
-                                    </span>
+                    {viewingBangDiemSinhVien && (
+                        <div className="mb-6 p-5 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800/50 dark:to-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-700">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">
+                                        Mã sinh viên
+                                    </p>
+                                    <p className="text-base font-semibold text-gray-900 dark:text-white">
+                                        {viewingBangDiemSinhVien.maSinhVien}
+                                    </p>
                                 </div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-sm text-gray-500 dark:text-gray-400">Họ tên:</span>
-                                    <span className="font-semibold text-gray-800 dark:text-white">
-                                        {exportingPhieuDiemSinhVien.hoTen}
-                                    </span>
+                                <div>
+                                    <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">
+                                        Họ tên
+                                    </p>
+                                    <p className="text-base font-semibold text-gray-900 dark:text-white">
+                                        {viewingBangDiemSinhVien.hoTen}
+                                    </p>
                                 </div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-sm text-gray-500 dark:text-gray-400">Lớp:</span>
-                                    <span className="font-medium text-gray-700 dark:text-gray-300">
-                                        {exportingPhieuDiemSinhVien.lop.maLop}
-                                    </span>
+                                <div>
+                                    <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">
+                                        Lớp
+                                    </p>
+                                    <p className="text-base font-medium text-gray-800 dark:text-gray-200">
+                                        {viewingBangDiemSinhVien.lop.maLop} - {viewingBangDiemSinhVien.lop.tenLop}
+                                    </p>
                                 </div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-sm text-gray-500 dark:text-gray-400">Ngành:</span>
-                                    <span className="font-medium text-gray-700 dark:text-gray-300">
-                                        {exportingPhieuDiemSinhVien.lop.nganh.tenNganh}
-                                    </span>
+                                <div>
+                                    <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">
+                                        Ngành
+                                    </p>
+                                    <p className="text-base font-medium text-gray-800 dark:text-gray-200">
+                                        {viewingBangDiemSinhVien.lop.nganh.tenNganh}
+                                    </p>
                                 </div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-sm text-gray-500 dark:text-gray-400">Niên khóa:</span>
-                                    <span className="font-medium text-gray-700 dark:text-gray-300">
-                                        {exportingPhieuDiemSinhVien.lop.nienKhoa.tenNienKhoa}
-                                    </span>
+                                <div>
+                                    <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">
+                                        Niên khóa
+                                    </p>
+                                    <p className="text-base font-medium text-gray-800 dark:text-gray-200">
+                                        {viewingBangDiemSinhVien.lop.nienKhoa.tenNienKhoa}
+                                    </p>
                                 </div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-sm text-gray-500 dark:text-gray-400">Tình trạng:</span>
-                                    <Badge variant="solid" color={getTinhTrangColor(exportingPhieuDiemSinhVien.tinhTrang)}>
-                                        {getTinhTrangLabel(exportingPhieuDiemSinhVien.tinhTrang)}
+                                <div>
+                                    <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">
+                                        Tình trạng
+                                    </p>
+                                    <Badge variant="solid" color={getTinhTrangColor(viewingBangDiemSinhVien.tinhTrang)}>
+                                        {getTinhTrangLabel(viewingBangDiemSinhVien.tinhTrang)}
                                     </Badge>
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {/* Thông tin file sẽ xuất */}
-                    <div className="mb-6 rounded-xl border border-blue-200 bg-blue-50 dark:border-blue-800/50 dark:bg-blue-900/20">
-                        <div className="p-4">
+                    {/* Hướng dẫn sử dụng */}
+                    <div className="mb-6 rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 dark:border-blue-800/50 dark:from-blue-900/20 dark:to-indigo-900/20">
+                        <div className="p-5">
                             <div className="flex items-start gap-3">
                                 <div className="flex-shrink-0">
-                                    <FontAwesomeIcon
-                                        icon={faFileExcel}
-                                        className="text-lg text-blue-600 dark:text-blue-400 mt-0.5"
-                                    />
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-800/50">
+                                        <FontAwesomeIcon
+                                            icon={faCircleInfo}
+                                            className="text-lg text-blue-600 dark:text-blue-400"
+                                        />
+                                    </div>
                                 </div>
                                 <div className="flex-1">
-                                    <h4 className="font-semibold text-blue-800 dark:text-blue-300 mb-2">
-                                        Thông tin file xuất
+                                    <h4 className="font-semibold text-blue-800 dark:text-blue-300 mb-3">
+                                        Hướng dẫn sử dụng
                                     </h4>
-                                    <ul className="text-sm text-blue-700/80 dark:text-blue-300/70 space-y-1.5">
-                                        <li className="flex items-center gap-2">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                                            <span>Định dạng: <strong>Excel (.xlsx)</strong></span>
+                                    <ul className="text-sm text-blue-700/80 dark:text-blue-300/70 space-y-2">
+                                        <li className="flex items-start gap-2">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 flex-shrink-0"></span>
+                                            <span>Chuyển sang trang <strong>bảng điểm</strong> để xem chi tiết bảng điểm học tập của sinh viên.</span>
                                         </li>
-                                        <li className="flex items-center gap-2">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                                            <span>Tên file: <strong>Bảng điểm cá nhân của SV {exportingPhieuDiemSinhVien?.maSinhVien}</strong></span>
+                                        <li className="flex items-start gap-2">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 flex-shrink-0"></span>
+                                            <span>Bạn có thể <strong>mở rộng từng môn học</strong> để xem chi tiết các lớp học phần đã học.</span>
                                         </li>
-                                        <li className="flex items-center gap-2">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                                            <span>Nội dung: Điểm tất cả môn học đã được vào điểm</span>
+                                        <li className="flex items-start gap-2">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 flex-shrink-0"></span>
+                                            <span>Trang cũng hiển thị <strong>GPA, điểm TBCHP</strong> và <strong>xếp loại học lực</strong> của sinh viên.</span>
+                                        </li>
+                                        <li className="flex items-start gap-2">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 flex-shrink-0"></span>
+                                            <span>Bạn có thể <strong>tải xuống bảng điểm</strong> dưới dạng Excel từ trang bảng điểm.</span>
+                                        </li>
+                                        <li className="flex items-start gap-2">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 flex-shrink-0"></span>
+                                            <span>Sử dụng nút <strong>"Quay lại"</strong> để trở về trang quản lý sinh viên.</span>
                                         </li>
                                     </ul>
                                 </div>
@@ -3727,8 +4023,8 @@ export default function QuanLySinhVienPage() {
                         </div>
                     </div>
 
-                    {/* Hướng dẫn */}
-                    <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 dark:border-emerald-800/50 dark:bg-emerald-900/20">
+                    {/* Thông tin bổ sung */}
+                    <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50/70 dark:border-emerald-800/50 dark:bg-emerald-900/20">
                         <div className="p-4">
                             <div className="flex items-start gap-3">
                                 <div className="flex-shrink-0">
@@ -3739,51 +4035,300 @@ export default function QuanLySinhVienPage() {
                                 </div>
                                 <div className="flex-1">
                                     <h4 className="font-semibold text-emerald-800 dark:text-emerald-300 mb-1">
-                                        Hướng dẫn sử dụng
+                                        Lưu ý
                                     </h4>
                                     <p className="text-sm text-emerald-700/80 dark:text-emerald-300/70">
-                                        Phiếu điểm sẽ bao gồm thông tin cá nhân sinh viên và bảng điểm chi tiết
-                                        tất cả các môn học đã đăng ký theo từng học kỳ. Có thể in ấn hoặc lưu trữ.
+                                        Dữ liệu bảng điểm được cập nhật theo thời gian thực. Nếu có thay đổi về điểm số, 
+                                        vui lòng làm mới trang để xem thông tin mới nhất.
                                     </p>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Loading state */}
-                    {isExportingPhieuDiem && (
-                        <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg flex items-center justify-center gap-3">
-                            <FontAwesomeIcon
-                                icon={faSpinner}
-                                className="text-xl text-brand-500 animate-spin"
-                            />
-                            <span className="text-gray-700 dark:text-gray-300">
-                                Đang tạo phiếu điểm...
-                            </span>
-                        </div>
-                    )}
-
                     {/* Buttons */}
                     <div className="flex justify-end gap-3">
                         <Button
                             variant="outline"
-                            onClick={closeExportPhieuDiemModal}
-                            disabled={isExportingPhieuDiem}
+                            onClick={closeViewBangDiemModal}
                         >
                             Hủy
                         </Button>
                         <Button
                             variant="primary"
-                            onClick={handleExportPhieuDiem}
-                            disabled={isExportingPhieuDiem}
-                            startIcon={
-                                isExportingPhieuDiem
-                                    ? <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
-                                    : <FontAwesomeIcon icon={faDownload} />
-                            }
+                            onClick={handleViewBangDiem}
+                            startIcon={<FontAwesomeIcon icon={faEye} />}
                         >
-                            {isExportingPhieuDiem ? "Đang xuất..." : "Xuất phiếu điểm"}
+                            Xem bảng điểm
                         </Button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Modal Xóa hàng loạt sinh viên */}
+            <Modal
+                isOpen={isBulkDeleteModalOpen}
+                onClose={() => {
+                    if (!isBulkDeleting) {
+                        closeBulkDeleteModal();
+                    }
+                }}
+                className="max-w-2xl"
+            >
+                <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
+                    {/* Header */}
+                    <div className="flex items-center gap-4 mb-6">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
+                            <FontAwesomeIcon
+                                icon={faTrashCan}
+                                className="text-2xl text-red-600 dark:text-red-400"
+                            />
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-semibold text-gray-800 dark:text-white/90">
+                                Xóa hàng loạt sinh viên
+                            </h3>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                                {bulkDeleteResults
+                                    ? "Kết quả xóa sinh viên"
+                                    : `Đã chọn ${selectedSinhVienIds.length} sinh viên`
+                                }
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Nội dung trước khi xóa */}
+                    {!bulkDeleteResults && !isBulkDeleting && (
+                        <>
+                            {/* Danh sách sinh viên sẽ xóa (tất cả đã chọn, kể cả từ các trang khác) */}
+                            <div className="mb-6">
+                                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                                    Danh sách sinh viên sẽ bị xóa ({selectedSinhVienIds.length}):
+                                </h4>
+                                <div className="max-h-48 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700">
+                                    <table className="w-full text-sm">
+                                        <thead className="sticky top-0 bg-gray-50 dark:bg-gray-800">
+                                            <tr>
+                                                <th className="px-4 py-2 text-left text-gray-600 dark:text-gray-400 font-medium">STT</th>
+                                                <th className="px-4 py-2 text-left text-gray-600 dark:text-gray-400 font-medium">Mã SV</th>
+                                                <th className="px-4 py-2 text-left text-gray-600 dark:text-gray-400 font-medium">Họ tên</th>
+                                                <th className="px-4 py-2 text-left text-gray-600 dark:text-gray-400 font-medium">Lớp</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                                            {selectedSinhVienIds.map((sinhVienId, index) => {
+                                                const info = selectedSinhVienMap[sinhVienId] ?? { maSinhVien: `#${sinhVienId}`, hoTen: "N/A" };
+                                                return (
+                                                    <tr key={sinhVienId} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                                                        <td className="px-4 py-2 text-gray-600 dark:text-gray-400">{index + 1}</td>
+                                                        <td className="px-4 py-2 text-gray-800 dark:text-white font-medium">{info.maSinhVien}</td>
+                                                        <td className="px-4 py-2 text-gray-800 dark:text-white">{info.hoTen}</td>
+                                                        <td className="px-4 py-2 text-gray-600 dark:text-gray-400">{info.malop ?? "—"}</td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            {/* Cảnh báo */}
+                            <div className="mb-6 rounded-xl border border-red-200 bg-red-50 dark:border-red-800/50 dark:bg-red-900/20">
+                                <div className="p-4">
+                                    <div className="flex items-start gap-3">
+                                        <div className="flex-shrink-0">
+                                            <FontAwesomeIcon
+                                                icon={faTriangleExclamation}
+                                                className="text-lg text-red-600 dark:text-red-400 mt-0.5"
+                                            />
+                                        </div>
+                                        <div className="flex-1">
+                                            <h4 className="font-semibold text-red-800 dark:text-red-300 mb-1">
+                                                Cảnh báo quan trọng
+                                            </h4>
+                                            <ul className="text-sm text-red-700/80 dark:text-red-300/70 space-y-1 list-disc list-inside">
+                                                <li>Hành động này <strong>không thể hoàn tác</strong></li>
+                                                <li>Tất cả dữ liệu liên quan đến sinh viên sẽ bị xóa vĩnh viễn</li>
+                                                <li>Vui lòng kiểm tra kỹ danh sách trước khi xác nhận</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Thông tin bổ sung */}
+                            <div className="mb-6 rounded-xl border border-blue-200 bg-blue-50 dark:border-blue-800/50 dark:bg-blue-900/20">
+                                <div className="p-4">
+                                    <div className="flex items-start gap-3">
+                                        <div className="flex-shrink-0">
+                                            <FontAwesomeIcon
+                                                icon={faCircleInfo}
+                                                className="text-lg text-blue-600 dark:text-blue-400 mt-0.5"
+                                            />
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className="text-sm text-blue-700/80 dark:text-blue-300/70">
+                                                <strong>Lưu ý:</strong> Hệ thống sẽ xóa tất cả sinh viên đã chọn. 
+                                                Nếu có lỗi xảy ra với một số sinh viên, bạn sẽ thấy chi tiết trong kết quả.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6 text-center">
+                                Bạn có chắc chắn muốn xóa <strong>{selectedSinhVienIds.length}</strong> sinh viên đã chọn?
+                            </p>
+                        </>
+                    )}
+
+                    {/* Loading state */}
+                    {isBulkDeleting && (
+                        <div className="py-12 flex flex-col items-center justify-center">
+                            <div className="relative">
+                                <div className="h-20 w-20 rounded-full border-4 border-red-100 dark:border-red-900/50"></div>
+                                <div className="absolute top-0 left-0 h-20 w-20 rounded-full border-4 border-red-500 border-t-transparent animate-spin"></div>
+                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+                                    <FontAwesomeIcon
+                                        icon={faTrashCan}
+                                        className="text-2xl text-red-500"
+                                    />
+                                </div>
+                            </div>
+                            <p className="mt-6 text-lg font-medium text-gray-700 dark:text-gray-300">
+                                Đang xóa sinh viên...
+                            </p>
+                            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                                Vui lòng đợi trong giây lát
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Kết quả sau khi xóa */}
+                    {bulkDeleteResults && (
+                        <>
+                            {/* Summary */}
+                            <div className="mb-6 grid grid-cols-3 gap-4">
+                                <div className="rounded-xl bg-gray-50 dark:bg-gray-800/50 p-4 text-center border border-gray-200 dark:border-gray-700">
+                                    <p className="text-2xl font-bold text-gray-800 dark:text-white">
+                                        {bulkDeleteResults.length}
+                                    </p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">Tổng xử lý</p>
+                                </div>
+                                <div className="rounded-xl bg-emerald-50 dark:bg-emerald-900/20 p-4 text-center border border-emerald-200 dark:border-emerald-800">
+                                    <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                                        {getDeleteSummary().success}
+                                    </p>
+                                    <p className="text-sm text-emerald-600/70 dark:text-emerald-400/70">Thành công</p>
+                                </div>
+                                <div className="rounded-xl bg-red-50 dark:bg-red-900/20 p-4 text-center border border-red-200 dark:border-red-800">
+                                    <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+                                        {getDeleteSummary().failed}
+                                    </p>
+                                    <p className="text-sm text-red-600/70 dark:text-red-400/70">Thất bại</p>
+                                </div>
+                            </div>
+
+                            {/* Success message */}
+                            {getDeleteSummary().success > 0 && (
+                                <div className="mb-4 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 p-4 border border-emerald-200 dark:border-emerald-800">
+                                    <div className="flex items-center gap-2">
+                                        <FontAwesomeIcon
+                                            icon={faCircleCheck}
+                                            className="text-emerald-500"
+                                        />
+                                        <p className="text-sm text-emerald-700 dark:text-emerald-300">
+                                            Đã xóa thành công <strong>{getDeleteSummary().success}</strong> sinh viên
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Chi tiết kết quả */}
+                            <div className="mb-4">
+                                <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Chi tiết kết quả
+                                </h4>
+                                <div className="max-h-60 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700">
+                                    <table className="w-full text-sm">
+                                        <thead className="sticky top-0 bg-gray-50 dark:bg-gray-800">
+                                            <tr>
+                                                <th className="px-3 py-2 text-left text-gray-600 dark:text-gray-400 font-medium">Mã SV</th>
+                                                <th className="px-3 py-2 text-left text-gray-600 dark:text-gray-400 font-medium">Họ tên</th>
+                                                <th className="px-3 py-2 text-center text-gray-600 dark:text-gray-400 font-medium">Trạng thái</th>
+                                                <th className="px-3 py-2 text-left text-gray-600 dark:text-gray-400 font-medium">Chi tiết</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                                            {bulkDeleteResults.map((result) => (
+                                                <tr
+                                                    key={result.id}
+                                                    className={result.status === 'failed' ? 'bg-red-50 dark:bg-red-900/10' : ''}
+                                                >
+                                                    <td className="px-3 py-2 text-gray-800 dark:text-white font-medium">
+                                                        {result.maSinhVien}
+                                                    </td>
+                                                    <td className="px-3 py-2 text-gray-800 dark:text-white">
+                                                        {result.hoTen}
+                                                    </td>
+                                                    <td className="px-3 py-2 text-center">
+                                                        {result.status === 'success' ? (
+                                                            <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                                                                <FontAwesomeIcon icon={faCircleCheck} className="text-xs" />
+                                                                Thành công
+                                                            </span>
+                                                        ) : (
+                                                            <span className="inline-flex items-center gap-1 text-red-600 dark:text-red-400">
+                                                                <FontAwesomeIcon icon={faCircleExclamation} className="text-xs" />
+                                                                Thất bại
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-3 py-2 text-gray-600 dark:text-gray-400 text-xs">
+                                                        {result.message}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </>
+                    )}
+
+                    {/* Buttons */}
+                    <div className="flex justify-end gap-3 pt-2">
+                        {!bulkDeleteResults ? (
+                            <>
+                                <Button
+                                    variant="outline"
+                                    onClick={closeBulkDeleteModal}
+                                    disabled={isBulkDeleting}
+                                >
+                                    Hủy
+                                </Button>
+                                <Button
+                                    variant="primary"
+                                    onClick={handleBulkDelete}
+                                    disabled={isBulkDeleting}
+                                    className="bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
+                                    startIcon={
+                                        isBulkDeleting
+                                            ? <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
+                                            : <FontAwesomeIcon icon={faTrashCan} />
+                                    }
+                                >
+                                    {isBulkDeleting ? "Đang xóa..." : `Xác nhận xóa ${selectedSinhVienIds.length} sinh viên`}
+                                </Button>
+                            </>
+                        ) : (
+                            <Button
+                                variant="primary"
+                                onClick={closeBulkDeleteModal}
+                            >
+                                Đóng
+                            </Button>
+                        )}
                     </div>
                 </div>
             </Modal>

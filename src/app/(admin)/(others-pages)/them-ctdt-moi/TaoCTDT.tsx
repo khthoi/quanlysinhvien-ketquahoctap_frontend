@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import {
@@ -94,6 +94,30 @@ interface ApiError {
     field?: string;
 }
 
+interface DraftData {
+    formData: {
+        maChuongTrinh: string;
+        tenChuongTrinh: string;
+        thoiGianDaoTao: string;
+        nganhId: string;
+        nienKhoaIds: string[];
+        ghiChu: string;
+    };
+    monHocTrongCTDT: Array<{
+        thuTuHocKy: number;
+        monHoc: {
+            id: number;
+            tenMonHoc: string;
+            maMonHoc: string;
+            loaiMon: "DAI_CUONG" | "CHUYEN_NGANH" | "TU_CHON";
+            soTinChi: number;
+            moTa: string;
+        };
+        ghiChu: string;
+    }>;
+    savedAt: string;
+}
+
 // ==================== HELPER FUNCTIONS ====================
 const getCookie = (name: string): string | null => {
     const value = `; ${document.cookie}`;
@@ -119,6 +143,73 @@ const getLoaiMonLabel = (loaiMon: string): string => {
             return "Tự chọn";
         default:
             return loaiMon;
+    }
+};
+
+// ==================== LOCAL STORAGE HELPERS ====================
+const STORAGE_KEY = "ctdt_draft";
+
+const saveDraftToStorage = (formData: any, monHocTrongCTDT: MonHocTrongCTDT[]): void => {
+    try {
+        const draftData: DraftData = {
+            formData: {
+                maChuongTrinh: formData.maChuongTrinh || "",
+                tenChuongTrinh: formData.tenChuongTrinh || "",
+                thoiGianDaoTao: formData.thoiGianDaoTao || "",
+                nganhId: formData.nganhId || "",
+                nienKhoaIds: formData.nienKhoaIds || [],
+                ghiChu: formData.ghiChu || "",
+            },
+            monHocTrongCTDT: monHocTrongCTDT.map((mh) => ({
+                thuTuHocKy: mh.thuTuHocKy,
+                monHoc: {
+                    id: mh.monHoc.id,
+                    tenMonHoc: mh.monHoc.tenMonHoc,
+                    maMonHoc: mh.monHoc.maMonHoc,
+                    loaiMon: mh.monHoc.loaiMon,
+                    soTinChi: mh.monHoc.soTinChi,
+                    moTa: mh.monHoc.moTa,
+                },
+                ghiChu: mh.ghiChu || "",
+            })),
+            savedAt: new Date().toISOString(),
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(draftData));
+    } catch (err) {
+        console.error("Error saving draft to storage:", err);
+    }
+};
+
+const loadDraftFromStorage = (): DraftData | null => {
+    try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (!stored) return null;
+        return JSON.parse(stored) as DraftData;
+    } catch (err) {
+        console.error("Error loading draft from storage:", err);
+        return null;
+    }
+};
+
+const clearDraftFromStorage = (): void => {
+    try {
+        localStorage.removeItem(STORAGE_KEY);
+    } catch (err) {
+        console.error("Error clearing draft from storage:", err);
+    }
+};
+
+const formatDateTime = (isoString: string): string => {
+    try {
+        const date = new Date(isoString);
+        const day = String(date.getDate()).padStart(2, "0");
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const year = date.getFullYear();
+        const hours = String(date.getHours()).padStart(2, "0");
+        const minutes = String(date.getMinutes()).padStart(2, "0");
+        return `${day}/${month}/${year} ${hours}:${minutes}`;
+    } catch {
+        return "";
     }
 };
 
@@ -207,6 +298,14 @@ export default function TaoCTDT() {
 
     // Tìm kiếm môn học trong table
     const [monHocTableSearchKeyword, setMonHocTableSearchKeyword] = useState("");
+
+    // Auto-save state
+    const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+    const [isRestoringDraft, setIsRestoringDraft] = useState(false);
+    const [showLeaveWarningModal, setShowLeaveWarningModal] = useState(false);
+    const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
+    const autoSaveIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const hasUnsavedChangesRef = useRef(false);
 
     // ==================== COMPUTED VALUES ====================
     // Filter available nien khoas based on selected nganh
@@ -366,12 +465,218 @@ export default function TaoCTDT() {
         }
     };
 
+    // ==================== AUTO-SAVE FUNCTION ====================
+    const saveDraft = useCallback(() => {
+        // Chỉ lưu nếu có dữ liệu
+        const hasData =
+            formData.maChuongTrinh.trim() ||
+            formData.tenChuongTrinh.trim() ||
+            formData.nganhId ||
+            formData.nienKhoaIds.length > 0 ||
+            monHocTrongCTDT.length > 0;
+
+        if (hasData) {
+            saveDraftToStorage(formData, monHocTrongCTDT);
+            setLastSavedAt(new Date().toISOString());
+            hasUnsavedChangesRef.current = false;
+        }
+    }, [formData, monHocTrongCTDT]);
+
+    // ==================== RESTORE DRAFT FUNCTION ====================
+    const validateAndRestoreDraft = useCallback(async (draft: DraftData): Promise<{ valid: boolean; errors: string[] }> => {
+        const errors: string[] = [];
+
+        // Validate mon hocs exist
+        const monHocValidationPromises = draft.monHocTrongCTDT.map(async (mh) => {
+            try {
+                const accessToken = getCookie("access_token");
+                const res = await fetch(`http://localhost:3000/danh-muc/mon-hoc/${mh.monHoc.id}`, {
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                    },
+                });
+                if (!res.ok) {
+                    return `Môn học ${mh.monHoc.maMonHoc} (ID: ${mh.monHoc.id}) không tồn tại trong hệ thống`;
+                }
+                return null;
+            } catch (err) {
+                return `Không thể kiểm tra môn học ${mh.monHoc.maMonHoc} (ID: ${mh.monHoc.id})`;
+            }
+        });
+
+        const monHocErrors = (await Promise.all(monHocValidationPromises)).filter((e) => e !== null);
+        errors.push(...monHocErrors);
+
+        // Check duplicate mon hocs in draft
+        const monHocIds = draft.monHocTrongCTDT.map((mh) => mh.monHoc.id);
+        const duplicateIds = monHocIds.filter((id, index) => monHocIds.indexOf(id) !== index);
+        if (duplicateIds.length > 0) {
+            const duplicateMonHocs = draft.monHocTrongCTDT
+                .filter((mh) => duplicateIds.includes(mh.monHoc.id))
+                .map((mh) => mh.monHoc.maMonHoc);
+            errors.push(`Có môn học trùng lặp trong CTĐT: ${[...new Set(duplicateMonHocs)].join(", ")}`);
+        }
+
+        // Check if CTDT already exists (if maChuongTrinh is provided)
+        if (draft.formData.maChuongTrinh.trim()) {
+            try {
+                const accessToken = getCookie("access_token");
+                const res = await fetch("http://localhost:3000/dao-tao/chuong-trinh?page=1&limit=9999", {
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                    },
+                });
+                const json = await res.json();
+                if (json.data) {
+                    const exists = json.data.some(
+                        (ct: ChuongTrinhDaoTao) =>
+                        ct.maChuongTrinh.toLowerCase() === draft.formData.maChuongTrinh.trim().toLowerCase()
+                    );
+                    if (exists) {
+                        errors.push(`Mã chương trình đào tạo "${draft.formData.maChuongTrinh}" đã tồn tại trong hệ thống`);
+                    }
+                }
+            } catch (err) {
+                // Ignore validation error for this check
+            }
+        }
+
+        return { valid: errors.length === 0, errors };
+    }, []);
+
+    const restoreDraft = useCallback(async () => {
+        const draft = loadDraftFromStorage();
+        if (!draft) return;
+
+        setIsRestoringDraft(true);
+        const validation = await validateAndRestoreDraft(draft);
+
+        if (validation.valid) {
+            setFormData(draft.formData);
+            setMonHocTrongCTDT(
+                draft.monHocTrongCTDT.map((mh) => ({
+                    thuTuHocKy: mh.thuTuHocKy,
+                    monHoc: mh.monHoc,
+                    ghiChu: mh.ghiChu,
+                }))
+            );
+            setLastSavedAt(draft.savedAt);
+            showAlert("info", "Đã khôi phục", `Đã khôi phục dữ liệu đã lưu lúc ${formatDateTime(draft.savedAt)}`);
+        } else {
+            showAlert(
+                "warning",
+                "Không thể khôi phục dữ liệu",
+                `Dữ liệu đã lưu không hợp lệ:\n${validation.errors.join("\n")}`
+            );
+            clearDraftFromStorage();
+        }
+        setIsRestoringDraft(false);
+    }, [validateAndRestoreDraft]);
+
     // ==================== EFFECTS ====================
     useEffect(() => {
-        fetchChuongTrinhs();
-        fetchNganhs();
-        fetchNienKhoas();
-        fetchMonHocs();
+        const initializeData = async () => {
+            await Promise.all([
+                fetchChuongTrinhs(),
+                fetchNganhs(),
+                fetchNienKhoas(),
+                fetchMonHocs(),
+            ]);
+
+            // Try to restore draft after data is loaded
+            const draft = loadDraftFromStorage();
+            if (draft) {
+                // Show confirmation modal
+                const shouldRestore = window.confirm(
+                    `Bạn có dữ liệu chưa hoàn tất đã lưu lúc ${formatDateTime(draft.savedAt)}. Bạn có muốn khôi phục không?`
+                );
+                if (shouldRestore) {
+                    // Restore draft directly here to avoid dependency issues
+                    setIsRestoringDraft(true);
+                    const validation = await validateAndRestoreDraft(draft);
+
+                    if (validation.valid) {
+                        setFormData(draft.formData);
+                        setMonHocTrongCTDT(
+                            draft.monHocTrongCTDT.map((mh) => ({
+                                thuTuHocKy: mh.thuTuHocKy,
+                                monHoc: mh.monHoc,
+                                ghiChu: mh.ghiChu,
+                            }))
+                        );
+                        setLastSavedAt(draft.savedAt);
+                        showAlert("info", "Đã khôi phục", `Đã khôi phục dữ liệu đã lưu lúc ${formatDateTime(draft.savedAt)}`);
+                    } else {
+                        showAlert(
+                            "warning",
+                            "Không thể khôi phục dữ liệu",
+                            `Dữ liệu đã lưu không hợp lệ:\n${validation.errors.join("\n")}`
+                        );
+                        clearDraftFromStorage();
+                    }
+                    setIsRestoringDraft(false);
+                } else {
+                    clearDraftFromStorage();
+                }
+            }
+        };
+
+        initializeData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Auto-save effect
+    useEffect(() => {
+        // Set up auto-save interval (every 30 seconds)
+        autoSaveIntervalRef.current = setInterval(() => {
+            saveDraft();
+        }, 30000);
+
+        // Mark as having unsaved changes when data changes
+        const hasData =
+            formData.maChuongTrinh.trim() ||
+            formData.tenChuongTrinh.trim() ||
+            formData.nganhId ||
+            formData.nienKhoaIds.length > 0 ||
+            monHocTrongCTDT.length > 0;
+
+        if (hasData) {
+            hasUnsavedChangesRef.current = true;
+        }
+
+        return () => {
+            if (autoSaveIntervalRef.current) {
+                clearInterval(autoSaveIntervalRef.current);
+            }
+        };
+    }, [formData, monHocTrongCTDT, saveDraft]);
+
+    // Handle beforeunload
+    useEffect(() => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (hasUnsavedChangesRef.current) {
+                e.preventDefault();
+                e.returnValue = "";
+                return "";
+            }
+        };
+
+        window.addEventListener("beforeunload", handleBeforeUnload);
+        return () => {
+            window.removeEventListener("beforeunload", handleBeforeUnload);
+        };
+    }, []);
+
+    // Handle router navigation
+    useEffect(() => {
+        const handleRouteChange = (url: string) => {
+            if (hasUnsavedChangesRef.current && url !== window.location.pathname) {
+                // This will be handled by the router push with confirmation
+            }
+        };
+
+        // Note: Next.js router events are different, we'll handle it in the button click
+        return () => {};
     }, []);
 
     // ==================== HANDLERS ====================
@@ -401,6 +706,8 @@ export default function TaoCTDT() {
                 [field]: field === "thoiGianDaoTao" ? "" : false,
             }));
         }
+        // Mark as having unsaved changes
+        hasUnsavedChangesRef.current = true;
     };
 
     const validateForm = (): boolean => {
@@ -491,6 +798,7 @@ export default function TaoCTDT() {
             ghiChu: "",
         });
         setIsAddMonHocModalOpen(false);
+        hasUnsavedChangesRef.current = true;
         showAlert("success", "Thành công", "Đã thêm môn học vào chương trình đào tạo");
     };
 
@@ -516,11 +824,13 @@ export default function TaoCTDT() {
             ghiChu: "",
         });
         setIsEditMonHocModalOpen(false);
+        hasUnsavedChangesRef.current = true;
         showAlert("success", "Thành công", "Đã cập nhật môn học");
     };
 
     const handleDeleteMonHoc = (monHoc: MonHocTrongCTDT) => {
         setMonHocTrongCTDT((prev) => prev.filter((mh) => mh.monHoc.id !== monHoc.monHoc.id));
+        hasUnsavedChangesRef.current = true;
         showAlert("success", "Thành công", "Đã xóa môn học khỏi chương trình đào tạo");
     };
 
@@ -688,6 +998,10 @@ export default function TaoCTDT() {
             // If all steps succeeded, show success message
             if (step1Result.success && allStep2Success && allStep3Success) {
                 showAlert("success", "Thành công", "Đã tạo chương trình đào tạo thành công");
+                // Clear draft from storage
+                clearDraftFromStorage();
+                hasUnsavedChangesRef.current = false;
+                setLastSavedAt(null);
                 // Reset form và table để chuẩn bị cho lần tạo tiếp theo
                 setFormData({
                     maChuongTrinh: "",
@@ -731,6 +1045,30 @@ export default function TaoCTDT() {
 
     const closeDropdown = () => {
         setActiveDropdownId(null);
+    };
+
+    const handleCancelClick = () => {
+        if (hasUnsavedChangesRef.current) {
+            setPendingNavigation(() => () => router.push("/quan-ly-ctdt"));
+            setShowLeaveWarningModal(true);
+        } else {
+            router.push("/quan-ly-ctdt");
+        }
+    };
+
+    const handleConfirmLeave = () => {
+        // Save draft before leaving
+        saveDraft();
+        if (pendingNavigation) {
+            pendingNavigation();
+        }
+        setShowLeaveWarningModal(false);
+        setPendingNavigation(null);
+    };
+
+    const handleCancelLeave = () => {
+        setShowLeaveWarningModal(false);
+        setPendingNavigation(null);
     };
 
     return (
@@ -878,9 +1216,17 @@ export default function TaoCTDT() {
                         </div>
                     </div>
 
+                    {/* Auto-save indicator */}
+                    {lastSavedAt && (
+                        <div className="mb-4 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                            <FontAwesomeIcon icon={faCheckCircle} className="h-3 w-3 text-success-500" />
+                            <span>Đã tự động lưu lúc {formatDateTime(lastSavedAt)}</span>
+                        </div>
+                    )}
+
                     {/* Action Buttons */}
                     <div className="mt-6 flex justify-end gap-3">
-                        <Button variant="outline" onClick={() => router.push("/quan-ly-ctdt")}>
+                        <Button variant="outline" onClick={handleCancelClick}>
                             Hủy
                         </Button>
                         <Button variant="primary" onClick={() => setIsLoadCTDTModalOpen(true)}>
@@ -1738,6 +2084,51 @@ export default function TaoCTDT() {
                             </div>
                         </>
                     )}
+                </div>
+            </Modal>
+
+            {/* Modal Cảnh báo rời trang */}
+            <Modal
+                isOpen={showLeaveWarningModal}
+                onClose={handleCancelLeave}
+                className="max-w-md"
+            >
+                <div className="p-6 sm:p-8">
+                    <div className="mb-4 flex items-center gap-3">
+                        <FontAwesomeIcon
+                            icon={faExclamationTriangle}
+                            className="h-6 w-6 text-warning-500"
+                        />
+                        <h3 className="text-xl font-semibold text-gray-800 dark:text-white/90">
+                            Bạn có muốn lưu CTĐT hiện tại?
+                        </h3>
+                    </div>
+                    <p className="mb-6 text-sm text-gray-600 dark:text-gray-400">
+                        Bạn có dữ liệu chưa được lưu. Bạn có muốn lưu vào bộ nhớ đệm trước khi rời trang không?
+                    </p>
+                    <div className="flex justify-end gap-3">
+                        <Button variant="outline" onClick={handleCancelLeave}>
+                            Ở lại
+                        </Button>
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                clearDraftFromStorage();
+                                hasUnsavedChangesRef.current = false;
+                                setLastSavedAt(null);
+                                if (pendingNavigation) {
+                                    pendingNavigation();
+                                }
+                                setShowLeaveWarningModal(false);
+                                setPendingNavigation(null);
+                            }}
+                        >
+                            Không lưu và rời trang
+                        </Button>
+                        <Button onClick={handleConfirmLeave}>
+                            Lưu và rời trang
+                        </Button>
+                    </div>
                 </div>
             </Modal>
 

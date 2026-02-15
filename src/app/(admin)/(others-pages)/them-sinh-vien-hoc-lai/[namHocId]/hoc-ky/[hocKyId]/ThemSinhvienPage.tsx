@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import {
     Table,
@@ -36,6 +36,9 @@ import {
     faRefresh,
     faDownload,
     faFileExcel,
+    faBook,
+    faInfoCircle,
+    faFileInvoice,
 } from "@fortawesome/free-solid-svg-icons";
 import { FaAngleDown } from "react-icons/fa6";
 
@@ -192,7 +195,7 @@ interface DetailDeXuatModalProps {
 const DetailDeXuatModal: React.FC<DetailDeXuatModalProps> = ({ isOpen, onClose, item }) => {
     if (!isOpen || !item) return null;
     return (
-        <Modal isOpen={isOpen} onClose={onClose} className="max-w-3xl">
+        <Modal isOpen={isOpen} onClose={onClose}>
             <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
                 <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
                     Chi tiết đề xuất học lại
@@ -280,8 +283,8 @@ function formatDateVi(dateStr: string | null | undefined): string {
 const DetailDaHocLaiModal: React.FC<DetailDaHocLaiModalProps> = ({ isOpen, onClose, item }) => {
     if (!isOpen || !item) return null;
     return (
-        <Modal isOpen={isOpen} onClose={onClose} className="max-w-3xl">
-            <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-900 text-gray-800 dark:text-white/90">
+        <Modal isOpen={isOpen} onClose={onClose}>
+            <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
                 <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
                     Chi tiết học lại
                 </h3>
@@ -410,7 +413,7 @@ const EditModal: React.FC<EditModalProps> = ({
     const isOverCapacity = proposedSiSo > 40;
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} className="max-w-2xl">
+        <Modal isOpen={isOpen} onClose={onClose}>
             <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
                 <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
                     Sửa lớp học phần đề xuất
@@ -532,7 +535,7 @@ const ConfirmAddResultModal: React.FC<ConfirmAddResultModalProps> = ({
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} className="max-w-4xl">
-            <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-900 rounded-3xl">
+            <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
                 <div className="flex items-center justify-between mb-6">
                     <h3 className="text-xl font-semibold text-gray-800 dark:text-white">
                         Kết quả thêm sinh viên vào lớp học phần
@@ -611,26 +614,30 @@ const ConfirmAddResultModal: React.FC<ConfirmAddResultModalProps> = ({
                                 </div>
                                 {successList.length > 0 ? (
                                     <div className="max-h-72 overflow-y-auto">
-                                        <Table>
-                                            <TableHeader className="bg-gray-50 dark:bg-gray-800/80 sticky top-0 z-10">
-                                                <TableRow className="grid grid-cols-[13%_22%_35%_30%]">
-                                                    <TableCell isHeader className="px-4 py-3 font-medium text-gray-600 dark:text-gray-300 text-left text-xs uppercase tracking-wider">Mã SV</TableCell>
-                                                    <TableCell isHeader className="px-4 py-3 font-medium text-gray-600 dark:text-gray-300 text-left text-xs uppercase tracking-wider">Họ tên</TableCell>
-                                                    <TableCell isHeader className="px-4 py-3 font-medium text-gray-600 dark:text-gray-300 text-left text-xs uppercase tracking-wider">LHP</TableCell>
-                                                    <TableCell isHeader className="px-4 py-3 font-medium text-gray-600 dark:text-gray-300 text-left text-xs uppercase tracking-wider">Ghi chú</TableCell>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody className="divide-y divide-gray-100 dark:divide-gray-700/80 bg-white dark:bg-gray-900/50">
-                                                {successList.map((row, idx) => (
-                                                    <TableRow key={idx} className="grid grid-cols-[13%_22%_35%_30%] hover:bg-green-50/50 dark:hover:bg-green-900/10 transition-colors">
-                                                          <TableCell className="px-4 py-3 font-mono text-sm text-gray-800 dark:text-gray-200">{row.maSinhVien}</TableCell>
-                                                        <TableCell className="px-4 py-3 font-mono text-sm text-gray-800 dark:text-gray-200">{row.hoTen}</TableCell>
-                                                        <TableCell className="px-4 py-3 font-mono text-sm text-gray-800 dark:text-gray-200">{row.maLopHocPhan}</TableCell>
-                                                        <TableCell className="px-4 py-3 font-mono text-sm text-green-600 dark:text-green-400 font-medium">Đã thêm vào LHP</TableCell>
-                                                    </TableRow>
-                                                ))}
-                                            </TableBody>
-                                        </Table>
+                                        <div className="overflow-x-auto">
+                                            <div className="min-w-[800px] text-xs leading-tight">
+                                                <Table>
+                                                    <TableHeader className="bg-gray-50 dark:bg-gray-800/80 sticky top-0 z-10 text-[11px]">
+                                                        <TableRow className="grid grid-cols-[15%_25%_30%_30%]">
+                                                            <TableCell isHeader className="px-2 py-2 font-medium text-gray-600 dark:text-gray-300 text-left text-[11px]">Mã SV</TableCell>
+                                                            <TableCell isHeader className="px-2 py-2 font-medium text-gray-600 dark:text-gray-300 text-left text-[11px]">Họ tên</TableCell>
+                                                            <TableCell isHeader className="px-2 py-2 font-medium text-gray-600 dark:text-gray-300 text-left text-[11px]">LHP</TableCell>
+                                                            <TableCell isHeader className="px-2 py-2 font-medium text-gray-600 dark:text-gray-300 text-left text-[11px]">Ghi chú</TableCell>
+                                                        </TableRow>
+                                                    </TableHeader>
+                                                    <TableBody className="divide-y divide-gray-100 dark:divide-gray-700/80 bg-white dark:bg-gray-900/50 text-[11px] leading-tight">
+                                                        {successList.map((row, idx) => (
+                                                            <TableRow key={idx} className="grid grid-cols-[15%_25%_30%_30%] items-center hover:bg-green-50/50 dark:hover:bg-green-900/10 transition-colors">
+                                                                <TableCell className="px-2 py-2 font-mono text-gray-800 dark:text-gray-200">{row.maSinhVien}</TableCell>
+                                                                <TableCell className="px-2 py-2 text-gray-800 dark:text-gray-200"><span className="block truncate" title={row.hoTen}>{row.hoTen}</span></TableCell>
+                                                                <TableCell className="px-2 py-2 font-mono text-gray-800 dark:text-gray-200">{row.maLopHocPhan}</TableCell>
+                                                                <TableCell className="px-2 py-2 text-green-600 dark:text-green-400 font-medium text-[11px]">Đã thêm vào LHP</TableCell>
+                                                            </TableRow>
+                                                        ))}
+                                                    </TableBody>
+                                                </Table>
+                                            </div>
+                                        </div>
                                     </div>
                                 ) : (
                                     <div className="py-14 text-center">
@@ -651,26 +658,30 @@ const ConfirmAddResultModal: React.FC<ConfirmAddResultModalProps> = ({
                                 </div>
                                 {errorList.length > 0 ? (
                                     <div className="max-h-72 overflow-y-auto">
-                                        <Table>
-                                            <TableHeader className="bg-gray-50 dark:bg-gray-800/80 sticky top-0 z-10">
-                                                <TableRow className="grid grid-cols-[13%_22%_35%_30%]">
-                                                    <TableCell isHeader className="px-4 py-3 font-medium text-gray-600 dark:text-gray-300 text-left text-xs uppercase tracking-wider">Mã SV</TableCell>
-                                                    <TableCell isHeader className="px-4 py-3 font-medium text-gray-600 dark:text-gray-300 text-left text-xs uppercase tracking-wider">Họ tên</TableCell>
-                                                    <TableCell isHeader className="px-4 py-3 font-medium text-gray-600 dark:text-gray-300 text-left text-xs uppercase tracking-wider">LHP</TableCell>
-                                                    <TableCell isHeader className="px-4 py-3 font-medium text-gray-600 dark:text-gray-300 text-left text-xs uppercase tracking-wider">Chi tiết lỗi</TableCell>
-                                                </TableRow>
-                                            </TableHeader>
-                                            <TableBody className="divide-y divide-gray-100 dark:divide-gray-700/80 bg-white dark:bg-gray-900/50">
-                                                {errorList.map((row, idx) => (
-                                                    <TableRow key={idx} className="grid grid-cols-[13%_22%_35%_30%] hover:bg-red-50/30 dark:hover:bg-red-900/10 transition-colors">
-                                                        <TableCell className="px-4 py-3 font-mono text-sm text-gray-800 dark:text-gray-200">{row.maSinhVien}</TableCell>
-                                                        <TableCell className="px-4 py-3 font-mono text-gray-800 dark:text-gray-200">{row.hoTen}</TableCell>
-                                                        <TableCell className="px-4 py-3 font-mono text-gray-800 dark:text-gray-200">{row.maLopHocPhan}</TableCell>
-                                                        <TableCell className="px-4 py-3 font-mono text-red-600 dark:text-red-400 text-sm">{row.message ?? "Lỗi không xác định"}</TableCell>
-                                                    </TableRow>
-                                                ))}
-                                            </TableBody>
-                                        </Table>
+                                        <div className="overflow-x-auto">
+                                            <div className="min-w-[800px] text-xs leading-tight">
+                                                <Table>
+                                                    <TableHeader className="bg-gray-50 dark:bg-gray-800/80 sticky top-0 z-10 text-[11px]">
+                                                        <TableRow className="grid grid-cols-[15%_25%_30%_30%]">
+                                                            <TableCell isHeader className="px-2 py-2 font-medium text-gray-600 dark:text-gray-300 text-left text-[11px]">Mã SV</TableCell>
+                                                            <TableCell isHeader className="px-2 py-2 font-medium text-gray-600 dark:text-gray-300 text-left text-[11px]">Họ tên</TableCell>
+                                                            <TableCell isHeader className="px-2 py-2 font-medium text-gray-600 dark:text-gray-300 text-left text-[11px]">LHP</TableCell>
+                                                            <TableCell isHeader className="px-2 py-2 font-medium text-gray-600 dark:text-gray-300 text-left text-[11px]">Chi tiết lỗi</TableCell>
+                                                        </TableRow>
+                                                    </TableHeader>
+                                                    <TableBody className="divide-y divide-gray-100 dark:divide-gray-700/80 bg-white dark:bg-gray-900/50 text-[11px] leading-tight">
+                                                        {errorList.map((row, idx) => (
+                                                            <TableRow key={idx} className="grid grid-cols-[15%_25%_30%_30%] items-center hover:bg-red-50/30 dark:hover:bg-red-900/10 transition-colors">
+                                                                <TableCell className="px-2 py-2 font-mono text-gray-800 dark:text-gray-200">{row.maSinhVien}</TableCell>
+                                                                <TableCell className="px-2 py-2 text-gray-800 dark:text-gray-200"><span className="block truncate" title={row.hoTen}>{row.hoTen}</span></TableCell>
+                                                                <TableCell className="px-2 py-2 font-mono text-gray-800 dark:text-gray-200">{row.maLopHocPhan}</TableCell>
+                                                                <TableCell className="px-2 py-2 text-red-600 dark:text-red-400 text-[11px]">{row.message ?? "Lỗi không xác định"}</TableCell>
+                                                            </TableRow>
+                                                        ))}
+                                                    </TableBody>
+                                                </Table>
+                                            </div>
+                                        </div>
                                     </div>
                                 ) : (
                                     <div className="py-14 text-center">
@@ -778,6 +789,10 @@ export default function ThemSinhvienPage() {
     const [isExporting, setIsExporting] = useState(false);
     const [exportSuccess, setExportSuccess] = useState<string | null>(null);
     const [exportError, setExportError] = useState<string | null>(null);
+
+    // State cho modal thêm lớp học phần
+    const [isThemLHPModalOpen, setIsThemLHPModalOpen] = useState(false);
+    const router = useRouter();
 
     // Hàm xuất thống kê sinh viên trượt môn
     const handleExportThongKe = async () => {
@@ -1001,6 +1016,11 @@ export default function ThemSinhvienPage() {
         closeDropdown();
     };
 
+    const handleViewBangDiem = (sinhVienId: number) => {
+        const url = `http://localhost:3001/quan-ly-sinh-vien/bang-diem/${sinhVienId}`;
+        window.open(url, "_blank");
+    };
+
     const openConfirmAddModal = () => {
         setIsConfirmAddModalOpen(true);
     };
@@ -1081,11 +1101,33 @@ export default function ThemSinhvienPage() {
     // Thống kê từ API mới
     const tenNamHoc = thongKeData?.tenNamHoc ?? apiData?.tenNamHoc ?? "";
     const tongSinhVienTruot = thongKeData?.tongSinhVienTruot ?? apiData?.tongSinhVien ?? 0;
-    // soSinhVienDaHocLai lấy từ API de-xuat-hoc-lai/json (tongSinhVien)
-    const soSinhVienDaHocLai = apiData?.tongSinhVien ?? daHocLaiList.length;
+    // soSinhVienDaHocLai lấy từ thongKeData (danhSachSinhVienDaHocLai)
+    const soSinhVienDaHocLai = daHocLaiList.length;
     const soSinhVienChuaHocLai = thongKeData?.soSinhVienChuaHocLai ?? displayItems.length;
+    
+    // Đếm số sinh viên có LHP đề xuất (bestChoiceLopHocPhan khác null/rỗng)
+    const soSinhVienCoLHPDeXuat = useMemo(() => {
+        if (!apiData?.items) return 0;
+        return apiData.items.filter((sv) => {
+            const bestChoice = sv.bestChoiceLopHocPhan;
+            return bestChoice !== null && bestChoice !== undefined;
+        }).length;
+    }, [apiData?.items]);
+
+    // Kiểm tra xem có ít nhất một sinh viên không có LHP đề xuất không
+    const coSinhVienKhongCoLHPDeXuat = useMemo(() => {
+        if (!apiData?.items || apiData.items.length === 0) return false;
+        return apiData.items.some((sv) => {
+            const bestChoice = sv.bestChoiceLopHocPhan;
+            return bestChoice === null || bestChoice === undefined;
+        });
+    }, [apiData?.items]);
 
     const isLoading = loadingThongKe;
+
+    const handleThemLHP = () => {
+        router.push(`/them-lop-hoc-phan-hoc-lai/${namHocId}/hocKy/${hocKyId}`);
+    };
 
     return (
         <div>
@@ -1114,6 +1156,14 @@ export default function ThemSinhvienPage() {
                             </p>
                         </div>
                         <div className="flex gap-3">
+                            <Button
+                                variant="outline"
+                                onClick={() => setIsThemLHPModalOpen(true)}
+                                disabled={!coSinhVienKhongCoLHPDeXuat || isLoading || loadingDeXuat}
+                                startIcon={<FontAwesomeIcon icon={faBook} />}
+                            >
+                                Thêm lớp học phần
+                            </Button>
                             <Button
                                 variant="outline"
                                 onClick={handleExportThongKe}
@@ -1197,7 +1247,7 @@ export default function ThemSinhvienPage() {
                     <StatCard
                         icon={faUserGraduate}
                         title="Có thể thêm vào LHP"
-                        value={loadingDeXuat ? "..." : displayItems.length}
+                        value={loadingDeXuat ? "..." : soSinhVienCoLHPDeXuat}
                         color="green"
                         subtitle={loadingDeXuat ? "Đang tải đề xuất..." : "Sinh viên có LHP đề xuất"}
                         loading={false}
@@ -1259,36 +1309,27 @@ export default function ThemSinhvienPage() {
 
                 {/* Table: Sinh viên cần học lại (đề xuất) */}
                 <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
-                    <div className="overflow-x-auto">
-                        <Table className="w-full table-fixed">
-                            <colgroup>
-                                <col style={{ width: "10%" }} />
-                                <col style={{ width: "13%" }} />
-                                <col style={{ width: "14%" }} />
-                                <col style={{ width: "7%" }} />
-                                <col style={{ width: "7%" }} />
-                                <col style={{ width: "7%" }} />
-                                <col style={{ width: "8%" }} />
-                                <col style={{ width: "14%" }} />
-                                <col style={{ width: "12%" }} />
-                            </colgroup>
-                            <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
-                                <TableRow>
-                                    <TableCell isHeader className="px-4 py-3 font-medium text-gray-500 text-theme-xs text-left whitespace-nowrap">Mã SV</TableCell>
-                                    <TableCell isHeader className="px-4 py-3 font-medium text-gray-500 text-theme-xs text-left">Họ tên</TableCell>
-                                    <TableCell isHeader className="px-4 py-3 font-medium text-gray-500 text-theme-xs text-left whitespace-nowrap">LHP trượt</TableCell>
-                                    <TableCell isHeader className="px-4 py-3 font-medium text-gray-500 text-theme-xs text-center whitespace-nowrap">TBCHP</TableCell>
-                                    <TableCell isHeader className="px-4 py-3 font-medium text-gray-500 text-theme-xs text-center whitespace-nowrap">Điểm số</TableCell>
-                                    <TableCell isHeader className="px-4 py-3 font-medium text-gray-500 text-theme-xs text-center whitespace-nowrap">Điểm chữ</TableCell>
-                                    <TableCell isHeader className="px-4 py-3 font-medium text-gray-500 text-theme-xs text-center">Đánh giá</TableCell>
-                                    <TableCell isHeader className="px-4 py-3 font-medium text-gray-500 text-theme-xs text-left whitespace-nowrap">LHP đề xuất</TableCell>
-                                    <TableCell isHeader className="px-4 py-3 font-medium text-gray-500 text-theme-xs text-center whitespace-nowrap">Hành động</TableCell>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05] text-theme-sm">
+                    <div className="max-w-full overflow-x-auto">
+                        <div className="min-w-[1000px] text-xs leading-tight">
+                            <Table>
+                                <TableHeader className="border-b border-gray-100 dark:border-white/[0.05] text-[11px]">
+                                    <TableRow className="grid grid-cols-[8%_14%_16%_7%_7%_7%_7%_7%_16%_11%]">
+                                        <TableCell isHeader className="px-2 py-2 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-left whitespace-nowrap">Mã SV</TableCell>
+                                        <TableCell isHeader className="px-2 py-2 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-left">Họ tên</TableCell>
+                                        <TableCell isHeader className="px-2 py-2 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-left whitespace-nowrap">LHP trượt</TableCell>
+                                        <TableCell isHeader className="px-2 py-2 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-center whitespace-nowrap">Điểm QT</TableCell>
+                                        <TableCell isHeader className="px-2 py-2 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-center whitespace-nowrap">Điểm TP</TableCell>
+                                        <TableCell isHeader className="px-2 py-2 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-center whitespace-nowrap">Điểm Thi</TableCell>
+                                        <TableCell isHeader className="px-2 py-2 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-center whitespace-nowrap">TBCHP</TableCell>
+                                        <TableCell isHeader className="px-2 py-2 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-center">Đánh giá</TableCell>
+                                        <TableCell isHeader className="px-2 py-2 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-left whitespace-nowrap">LHP đề xuất</TableCell>
+                                        <TableCell isHeader className="px-2 py-2 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-center whitespace-nowrap">Hành động</TableCell>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05] text-[11px] leading-tight">
                                 {paginatedItems.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell cols={9} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+                                    <TableRow className="text-[11px] leading-tight">
+                                        <TableCell cols={10} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
                                             {loadingDeXuat
                                                 ? (
                                                     <div className="flex flex-col items-center justify-center py-4">
@@ -1305,22 +1346,23 @@ export default function ThemSinhvienPage() {
                                     </TableRow>
                                 ) : (
                                     paginatedItems.map((sv) => (
-                                        <TableRow key={sv.sinhVienId} className="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
-                                            <TableCell className="px-4 py-3 font-mono text-gray-800 dark:text-white/90 text-left max-w-0"><span className="block truncate" title={sv.maSinhVien}>{sv.maSinhVien}</span></TableCell>
-                                            <TableCell className="px-4 py-3 text-gray-800 dark:text-white/90 text-left max-w-0"><span className="block truncate" title={sv.hoTen}>{sv.hoTen}</span></TableCell>
-                                            <TableCell className="px-4 py-3 text-gray-800 dark:text-white/90 text-left max-w-0"><span className="block truncate" title={sv.maLopHocPhanTruot}>{sv.maLopHocPhanTruot}</span></TableCell>
-                                            <TableCell className="px-4 py-3 text-gray-800 dark:text-white/90 text-center">{sv.diemTBCHP}</TableCell>
-                                            <TableCell className="px-4 py-3 text-gray-800 dark:text-white/90 text-center">{sv.diemSo}</TableCell>
-                                            <TableCell className="px-4 py-3 text-gray-800 dark:text-white/90 text-center">{sv.diemChu}</TableCell>
-                                            <TableCell className="px-4 py-3 text-center">
-                                                <Badge variant="light" color="error">{formatDanhGia(sv.danhGia)}</Badge>
+                                        <TableRow key={sv.sinhVienId} className="grid grid-cols-[8%_14%_16%_7%_7%_7%_7%_7%_16%_11%] items-center hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors">
+                                            <TableCell className="px-2 py-2 font-mono text-gray-800 dark:text-white/90 text-left"><span className="block truncate" title={sv.maSinhVien}>{sv.maSinhVien}</span></TableCell>
+                                            <TableCell className="px-2 py-2 text-gray-800 dark:text-white/90 text-left"><span className="block truncate" title={sv.hoTen}>{sv.hoTen}</span></TableCell>
+                                            <TableCell className="px-2 py-2 text-gray-800 dark:text-white/90 text-left"><span className="block truncate" title={sv.maLopHocPhanTruot}>{sv.maLopHocPhanTruot}</span></TableCell>
+                                            <TableCell className="px-2 py-2 text-gray-800 dark:text-white/90 text-center">{sv.diemQuaTrinh}</TableCell>
+                                            <TableCell className="px-2 py-2 text-gray-800 dark:text-white/90 text-center">{sv.diemThanhPhan}</TableCell>
+                                            <TableCell className="px-2 py-2 text-gray-800 dark:text-white/90 text-center">{sv.diemThi}</TableCell>
+                                            <TableCell className="px-2 py-2 text-gray-800 dark:text-white/90 text-center">{sv.diemTBCHP}</TableCell>
+                                            <TableCell className="px-2 py-2 text-center">
+                                                <Badge variant="light" color="error" size="sm" className="text-[11px]">{formatDanhGia(sv.danhGia)}</Badge>
                                             </TableCell>
-                                            <TableCell className="px-4 py-3 text-left max-w-0">
+                                            <TableCell className="px-2 py-2 text-left">
                                                 <span className="block truncate font-mono text-gray-800 dark:text-white/90" title={sv.bestChoiceLopHocPhan?.maLopHocPhan ?? "Chưa có"}>
                                                     {sv.bestChoiceLopHocPhan ? `${sv.bestChoiceLopHocPhan.maLopHocPhan} (${sv.bestChoiceLopHocPhan.siSo} SV)` : "Chưa có"}
                                                 </span>
                                             </TableCell>
-                                            <TableCell className="px-4 py-3 text-center">
+                                            <TableCell className="px-2 py-2 text-center">
                                                 <div className="relative inline-block">
                                                     <Button
                                                         variant="outline"
@@ -1360,6 +1402,15 @@ export default function ThemSinhvienPage() {
                                                             <DropdownItem
                                                                 tag="button"
                                                                 onItemClick={closeDropdown}
+                                                                onClick={() => handleViewBangDiem(sv.sinhVienId)}
+                                                                className="flex items-center gap-2 px-3 py-2"
+                                                            >
+                                                                <FontAwesomeIcon icon={faFileInvoice} className="w-4" />
+                                                                Bảng điểm
+                                                            </DropdownItem>
+                                                            <DropdownItem
+                                                                tag="button"
+                                                                onItemClick={closeDropdown}
                                                                 onClick={() => removeFromTable(sv.sinhVienId)}
                                                                 className="flex items-center gap-2 px-3 py-2 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30"
                                                             >
@@ -1376,6 +1427,7 @@ export default function ThemSinhvienPage() {
                             </TableBody>
                         </Table>
                     </div>
+                </div>
                 </div>
 
                 {/* Pagination & items count */}
@@ -1424,31 +1476,23 @@ export default function ThemSinhvienPage() {
                             </div>
                         </div>
                         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
-                            <div className="overflow-x-auto">
-                                <Table className="w-full table-fixed">
-                                    <colgroup>
-                                        <col style={{ width: "10%" }} />
-                                        <col style={{ width: "18%" }} />
-                                        <col style={{ width: "22%" }} />
-                                        <col style={{ width: "18%" }} />
-                                        <col style={{ width: "8%" }} />
-                                        <col style={{ width: "10%" }} />
-                                        <col style={{ width: "14%" }} />
-                                    </colgroup>
-                                    <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
-                                        <TableRow>
-                                            <TableCell isHeader className="px-4 py-3 font-medium text-gray-500 text-theme-xs text-left whitespace-nowrap">Mã SV</TableCell>
-                                            <TableCell isHeader className="px-4 py-3 font-medium text-gray-500 text-theme-xs text-left">Họ tên</TableCell>
-                                            <TableCell isHeader className="px-4 py-3 font-medium text-gray-500 text-theme-xs text-left">Môn trượt</TableCell>
-                                            <TableCell isHeader className="px-4 py-3 font-medium text-gray-500 text-theme-xs text-left whitespace-nowrap">LHP trượt</TableCell>
-                                            <TableCell isHeader className="px-4 py-3 font-medium text-gray-500 text-theme-xs text-center whitespace-nowrap">TBCHP</TableCell>
-                                            <TableCell isHeader className="px-4 py-3 font-medium text-gray-500 text-theme-xs text-center whitespace-nowrap">Số lần học lại</TableCell>
-                                            <TableCell isHeader className="px-4 py-3 font-medium text-gray-500 text-theme-xs text-center whitespace-nowrap">Hành động</TableCell>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05] text-theme-sm">
+                            <div className="max-w-full overflow-x-auto">
+                                <div className="min-w-[950px] text-xs leading-tight">
+                                    <Table>
+                                        <TableHeader className="border-b border-gray-100 dark:border-white/[0.05] text-[11px]">
+                                            <TableRow className="grid grid-cols-[10%_18%_22%_18%_8%_10%_14%]">
+                                                <TableCell isHeader className="px-2 py-2 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-left whitespace-nowrap">Mã SV</TableCell>
+                                                <TableCell isHeader className="px-2 py-2 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-left">Họ tên</TableCell>
+                                                <TableCell isHeader className="px-2 py-2 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-left">Môn trượt</TableCell>
+                                                <TableCell isHeader className="px-2 py-2 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-left whitespace-nowrap">LHP trượt</TableCell>
+                                                <TableCell isHeader className="px-2 py-2 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-center whitespace-nowrap">TBCHP</TableCell>
+                                                <TableCell isHeader className="px-2 py-2 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-center whitespace-nowrap">Số lần học lại</TableCell>
+                                                <TableCell isHeader className="px-2 py-2 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-center whitespace-nowrap">Hành động</TableCell>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05] text-[11px] leading-tight">
                                         {paginatedDaHocLai.length === 0 ? (
-                                            <TableRow>
+                                            <TableRow className="text-[11px] leading-tight">
                                                 <TableCell cols={7} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
                                                     {filteredDaHocLai.length === 0 && searchKeywordDaHocLai.trim()
                                                         ? "Không có kết quả tìm kiếm"
@@ -1457,25 +1501,55 @@ export default function ThemSinhvienPage() {
                                             </TableRow>
                                         ) : (
                                             paginatedDaHocLai.map((sv) => (
-                                                <TableRow key={sv.sinhVienId} className="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
-                                                    <TableCell className="px-4 py-3 font-mono text-gray-800 dark:text-white/90 overflow-hidden"><span className="block truncate" title={sv.maSinhVien}>{sv.maSinhVien}</span></TableCell>
-                                                    <TableCell className="px-4 py-3 text-gray-800 dark:text-white/90 overflow-hidden"><span className="block truncate" title={sv.hoTen}>{sv.hoTen}</span></TableCell>
-                                                    <TableCell className="px-4 py-3 text-gray-800 dark:text-white/90 overflow-hidden"><span className="block truncate" title={sv.tenMonHocTruot}>{sv.tenMonHocTruot}</span></TableCell>
-                                                    <TableCell className="px-4 py-3 font-mono text-gray-800 dark:text-white/90 overflow-hidden"><span className="block truncate" title={sv.maLopHocPhanTruot}>{sv.maLopHocPhanTruot}</span></TableCell>
-                                                    <TableCell className="px-4 py-3 text-center text-gray-800 dark:text-white/90">{sv.diemTBCHPTruot}</TableCell>
-                                                    <TableCell className="px-4 py-3 text-center">
-                                                        <Badge variant="light" color="info">{sv.cacLanHocLai.length}</Badge>
+                                                <TableRow key={sv.sinhVienId} className="grid grid-cols-[10%_18%_22%_18%_8%_10%_14%] items-center hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors">
+                                                    <TableCell className="px-2 py-2 font-mono text-gray-800 dark:text-white/90"><span className="block truncate" title={sv.maSinhVien}>{sv.maSinhVien}</span></TableCell>
+                                                    <TableCell className="px-2 py-2 text-gray-800 dark:text-white/90"><span className="block truncate" title={sv.hoTen}>{sv.hoTen}</span></TableCell>
+                                                    <TableCell className="px-2 py-2 text-gray-800 dark:text-white/90"><span className="block truncate" title={sv.tenMonHocTruot}>{sv.tenMonHocTruot}</span></TableCell>
+                                                    <TableCell className="px-2 py-2 font-mono text-gray-800 dark:text-white/90"><span className="block truncate" title={sv.maLopHocPhanTruot}>{sv.maLopHocPhanTruot}</span></TableCell>
+                                                    <TableCell className="px-2 py-2 text-center text-gray-800 dark:text-white/90">{sv.diemTBCHPTruot}</TableCell>
+                                                    <TableCell className="px-2 py-2 text-center">
+                                                        <Badge variant="light" color="info" size="sm" className="text-[11px]">{sv.cacLanHocLai.length}</Badge>
                                                     </TableCell>
-                                                    <TableCell className="px-4 py-3 text-center">
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={() => setDetailDaHocLaiItem(sv)}
-                                                            className="flex items-center gap-2 mx-auto"
-                                                        >
-                                                            <FontAwesomeIcon icon={faEye} className="w-4" />
-                                                            Xem thêm
-                                                        </Button>
+                                                    <TableCell className="px-2 py-2 text-center">
+                                                        <div className="relative inline-block">
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() => toggleDropdown(sv.sinhVienId)}
+                                                                className="dropdown-toggle flex items-center gap-1.5 min-w-[90px] justify-between px-3 py-2"
+                                                            >
+                                                                Thao tác
+                                                                <FaAngleDown
+                                                                    className={`text-gray-500 transition-transform duration-300 shrink-0 ${activeDropdownId === sv.sinhVienId ? "rotate-180" : "rotate-0"}`}
+                                                                />
+                                                            </Button>
+                                                            <Dropdown
+                                                                isOpen={activeDropdownId === sv.sinhVienId}
+                                                                onClose={closeDropdown}
+                                                                className="w-48 mt-2 right-0"
+                                                            >
+                                                                <div className="py-1">
+                                                                    <DropdownItem
+                                                                        tag="button"
+                                                                        onItemClick={closeDropdown}
+                                                                        onClick={() => setDetailDaHocLaiItem(sv)}
+                                                                        className="flex items-center gap-2 px-3 py-2"
+                                                                    >
+                                                                        <FontAwesomeIcon icon={faEye} className="w-4" />
+                                                                        Xem chi tiết
+                                                                    </DropdownItem>
+                                                                    <DropdownItem
+                                                                        tag="button"
+                                                                        onItemClick={closeDropdown}
+                                                                        onClick={() => handleViewBangDiem(sv.sinhVienId)}
+                                                                        className="flex items-center gap-2 px-3 py-2"
+                                                                    >
+                                                                        <FontAwesomeIcon icon={faFileInvoice} className="w-4" />
+                                                                        Bảng điểm
+                                                                    </DropdownItem>
+                                                                </div>
+                                                            </Dropdown>
+                                                        </div>
                                                     </TableCell>
                                                 </TableRow>
                                             ))
@@ -1483,6 +1557,7 @@ export default function ThemSinhvienPage() {
                                     </TableBody>
                                 </Table>
                             </div>
+                        </div>
                         </div>
                         <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                             <div className="text-sm text-gray-500 dark:text-gray-400">
@@ -1536,16 +1611,55 @@ export default function ThemSinhvienPage() {
             {isConfirmAddModalOpen && (
                 <Modal
                     isOpen={isConfirmAddModalOpen}
+                    size="2xl"
                     onClose={() => setIsConfirmAddModalOpen(false)}
-                    className="max-w-md"
                 >
-                    <div className="p-6">
+                    <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
                         <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90 mb-4">
                             Xác nhận thêm sinh viên
                         </h3>
-                        <p className="text-gray-600 dark:text-gray-400 mb-6">
+                        <p className="text-gray-600 dark:text-gray-400 mb-4">
                             Bạn sẽ thêm {displayItems.filter((sv) => selectedLHPMap[sv.sinhVienId] != null).length} sinh viên vào các lớp học phần tương ứng. Tiếp tục?
                         </p>
+                        
+                        {/* Table hiển thị danh sách sinh viên sẽ thêm */}
+                        <div className="mb-6 overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
+                            <div className="max-w-full overflow-x-auto">
+                                <div className="min-w-[800px] text-xs leading-tight">
+                                    <Table>
+                                        <TableHeader className="border-b border-gray-100 dark:border-white/[0.05] text-[11px]">
+                                            <TableRow className="grid grid-cols-[15%_25%_30%_30%]">
+                                                <TableCell isHeader className="px-2 py-2 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-left">Mã SV</TableCell>
+                                                <TableCell isHeader className="px-2 py-2 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-left">Họ tên</TableCell>
+                                                <TableCell isHeader className="px-2 py-2 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-left">LHP đề xuất</TableCell>
+                                                <TableCell isHeader className="px-2 py-2 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-left">LHP sẽ thêm vào</TableCell>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05] text-[11px] leading-tight">
+                                            {displayItems
+                                                .filter((sv) => selectedLHPMap[sv.sinhVienId] != null)
+                                                .map((sv) => {
+                                                    const lhpId = selectedLHPMap[sv.sinhVienId];
+                                                    const lhp = sv.cacLopHocPhanCoTheDangKy.find((l) => l.lopHocPhanId === lhpId);
+                                                    return (
+                                                        <TableRow key={sv.sinhVienId} className="grid grid-cols-[15%_25%_30%_30%] items-center">
+                                                            <TableCell className="px-2 py-2 font-mono text-gray-800 dark:text-white/90">{sv.maSinhVien}</TableCell>
+                                                            <TableCell className="px-2 py-2 text-gray-800 dark:text-white/90"><span className="block truncate" title={sv.hoTen}>{sv.hoTen}</span></TableCell>
+                                                            <TableCell className="px-2 py-2 font-mono text-gray-800 dark:text-white/90">
+                                                                {sv.bestChoiceLopHocPhan?.maLopHocPhan ?? "Chưa có"}
+                                                            </TableCell>
+                                                            <TableCell className="px-2 py-2 font-mono text-gray-800 dark:text-white/90">
+                                                                {lhp ? `${lhp.maLopHocPhan} (sĩ số: ${lhp.siSo})` : "N/A"}
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    );
+                                                })}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            </div>
+                        </div>
+
                         <div className="flex justify-end gap-3">
                             <Button variant="outline" onClick={() => setIsConfirmAddModalOpen(false)}>
                                 Hủy
@@ -1565,6 +1679,66 @@ export default function ThemSinhvienPage() {
                 errorList={confirmErrorList}
                 isSubmitting={confirmSubmitting}
             />
+
+            {/* Modal xác nhận thêm lớp học phần */}
+            {isThemLHPModalOpen && (
+                <Modal
+                    isOpen={isThemLHPModalOpen}
+                    onClose={() => setIsThemLHPModalOpen(false)}
+                    size="2xl"
+                >
+                    <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
+                        <h3 className="text-xl font-semibold text-gray-800 dark:text-white/90 mb-6">
+                            Thêm lớp học phần cho sinh viên học lại
+                        </h3>
+
+                        {/* Hướng dẫn */}
+                        <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                            <div className="flex gap-3">
+                                <FontAwesomeIcon
+                                    icon={faInfoCircle}
+                                    className="text-blue-500 dark:text-blue-400 mt-0.5 flex-shrink-0"
+                                />
+                                <div className="text-sm text-blue-700 dark:text-blue-300">
+                                    <p className="font-medium mb-2">Hướng dẫn:</p>
+                                    <ul className="list-disc list-inside space-y-1 text-blue-600 dark:text-blue-400">
+                                        <li>Bạn sẽ được chuyển đến trang tạo lớp học phần cho sinh viên học lại</li>
+                                        <li>Trang đó sẽ hiển thị danh sách các lớp học phần cần tạo cho các sinh viên không có lớp học phần phù hợp để học ghép</li>
+                                        <li>Sau khi tạo lớp học phần, bạn có thể quay lại trang này để thêm sinh viên vào các lớp học phần đã tạo</li>
+                                        <li>Quá trình này giúp tạo các lớp học phần mới cho các sinh viên không thể học ghép với lớp hiện có</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Cảnh báo */}
+                        <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                            <div className="flex gap-3">
+                                <FontAwesomeIcon
+                                    icon={faCircleExclamation}
+                                    className="text-amber-500 dark:text-amber-400 mt-0.5 flex-shrink-0"
+                                />
+                                <div className="text-sm text-amber-700 dark:text-amber-300">
+                                    <p className="font-medium mb-1">Lưu ý:</p>
+                                    <p className="text-amber-600 dark:text-amber-400">
+                                        Chỉ các sinh viên không có lớp học phần đề xuất mới cần tạo lớp học phần mới. 
+                                        Nếu sinh viên đã có lớp học phần đề xuất, bạn nên thêm họ vào lớp đó thay vì tạo lớp mới.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end gap-3">
+                            <Button variant="outline" onClick={() => setIsThemLHPModalOpen(false)}>
+                                Hủy
+                            </Button>
+                            <Button onClick={handleThemLHP}>
+                                Xác nhận
+                            </Button>
+                        </div>
+                    </div>
+                </Modal>
+            )}
         </div>
     );
 }

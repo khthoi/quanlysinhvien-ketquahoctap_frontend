@@ -32,6 +32,8 @@ import {
     faFilter,
     faXmark,
     faInfoCircle,
+    faDownload,
+    faChartBar,
 } from "@fortawesome/free-solid-svg-icons";
 import SearchableSelect from "@/components/form/SelectCustom";
 import { Dropdown } from "@/components/ui/dropdown/Dropdown";
@@ -123,6 +125,208 @@ const getCookie = (name: string): string | null => {
     return null;
 };
 
+// ==================== MODAL TẢI XUỐNG EXCEL LHP ĐỀ XUẤT ====================
+interface DownloadExcelLHPDeXuatModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    namHocId: string;
+    hocKyId: string;
+    showAlert: (variant: "success" | "error" | "warning" | "info", title: string, message: string) => void;
+}
+
+const DownloadExcelLHPDeXuatModal: React.FC<DownloadExcelLHPDeXuatModalProps> = ({
+    isOpen,
+    onClose,
+    namHocId,
+    hocKyId,
+    showAlert,
+}) => {
+    const [isLoading, setIsLoading] = useState(false);
+    const [namHocInfo, setNamHocInfo] = useState<{ maNamHoc: string; tenNamHoc: string } | null>(null);
+    const [hocKyInfo, setHocKyInfo] = useState<{ hocKy: number } | null>(null);
+
+    // Fetch thông tin năm học và học kỳ từ ID
+    useEffect(() => {
+        if (!isOpen || !namHocId || !hocKyId) return;
+
+        const fetchInfo = async () => {
+            try {
+                const accessToken = getCookie("access_token");
+
+                // Fetch năm học
+                const namHocRes = await fetch(`http://localhost:3000/dao-tao/nam-hoc?search=${namHocId}`, {
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                    },
+                });
+
+                if (namHocRes.ok) {
+                    const result = await namHocRes.json();
+                    const namHocData = result.data?.[0];
+                    if (!namHocData) return;
+                    setNamHocInfo({
+                        maNamHoc: namHocData.maNamHoc,
+                        tenNamHoc: namHocData.tenNamHoc,
+                    });                    
+
+                    // Tìm học kỳ trong năm học
+                    if (namHocData.hocKys && Array.isArray(namHocData.hocKys)) {
+                        const hocKy = namHocData.hocKys.find((hk: any) => hk.hocKy.toString() === hocKyId);
+                        if (hocKy) {
+                            setHocKyInfo({ hocKy: hocKy.hocKy });
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error("Lỗi fetch thông tin năm học/học kỳ:", err);
+            }
+        };
+
+        fetchInfo();
+    }, [isOpen, namHocId, hocKyId]);
+
+    const handleClose = () => {
+        setNamHocInfo(null);
+        setHocKyInfo(null);
+        onClose();
+    };
+
+    const handleSubmit = async () => {
+        if (!namHocInfo || !hocKyInfo) {
+            showAlert("error", "Lỗi", "Không thể lấy thông tin năm học hoặc học kỳ");
+            return;
+        }
+
+        setIsLoading(true);
+
+        try {
+            const accessToken = getCookie("access_token");
+
+            const res = await fetch("http://localhost:3000/giang-day/len-ke-hoach-tao-lhp", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${accessToken}`,
+                },
+                body: JSON.stringify({
+                    maNamHoc: namHocInfo.maNamHoc,
+                    hocKy: hocKyInfo.hocKy,
+                }),
+            });
+
+            if (res.ok) {
+                // Xử lý tải file Excel
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = `thong-ke-lhp-de-xuat-${namHocInfo.maNamHoc}-HK${hocKyInfo.hocKy}.xlsx`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+
+                showAlert("success", "Thành công", "Đã xuất file thống kê lớp học phần đề xuất");
+                handleClose();
+            } else {
+                const err = await res.json();
+                handleClose();
+                showAlert("error", "Lỗi", err.message || "Không thể xuất thống kê");
+            }
+        } catch (err) {
+            console.error("Lỗi xuất thống kê LHP đề xuất:", err);
+            showAlert("error", "Lỗi", "Có lỗi xảy ra khi xuất thống kê");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <Modal isOpen={isOpen} onClose={handleClose} className="max-w-3xl">
+            <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
+                {/* Header */}
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-100 text-brand-600 dark:bg-brand-900/30 dark:text-brand-400">
+                        <FontAwesomeIcon icon={faChartBar} className="text-xl" />
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-semibold text-gray-800 dark:text-white/90">
+                            Tải xuống Excel LHP đề xuất
+                        </h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                            Xuất danh sách lớp học phần dự kiến
+                        </p>
+                    </div>
+                </div>
+
+                {/* Thông tin năm học và học kỳ */}
+                {(namHocInfo || hocKyInfo) && (
+                    <div className="mb-6 p-4 rounded-xl border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/50">
+                        <div className="space-y-2">
+                            {namHocInfo && (
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm text-gray-500 dark:text-gray-400">Năm học:</span>
+                                    <span className="font-semibold text-gray-800 dark:text-white">
+                                        {namHocInfo.maNamHoc} - {namHocInfo.tenNamHoc}
+                                    </span>
+                                </div>
+                            )}
+                            {hocKyInfo && (
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm text-gray-500 dark:text-gray-400">Học kỳ:</span>
+                                    <span className="font-semibold text-gray-800 dark:text-white">
+                                        Học kỳ {hocKyInfo.hocKy}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* Thông tin hướng dẫn */}
+                <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <div className="flex gap-3">
+                        <FontAwesomeIcon
+                            icon={faInfoCircle}
+                            className="text-blue-500 dark:text-blue-400 mt-0.5 flex-shrink-0"
+                        />
+                        <div className="text-sm text-blue-700 dark:text-blue-300">
+                            <p className="font-medium mb-1">Hướng dẫn:</p>
+                            <ul className="list-disc list-inside space-y-1 text-blue-600 dark:text-blue-400">
+                                <li>Hệ thống sẽ tạo file Excel chứa danh sách LHP đề xuất cho năm học và học kỳ hiện tại</li>
+                                <li>File có thể dùng để làm tài liệu lưu trữ</li>
+                                <li>File sẽ được tải xuống tự động sau khi xác nhận</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Buttons */}
+                <div className="flex justify-end gap-3">
+                    <Button variant="outline" onClick={handleClose} disabled={isLoading}>
+                        Hủy
+                    </Button>
+                    <Button
+                        onClick={handleSubmit}
+                        disabled={isLoading || !namHocInfo || !hocKyInfo}
+                        startIcon={
+                            isLoading ? (
+                                <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
+                            ) : (
+                                <FontAwesomeIcon icon={faDownload} />
+                            )
+                        }
+                    >
+                        {isLoading ? "Đang xuất..." : "Tải xuống Excel"}
+                    </Button>
+                </div>
+            </div>
+        </Modal>
+    );
+};
+
 // ==================== ITEMS COUNT INFO COMPONENT ====================
 interface ItemsCountInfoProps {
     pagination: PaginationData;
@@ -173,6 +377,7 @@ export default function ThemLopHocPhanPage() {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [isConfirmCreateModalOpen, setIsConfirmCreateModalOpen] = useState(false);
+    const [isDownloadExcelModalOpen, setIsDownloadExcelModalOpen] = useState(false);
     const [editingLopHocPhan, setEditingLopHocPhan] = useState<LopHocPhanDeXuat | null>(null);
     const [deletingLopHocPhan, setDeletingLopHocPhan] = useState<LopHocPhanDeXuat | null>(null);
 
@@ -208,6 +413,7 @@ export default function ThemLopHocPhanPage() {
         variant: "success" | "error" | "warning" | "info";
         title: string;
         message: string;
+        duration: number;
     } | null>(null);
 
     // State cho cảnh báo tín chỉ giảng viên trong modal edit
@@ -940,15 +1146,18 @@ export default function ThemLopHocPhanPage() {
     const showAlert = (
         variant: "success" | "error" | "warning" | "info",
         title: string,
-        message: string
+        message: string,
+        duration: number = 36000   // 👈 giá trị mặc định
     ) => {
         setAlert({
             id: Date.now(),
             variant,
             title,
             message,
+            duration,
         });
     };
+    
 
     const toggleDropdown = (stt: number) => {
         setActiveDropdownId((prev) => (prev === stt ? null : stt));
@@ -1179,8 +1388,10 @@ export default function ThemLopHocPhanPage() {
                             message={alert.message}
                             dismissible
                             autoDismiss
-                            duration={5000}
-                            onClose={() => setAlert(null)}
+                            duration={alert.duration}
+                            onClose={() => {
+                                setAlert(null);
+                            }}
                         />
                     </div>
                 )}
@@ -1226,6 +1437,13 @@ export default function ThemLopHocPhanPage() {
                     </div>
 
                     <div className="flex gap-3">
+                        <Button
+                            variant="outline"
+                            onClick={() => setIsDownloadExcelModalOpen(true)}
+                            startIcon={<FontAwesomeIcon icon={faDownload} />}
+                        >
+                            Tải xuống Excel
+                        </Button>
                         <Button
                             variant="primary"
                             onClick={openCreateLopModal}
@@ -1321,148 +1539,148 @@ export default function ThemLopHocPhanPage() {
 
                 {/* Table */}
                 <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
-                        <div className="max-w-full overflow-x-auto">
-                            <div className="min-w-[1000px]">
-                                <Table>
-                                    {/* Table Header */}
-                                    <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
-                                        <TableRow className="grid grid-cols-[20%_10%_12%_15%_18%_10%_15%]">
-                                            <TableCell
-                                                isHeader
-                                                className="px-5 py-3 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-left"
-                                            >
-                                                Mã LHP
-                                            </TableCell>
-                                            <TableCell
-                                                isHeader
-                                                className="px-5 py-3 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-center"
-                                            >
-                                                Mã Ngành
-                                            </TableCell>
-                                            <TableCell
-                                                isHeader
-                                                className="px-5 py-3 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-center"
-                                            >
-                                                Mã Niên Khóa
-                                            </TableCell>
-                                            <TableCell
-                                                isHeader
-                                                className="px-5 py-3 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-center"
-                                            >
-                                                Mã Môn học
-                                            </TableCell>
-                                            <TableCell
-                                                isHeader
-                                                className="px-5 py-3 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-center"
-                                            >
-                                                Mã Giảng viên
-                                            </TableCell>
-                                            <TableCell
-                                                isHeader
-                                                className="px-5 py-3 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-center"
-                                            >
-                                                Số SV
-                                            </TableCell>
-                                            <TableCell
-                                                isHeader
-                                                className="px-5 py-3 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-center"
-                                            >
-                                                Hành động
+                    <div className="max-w-full overflow-x-auto">
+                        <div className="min-w-[1000px]">
+                            <Table>
+                                {/* Table Header */}
+                                <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
+                                    <TableRow className="grid grid-cols-[20%_10%_12%_15%_18%_10%_15%]">
+                                        <TableCell
+                                            isHeader
+                                            className="px-5 py-3 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-left"
+                                        >
+                                            Mã LHP
+                                        </TableCell>
+                                        <TableCell
+                                            isHeader
+                                            className="px-5 py-3 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-center"
+                                        >
+                                            Mã Ngành
+                                        </TableCell>
+                                        <TableCell
+                                            isHeader
+                                            className="px-5 py-3 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-center"
+                                        >
+                                            Mã Niên Khóa
+                                        </TableCell>
+                                        <TableCell
+                                            isHeader
+                                            className="px-5 py-3 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-center"
+                                        >
+                                            Mã Môn học
+                                        </TableCell>
+                                        <TableCell
+                                            isHeader
+                                            className="px-5 py-3 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-center"
+                                        >
+                                            Mã Giảng viên
+                                        </TableCell>
+                                        <TableCell
+                                            isHeader
+                                            className="px-5 py-3 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-center"
+                                        >
+                                            Số SV
+                                        </TableCell>
+                                        <TableCell
+                                            isHeader
+                                            className="px-5 py-3 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-center"
+                                        >
+                                            Hành động
+                                        </TableCell>
+                                    </TableRow>
+                                </TableHeader>
+
+                                {/* Table Body */}
+                                <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05] text-theme-sm">
+                                    {paginatedData.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell className="px-5 py-8 text-center text-gray-500 dark:text-gray-400 col-span-7">
+                                                Không có dữ liệu
                                             </TableCell>
                                         </TableRow>
-                                    </TableHeader>
+                                    ) : (
+                                        paginatedData.map((lhp) => (
+                                            <TableRow
+                                                key={lhp.stt}
+                                                className="grid grid-cols-[20%_10%_12%_15%_18%_10%_15%] items-center hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors"
+                                            >
+                                                <TableCell className="px-5 py-4 text-gray-800 dark:text-white/90 font-medium">
+                                                    {lhp.maLopHocPhan}
+                                                </TableCell>
+                                                <TableCell className="px-5 py-4 text-center">
+                                                    <Badge variant="light" color="primary">
+                                                        {lhp.maNganh}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="px-5 py-4 text-center text-gray-600 dark:text-gray-400">
+                                                    {lhp.maNienKhoa}
+                                                </TableCell>
+                                                <TableCell className="px-5 py-4 text-center">
+                                                    <Badge variant="light" color="info">
+                                                        {lhp.maMonHoc}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="px-5 py-4 text-center text-gray-600 dark:text-gray-400">
+                                                    {lhp.maGiangVien}
+                                                </TableCell>
+                                                <TableCell className="px-5 py-4 text-center">
+                                                    <Badge variant="solid" color="success">
+                                                        {lhp.soSinhVienThamGia}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="px-5 py-4 text-center">
+                                                    <div className="relative inline-block">
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => toggleDropdown(lhp.stt)}
+                                                            className="dropdown-toggle flex items-center gap-1.5 min-w-[100px] justify-between px-3 py-2"
+                                                        >
+                                                            Thao tác
+                                                            <FaAngleDown
+                                                                className={`text-gray-500 transition-transform duration-300 ease-in-out ${activeDropdownId === lhp.stt ? "rotate-180" : "rotate-0"
+                                                                    }`}
+                                                            />
+                                                        </Button>
 
-                                    {/* Table Body */}
-                                    <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05] text-theme-sm">
-                                        {paginatedData.length === 0 ? (
-                                            <TableRow>
-                                                <TableCell className="px-5 py-8 text-center text-gray-500 dark:text-gray-400 col-span-7">
-                                                    Không có dữ liệu
+                                                        <Dropdown
+                                                            isOpen={activeDropdownId === lhp.stt}
+                                                            onClose={closeDropdown}
+                                                            className="w-40"
+                                                        >
+                                                            <div className="py-1">
+                                                                <DropdownItem
+                                                                    tag="button"
+                                                                    onItemClick={closeDropdown}
+                                                                    onClick={() => openEditModal(lhp)}
+                                                                >
+                                                                    <FontAwesomeIcon icon={faPenToSquare} className="mr-2 w-4" />
+                                                                    Sửa
+                                                                </DropdownItem>
+
+                                                                <div className="my-1 border-t border-gray-100 dark:border-gray-700" />
+
+                                                                <DropdownItem
+                                                                    tag="button"
+                                                                    className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/30"
+                                                                    onItemClick={closeDropdown}
+                                                                    onClick={() => openDeleteModal(lhp)}
+                                                                >
+                                                                    <FontAwesomeIcon icon={faTrash} className="mr-2 w-4" />
+                                                                    Xóa
+                                                                </DropdownItem>
+                                                            </div>
+                                                        </Dropdown>
+                                                    </div>
                                                 </TableCell>
                                             </TableRow>
-                                        ) : (
-                                            paginatedData.map((lhp) => (
-                                                <TableRow
-                                                    key={lhp.stt}
-                                                    className="grid grid-cols-[20%_10%_12%_15%_18%_10%_15%] items-center hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors"
-                                                >
-                                                    <TableCell className="px-5 py-4 text-gray-800 dark:text-white/90 font-medium">
-                                                        {lhp.maLopHocPhan}
-                                                    </TableCell>
-                                                    <TableCell className="px-5 py-4 text-center">
-                                                        <Badge variant="light" color="primary">
-                                                            {lhp.maNganh}
-                                                        </Badge>
-                                                    </TableCell>
-                                                    <TableCell className="px-5 py-4 text-center text-gray-600 dark:text-gray-400">
-                                                        {lhp.maNienKhoa}
-                                                    </TableCell>
-                                                    <TableCell className="px-5 py-4 text-center">
-                                                        <Badge variant="light" color="info">
-                                                            {lhp.maMonHoc}
-                                                        </Badge>
-                                                    </TableCell>
-                                                    <TableCell className="px-5 py-4 text-center text-gray-600 dark:text-gray-400">
-                                                        {lhp.maGiangVien}
-                                                    </TableCell>
-                                                    <TableCell className="px-5 py-4 text-center">
-                                                        <Badge variant="solid" color="success">
-                                                            {lhp.soSinhVienThamGia}
-                                                        </Badge>
-                                                    </TableCell>
-                                                    <TableCell className="px-5 py-4 text-center">
-                                                        <div className="relative inline-block">
-                                                            <Button
-                                                                variant="outline"
-                                                                size="sm"
-                                                                onClick={() => toggleDropdown(lhp.stt)}
-                                                                className="dropdown-toggle flex items-center gap-1.5 min-w-[100px] justify-between px-3 py-2"
-                                                            >
-                                                                Thao tác
-                                                                <FaAngleDown
-                                                                    className={`text-gray-500 transition-transform duration-300 ease-in-out ${activeDropdownId === lhp.stt ? "rotate-180" : "rotate-0"
-                                                                        }`}
-                                                                />
-                                                            </Button>
-
-                                                            <Dropdown
-                                                                isOpen={activeDropdownId === lhp.stt}
-                                                                onClose={closeDropdown}
-                                                                className="w-40"
-                                                            >
-                                                                <div className="py-1">
-                                                                    <DropdownItem
-                                                                        tag="button"
-                                                                        onItemClick={closeDropdown}
-                                                                        onClick={() => openEditModal(lhp)}
-                                                                    >
-                                                                        <FontAwesomeIcon icon={faPenToSquare} className="mr-2 w-4" />
-                                                                        Sửa
-                                                                    </DropdownItem>
-
-                                                                    <div className="my-1 border-t border-gray-100 dark:border-gray-700" />
-
-                                                                    <DropdownItem
-                                                                        tag="button"
-                                                                        className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/30"
-                                                                        onItemClick={closeDropdown}
-                                                                        onClick={() => openDeleteModal(lhp)}
-                                                                    >
-                                                                        <FontAwesomeIcon icon={faTrash} className="mr-2 w-4" />
-                                                                        Xóa
-                                                                    </DropdownItem>
-                                                                </div>
-                                                            </Dropdown>
-                                                        </div>
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))
-                                        )}
-                                    </TableBody>
-                                </Table>
-                            </div>
+                                        ))
+                                    )}
+                                </TableBody>
+                            </Table>
                         </div>
                     </div>
+                </div>
 
                 {/* Pagination và Items Count Info */}
                 <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -2236,20 +2454,20 @@ export default function ThemLopHocPhanPage() {
                                 {/* Cảnh báo số lượng sinh viên */}
                                 {createSinhVienWarning && (
                                     <div className={`mt-2 p-3 rounded-lg border ${createSinhVienWarning.type === "error"
-                                            ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
-                                            : "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800"
+                                        ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
+                                        : "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800"
                                         }`}>
                                         <div className="flex items-start gap-2">
                                             <FontAwesomeIcon
                                                 icon={createSinhVienWarning.type === "error" ? faCircleExclamation : faTriangleExclamation}
                                                 className={`mt-0.5 ${createSinhVienWarning.type === "error"
-                                                        ? "text-red-500 dark:text-red-400"
-                                                        : "text-amber-500 dark:text-amber-400"
+                                                    ? "text-red-500 dark:text-red-400"
+                                                    : "text-amber-500 dark:text-amber-400"
                                                     }`}
                                             />
                                             <p className={`text-sm ${createSinhVienWarning.type === "error"
-                                                    ? "text-red-700 dark:text-red-300"
-                                                    : "text-amber-700 dark:text-amber-300"
+                                                ? "text-red-700 dark:text-red-300"
+                                                : "text-amber-700 dark:text-amber-300"
                                                 }`}>
                                                 {createSinhVienWarning.message}
                                             </p>
@@ -2291,8 +2509,8 @@ export default function ThemLopHocPhanPage() {
                         {/* Preview phân bổ */}
                         {createFormData.phanBoLaiSinhVien && phanBoPreview && (
                             <div className={`mt-4 p-4 rounded-lg border ${phanBoPreview.isValid
-                                    ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
-                                    : "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
+                                ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+                                : "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
                                 }`}>
                                 {phanBoPreview.isValid ? (
                                     <>
@@ -2371,6 +2589,15 @@ export default function ThemLopHocPhanPage() {
                     </div>
                 </div>
             </Modal>
+
+            {/* Modal Tải xuống Excel LHP đề xuất */}
+            <DownloadExcelLHPDeXuatModal
+                isOpen={isDownloadExcelModalOpen}
+                onClose={() => setIsDownloadExcelModalOpen(false)}
+                namHocId={namHocId}
+                hocKyId={hocKyId}
+                showAlert={showAlert}
+            />
         </div>
     );
 }

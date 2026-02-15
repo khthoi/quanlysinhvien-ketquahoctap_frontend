@@ -1085,225 +1085,6 @@ const ImportSinhVienExcelModal: React.FC<ImportSinhVienExcelModalProps> = ({
     );
 };
 
-// ==================== MODAL THỐNG KÊ LHP ĐỀ XUẤT ====================
-interface ThongKeLHPDeXuatModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-    namHocOptions: NamHocOption[];
-    showAlert: (variant: "success" | "error" | "warning" | "info", title: string, message: string) => void;
-}
-
-const ThongKeLHPDeXuatModal: React.FC<ThongKeLHPDeXuatModalProps> = ({
-    isOpen,
-    onClose,
-    namHocOptions,
-    showAlert,
-}) => {
-    const [selectedNamHocId, setSelectedNamHocId] = useState("");
-    const [selectedHocKy, setSelectedHocKy] = useState("");
-    const [isLoading, setIsLoading] = useState(false);
-    const [errors, setErrors] = useState({ namHoc: false, hocKy: false });
-
-    // Lấy danh sách học kỳ từ năm học đã chọn
-    const selectedNamHoc = namHocOptions.find(nh => nh.id.toString() === selectedNamHocId);
-    const hocKyOptions = selectedNamHoc?.hocKys || [];
-
-    const handleClose = () => {
-        setSelectedNamHocId("");
-        setSelectedHocKy("");
-        setErrors({ namHoc: false, hocKy: false });
-        onClose();
-    };
-
-    const validateForm = () => {
-        const newErrors = {
-            namHoc: !selectedNamHocId,
-            hocKy: !selectedHocKy,
-        };
-        setErrors(newErrors);
-        return !newErrors.namHoc && !newErrors.hocKy;
-    };
-
-    const handleSubmit = async () => {
-        if (!validateForm()) return;
-
-        setIsLoading(true);
-
-        try {
-            const accessToken = getCookie("access_token");
-            const selectedNamHocData = namHocOptions.find(nh => nh.id.toString() === selectedNamHocId);
-            const selectedHocKyData = hocKyOptions.find(hk => hk.id.toString() === selectedHocKy);
-
-            if (!selectedNamHocData || !selectedHocKyData) {
-                showAlert("error", "Lỗi", "Không tìm thấy thông tin năm học hoặc học kỳ");
-                setIsLoading(false);
-                return;
-            }
-
-            const res = await fetch("http://localhost:3000/giang-day/len-ke-hoach-tao-lhp", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${accessToken}`,
-                },
-                body: JSON.stringify({
-                    maNamHoc: selectedNamHocData.maNamHoc,
-                    hocKy: selectedHocKyData.hocKy,
-                }),
-            });
-
-            if (res.ok) {
-                // Xử lý tải file Excel
-                const blob = await res.blob();
-                const url = window.URL.createObjectURL(blob);
-                const link = document.createElement("a");
-                link.href = url;
-                link.download = `thong-ke-lhp-de-xuat-${selectedNamHocData.maNamHoc}-HK${selectedHocKyData.hocKy}.xlsx`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                window.URL.revokeObjectURL(url);
-
-                showAlert("success", "Thành công", "Đã xuất file thống kê lớp học phần đề xuất");
-                handleClose();
-            } else {
-                const err = await res.json();
-                handleClose();
-                showAlert("error", "Lỗi", err.message || "Không thể xuất thống kê");
-            }
-        } catch (err) {
-            console.error("Lỗi xuất thống kê LHP đề xuất:", err);
-            showAlert("error", "Lỗi", "Có lỗi xảy ra khi xuất thống kê");
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    if (!isOpen) return null;
-
-    return (
-        <Modal isOpen={isOpen} onClose={handleClose} className="max-w-lg">
-            <div className="p-6 sm:p-8 max-h-[90vh] overflow-y-auto">
-                {/* Header */}
-                <div className="flex items-center gap-3 mb-6">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-100 text-brand-600 dark:bg-brand-900/30 dark:text-brand-400">
-                        <FontAwesomeIcon icon={faChartBar} className="text-xl" />
-                    </div>
-                    <div>
-                        <h3 className="text-xl font-semibold text-gray-800 dark:text-white/90">
-                            Xuất thống kê LHP đề xuất
-                        </h3>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Tạo danh sách lớp học phần dự kiến
-                        </p>
-                    </div>
-                </div>
-
-                {/* Thông tin hướng dẫn */}
-                <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                    <div className="flex gap-3">
-                        <FontAwesomeIcon
-                            icon={faCircleInfo}
-                            className="text-blue-500 dark:text-blue-400 mt-0.5 flex-shrink-0"
-                        />
-                        <div className="text-sm text-blue-700 dark:text-blue-300">
-                            <p className="font-medium mb-1">Hướng dẫn sử dụng: </p>
-                            <ul className="list-disc list-inside space-y-1 text-blue-600 dark:text-blue-400">
-                                <li>Chọn năm học và học kỳ cần xuất thống kê</li>
-                                <li>Hệ thống sẽ tạo file Excel chứa danh sách LHP đề xuất</li>
-                                <li>File có thể dùng để import tạo LHP hàng loạt</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Form chọn năm học và học kỳ */}
-                <div className="space-y-4 mb-6">
-                    {/* Năm học */}
-                    <div>
-                        <Label className="block mb-2">
-                            Năm học <span className="text-red-500">*</span>
-                        </Label>
-                        <SearchableSelect
-                            options={namHocOptions.map((nh) => ({
-                                value: nh.id.toString(),
-                                label: nh.maNamHoc,
-                                secondary: nh.tenNamHoc,
-                            }))}
-                            placeholder="Chọn năm học"
-                            onChange={(value) => {
-                                setSelectedNamHocId(value);
-                                setSelectedHocKy(""); // Reset học kỳ khi đổi năm học
-                                setErrors(prev => ({ ...prev, namHoc: false }));
-                            }}
-                            defaultValue={selectedNamHocId}
-                            showSecondary={true}
-                            maxDisplayOptions={10}
-                            searchPlaceholder="Tìm năm học..."
-                        />
-                        {errors.namHoc && (
-                            <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
-                                <FontAwesomeIcon icon={faTriangleExclamation} className="text-xs" />
-                                Vui lòng chọn năm học
-                            </p>
-                        )}
-                    </div>
-
-                    {/* Học kỳ */}
-                    <div>
-                        <Label className="block mb-2">
-                            Học kỳ <span className="text-red-500">*</span>
-                        </Label>
-                        <SearchableSelect
-                            options={hocKyOptions.map((hk) => ({
-                                value: hk.id.toString(),
-                                label: `Học kỳ ${hk.hocKy}`,
-                                secondary: `${new Date(hk.ngayBatDau).toLocaleDateString("vi-VN")} - ${new Date(hk.ngayKetThuc).toLocaleDateString("vi-VN")}`,
-                            }))}
-                            placeholder={selectedNamHocId ? "Chọn học kỳ" : "Vui lòng chọn năm học trước"}
-                            onChange={(value) => {
-                                setSelectedHocKy(value);
-                                setErrors(prev => ({ ...prev, hocKy: false }));
-                            }}
-                            defaultValue={selectedHocKy}
-                            showSecondary={true}
-                            maxDisplayOptions={10}
-                            searchPlaceholder="Tìm học kỳ..."
-                            disabled={!selectedNamHocId}
-                        />
-                        {errors.hocKy && (
-                            <p className="mt-1 text-sm text-red-500 flex items-center gap-1">
-                                <FontAwesomeIcon icon={faTriangleExclamation} className="text-xs" />
-                                Vui lòng chọn học kỳ
-                            </p>
-                        )}
-                    </div>
-                </div>
-
-                {/* Buttons */}
-                <div className="flex justify-end gap-3">
-                    <Button variant="outline" onClick={handleClose} disabled={isLoading}>
-                        Hủy
-                    </Button>
-                    <Button
-                        onClick={handleSubmit}
-                        disabled={isLoading}
-                        startIcon={
-                            isLoading ? (
-                                <FontAwesomeIcon icon={faSpinner} className="animate-spin" />
-                            ) : (
-                                <FontAwesomeIcon icon={faDownload} />
-                            )
-                        }
-                    >
-                        {isLoading ? "Đang xuất..." : "Xuất thống kê"}
-                    </Button>
-                </div>
-            </div>
-        </Modal>
-    );
-};
-
 // ==================== MODAL NHẬP LHP TỪ EXCEL ====================
 interface ImportLHPExcelModalProps {
     isOpen: boolean;
@@ -2409,7 +2190,6 @@ export default function QuanLyLopHocPhanPage() {
     const [khoaOptions, setKhoaOptions] = useState<KhoaOption[]>([]);
     const [nganhOptions, setNganhOptions] = useState<NganhOption[]>([]);
     // Thêm vào phần khai báo state
-    const [isThongKeLHPModalOpen, setIsThongKeLHPModalOpen] = useState(false);
     const [isImportLHPExcelModalOpen, setIsImportLHPExcelModalOpen] = useState(false);
 
     // Thêm sau dòng:  const [isImportLHPExcelModalOpen, setIsImportLHPExcelModalOpen] = useState(false);
@@ -2422,7 +2202,7 @@ export default function QuanLyLopHocPhanPage() {
     const [isHeaderDropdownOpen, setIsHeaderDropdownOpen] = useState(false); // ← THÊM DÒNG NÀY
     // State để theo dõi dropdown ĐANG MỞ
 
-    // Mở modal từ thanh search header (?modal=tao-lhp | nhap-lhp-excel | thong-ke-de-xuat | them-sv-lhp)
+    // Mở modal từ thanh search header (?modal=tao-lhp | nhap-lhp-excel | them-sv-lhp)
     useEffect(() => {
         const modal = searchParams.get("modal");
         if (modal === "tao-lhp") {
@@ -2430,9 +2210,6 @@ export default function QuanLyLopHocPhanPage() {
             router.replace(pathname, { scroll: false });
         } else if (modal === "nhap-lhp-excel") {
             setIsImportLHPExcelModalOpen(true);
-            router.replace(pathname, { scroll: false });
-        } else if (modal === "thong-ke-de-xuat") {
-            setIsThongKeLHPModalOpen(true);
             router.replace(pathname, { scroll: false });
         } else if (modal === "them-sv-lhp") {
             setIsImportSinhVienExcelModalOpen(true);
@@ -2642,7 +2419,7 @@ export default function QuanLyLopHocPhanPage() {
     };
 
     useEffect(() => {
-        fetchLopHocPhans(currentPage, searchKeyword, filterMonHocId, filterGiangVienId, filterHocKyId, filterNienKhoaId, filterNganhId);
+        fetchLopHocPhans(currentPage, searchKeyword, filterMonHocId, filterGiangVienId, filterHocKyId, filterNienKhoaId, filterNganhId, filterKhoaDiem);
     }, [currentPage]);
 
     useEffect(() => {
@@ -2868,7 +2645,7 @@ export default function QuanLyLopHocPhanPage() {
             if (res.ok) {
                 showAlert("success", "Thành công", "Cập nhật lớp học phần thành công");
                 resetForm();
-                fetchLopHocPhans(currentPage, searchKeyword, filterMonHocId, filterGiangVienId, filterHocKyId, filterNienKhoaId, filterNganhId);
+                fetchLopHocPhans(currentPage, searchKeyword, filterMonHocId, filterGiangVienId, filterHocKyId, filterNienKhoaId, filterNganhId, filterKhoaDiem);
             } else {
                 const err = await res.json();
                 showAlert("error", "Lỗi", err.message || "Cập nhật thất bại");
@@ -2905,7 +2682,7 @@ export default function QuanLyLopHocPhanPage() {
             if (res.ok) {
                 showAlert("success", "Thành công", "Xóa lớp học phần thành công");
                 setDeletingLopHocPhan(null);
-                fetchLopHocPhans(currentPage, searchKeyword, filterMonHocId, filterGiangVienId, filterHocKyId, filterNienKhoaId, filterNganhId);
+                fetchLopHocPhans(currentPage, searchKeyword, filterMonHocId, filterGiangVienId, filterHocKyId, filterNienKhoaId, filterNganhId, filterKhoaDiem);
             } else {
                 const err = await res.json();
                 showAlert("error", "Lỗi", err.message || "Xóa thất bại");
@@ -3078,20 +2855,6 @@ export default function QuanLyLopHocPhanPage() {
                                 >
                                     <FontAwesomeIcon icon={faFileExcel} className="w-4" />
                                     Thêm SV vào LHP
-                                </DropdownItem>
-
-                                <div className="my-1 border-t border-gray-100 dark:border-gray-700" />
-
-                                <DropdownItem
-                                    tag="button"
-                                    onClick={() => {
-                                        setIsThongKeLHPModalOpen(true);
-                                        closeHeaderDropdown();
-                                    }}
-                                    className="flex items-center gap-2 px-3 py-2 rounded-md"
-                                >
-                                    <FontAwesomeIcon icon={faChartBar} className="w-4" />
-                                    TK LHP đề xuất
                                 </DropdownItem>
 
                                 {/* Thống kê SV trượt môn đã được chuyển sang trang Quản lý Sinh viên */}
@@ -3511,15 +3274,7 @@ export default function QuanLyLopHocPhanPage() {
             <ImportSinhVienExcelModal
                 isOpen={isImportSinhVienExcelModalOpen}
                 onClose={() => setIsImportSinhVienExcelModalOpen(false)}
-                onSuccess={() => fetchLopHocPhans(currentPage, searchKeyword, filterMonHocId, filterGiangVienId, filterHocKyId, filterNienKhoaId, filterNganhId)}
-                showAlert={showAlert}
-            />
-
-            {/* Modal Thống kê LHP đề xuất */}
-            <ThongKeLHPDeXuatModal
-                isOpen={isThongKeLHPModalOpen}
-                onClose={() => setIsThongKeLHPModalOpen(false)}
-                namHocOptions={namHocOptions}
+                onSuccess={() => fetchLopHocPhans(currentPage, searchKeyword, filterMonHocId, filterGiangVienId, filterHocKyId, filterNienKhoaId, filterNganhId, filterKhoaDiem)}
                 showAlert={showAlert}
             />
 
@@ -3527,7 +3282,7 @@ export default function QuanLyLopHocPhanPage() {
             <ImportLHPExcelModal
                 isOpen={isImportLHPExcelModalOpen}
                 onClose={() => setIsImportLHPExcelModalOpen(false)}
-                onSuccess={() => fetchLopHocPhans(currentPage, searchKeyword, filterMonHocId, filterGiangVienId, filterHocKyId, filterNienKhoaId, filterNganhId)}
+                onSuccess={() => fetchLopHocPhans(currentPage, searchKeyword, filterMonHocId, filterGiangVienId, filterHocKyId, filterNienKhoaId, filterNganhId, filterKhoaDiem)}
                 showAlert={showAlert}
             />
 
