@@ -8,6 +8,7 @@ import { ChevronLeftIcon, EyeCloseIcon, EyeIcon } from "@/icons";
 import Link from "next/link";
 import React, { useState } from "react";
 import { ENV } from "@/config/env";
+import { getAndClearRedirectUrl } from "@/utils/auth";
 
 export default function SignInForm() {
   const [showPassword, setShowPassword] = useState(false);
@@ -115,8 +116,9 @@ export default function SignInForm() {
           }
         }
         
-        // Chuyển hướng hoặc thực hiện hành động sau khi đăng nhập thành công
-        window.location.href = "/"; // Hoặc route mong muốn
+        // Chuyển hướng về URL đã lưu hoặc trang chủ
+        const redirectUrl = getAndClearRedirectUrl("/");
+        window.location.href = redirectUrl;
         
       } else if (response.status === 401) {
         setErrorMessage("Tên đăng nhập hoặc mật khẩu không chính xác");

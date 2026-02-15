@@ -1,6 +1,7 @@
 "use client";
 import { ENV } from "@/config/env";
 import React, { useState, useEffect } from "react";
+import { saveRedirectUrl } from "@/utils/auth";
 import { useModal } from "../../hooks/useModal";
 import { Modal } from "../ui/modal";
 import Button from "../ui/button/Button";
@@ -705,7 +706,7 @@ export default function UserInfoCard() {
   const handleLogout = () => {
     // Xóa cookie
     document.cookie = "access_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-    // Redirect to login
+    // Không lưu redirect URL khi logout thủ công
     window.location.href = "/signin";
   };
 

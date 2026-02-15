@@ -3,7 +3,8 @@ import { ENV } from "@/config/env";
 import Image from "next/image";
 import Link from "next/link";
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
+import { saveRedirectUrl } from "@/utils/auth";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faChevronDown,
@@ -54,6 +55,7 @@ export default function UserDropdown() {
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState<string | null>(null);
   const router = useRouter();
+  const pathname = usePathname();
 
   const getProfileImage = (): string => {
     if (!profile) return "/images/user/user.png";
@@ -119,6 +121,7 @@ export default function UserDropdown() {
     const fetchProfile = async () => {
       const token = getAccessToken();
       if (!token) {
+        if (pathname) saveRedirectUrl(pathname);
         router.push("/signin");
         return;
       }
@@ -128,6 +131,7 @@ export default function UserDropdown() {
       // ❌ Token không hợp lệ → logout
       if (!decoded) {
         document.cookie = "access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+        if (pathname) saveRedirectUrl(pathname);
         router.push("/signin");
         return;
       }
@@ -137,6 +141,7 @@ export default function UserDropdown() {
       if (decoded.exp && decoded.exp < now) {
         console.warn("Token hết hạn");
         document.cookie = "access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+        if (pathname) saveRedirectUrl(pathname);
         router.push("/signin");
         return;
       }
@@ -148,6 +153,7 @@ export default function UserDropdown() {
       // ❌ Nếu sinh viên → logout
       if (vaiTro === "SINH_VIEN") {
         document.cookie = "access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+        if (pathname) saveRedirectUrl(pathname);
         router.push("/signin");
         return;
       }
@@ -189,6 +195,7 @@ export default function UserDropdown() {
         } else {
           // các role khác → logout
           document.cookie = "access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+          if (pathname) saveRedirectUrl(pathname);
           router.push("/signin");
         }
 
@@ -198,7 +205,7 @@ export default function UserDropdown() {
     };
 
     fetchProfile();
-  }, [router]);
+  }, [router, pathname]);
 
 
   const toggleDropdown = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -210,6 +217,7 @@ export default function UserDropdown() {
 
   const handleSignOut = () => {
     document.cookie = "access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+    // Không lưu redirect URL khi logout thủ công
     router.push("/signin");
   };
 

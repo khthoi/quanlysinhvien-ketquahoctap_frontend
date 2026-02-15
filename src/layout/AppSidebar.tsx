@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState, useCallback, useMemo } from "react"
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
+import { saveRedirectUrl } from "@/utils/auth";
 import { useSidebar } from "../context/SidebarContext";
 import {
   BoxCubeIcon,
@@ -237,6 +238,7 @@ const AppSidebar: React.FC = () => {
     const accessToken = getCookie("access_token");
 
     if (!accessToken) {
+      if (pathname) saveRedirectUrl(pathname);
       router.push("/signin");
       return;
     }
