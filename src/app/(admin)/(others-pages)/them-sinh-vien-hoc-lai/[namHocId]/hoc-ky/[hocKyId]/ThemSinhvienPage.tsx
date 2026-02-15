@@ -803,7 +803,7 @@ export default function ThemSinhvienPage() {
         setExportError(null);
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("${ENV.BACKEND_URL}/bao-cao/de-xuat-hoc-lai", {
+            const res = await fetch(`${ENV.BACKEND_URL}/bao-cao/de-xuat-hoc-lai`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -843,7 +843,7 @@ export default function ThemSinhvienPage() {
         setLoadingThongKe(true);
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("${ENV.BACKEND_URL}/bao-cao/thong-tin-sinh-vien-truot-mon", {
+            const res = await fetch(`${ENV.BACKEND_URL}/bao-cao/thong-tin-sinh-vien-truot-mon`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -870,7 +870,7 @@ export default function ThemSinhvienPage() {
         setLoadingDeXuat(true);
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("${ENV.BACKEND_URL}/bao-cao/de-xuat-hoc-lai/json", {
+            const res = await fetch(`${ENV.BACKEND_URL}/bao-cao/de-xuat-hoc-lai/json`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

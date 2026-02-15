@@ -579,7 +579,7 @@ const ImportGiangVienExcelModal: React.FC<ImportGiangVienExcelModalProps> = ({
 
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("${ENV.BACKEND_URL}/danh-muc/giang-vien/export-excel-template", {
+            const res = await fetch(`${ENV.BACKEND_URL}/danh-muc/giang-vien/export-excel-template`, {
                 method: "GET",
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
@@ -622,7 +622,7 @@ const ImportGiangVienExcelModal: React.FC<ImportGiangVienExcelModalProps> = ({
             const formData = new FormData();
             formData.append("file", selectedFile);
 
-            const res = await fetch("${ENV.BACKEND_URL}/danh-muc/giang-vien/import-excel", {
+            const res = await fetch(`${ENV.BACKEND_URL}/danh-muc/giang-vien/import-excel`, {
                 method: "POST",
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
@@ -1337,7 +1337,7 @@ export default function QuanLyGiangVienPage() {
     const fetchMonHocOptions = async () => {
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("${ENV.BACKEND_URL}/danh-muc/mon-hoc", {
+            const res = await fetch(`${ENV.BACKEND_URL}/danh-muc/mon-hoc`, {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
                 },
@@ -1485,7 +1485,7 @@ export default function QuanLyGiangVienPage() {
 
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("${ENV.BACKEND_URL}/danh-muc/giang-vien", {
+            const res = await fetch(`${ENV.BACKEND_URL}/danh-muc/giang-vien`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -1702,7 +1702,7 @@ export default function QuanLyGiangVienPage() {
         try {
             const accessToken = getCookie("access_token");
             const res = await fetch(
-                "${ENV.BACKEND_URL}/auth/users/giang-vien/auto-create-accounts",
+                `${ENV.BACKEND_URL}/auth/users/giang-vien/auto-create-accounts`,
                 {
                     method: "POST",
                     headers: {

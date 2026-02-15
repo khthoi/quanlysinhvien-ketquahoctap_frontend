@@ -934,7 +934,7 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
 
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("${ENV.BACKEND_URL}/dao-tao/ap-dung", {
+            const res = await fetch(`${ENV.BACKEND_URL}/dao-tao/ap-dung`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

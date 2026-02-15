@@ -466,7 +466,7 @@ export default function QuanLyLopHocPhanPage() {
     const fetchMonHoc = async () => {
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("${ENV.BACKEND_URL}/danh-muc/mon-hoc", {
+            const res = await fetch(`${ENV.BACKEND_URL}/danh-muc/mon-hoc`, {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
                 },
@@ -489,7 +489,7 @@ export default function QuanLyLopHocPhanPage() {
     const fetchNamHoc = async () => {
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("${ENV.BACKEND_URL}/dao-tao/nam-hoc?page=1&limit=9999", {
+            const res = await fetch(`${ENV.BACKEND_URL}/dao-tao/nam-hoc?page=1&limit=9999`, {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
                 },
@@ -512,7 +512,7 @@ export default function QuanLyLopHocPhanPage() {
     const fetchNienKhoa = async () => {
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("${ENV.BACKEND_URL}/danh-muc/nien-khoa?page=1&limit=9999", {
+            const res = await fetch(`${ENV.BACKEND_URL}/danh-muc/nien-khoa?page=1&limit=9999`, {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
                 },
@@ -534,7 +534,7 @@ export default function QuanLyLopHocPhanPage() {
     const fetchNganh = async () => {
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("${ENV.BACKEND_URL}/danh-muc/nganh?page=1&limit=9999", {
+            const res = await fetch(`${ENV.BACKEND_URL}/danh-muc/nganh?page=1&limit=9999`, {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
                 },

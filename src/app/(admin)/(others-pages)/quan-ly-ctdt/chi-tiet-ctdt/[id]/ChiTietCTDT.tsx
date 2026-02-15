@@ -784,7 +784,7 @@ const ImportMonHocExcelModal: React.FC<ImportMonHocExcelModalProps> = ({
         setIsDownloading(true);
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("${ENV.BACKEND_URL}/dao-tao/chuong-trinh/export-mau-excel", {
+            const res = await fetch(`${ENV.BACKEND_URL}/dao-tao/chuong-trinh/export-mau-excel`, {
                 method: "GET",
                 headers: {
                     Authorization: `Bearer ${accessToken}`,

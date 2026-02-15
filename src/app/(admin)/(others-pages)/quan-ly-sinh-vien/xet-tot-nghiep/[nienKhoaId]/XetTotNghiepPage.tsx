@@ -851,7 +851,7 @@ export default function XetTotNghiepPage() {
         setLoadingDuDoan(true);
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("${ENV.BACKEND_URL}/sinh-vien/xet-tot-nghiep/du-doan", {
+            const res = await fetch(`${ENV.BACKEND_URL}/sinh-vien/xet-tot-nghiep/du-doan`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -878,7 +878,7 @@ export default function XetTotNghiepPage() {
         setLoadingDanhSach(true);
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("${ENV.BACKEND_URL}/sinh-vien/xet-tot-nghiep/danh-sach", {
+            const res = await fetch(`${ENV.BACKEND_URL}/sinh-vien/xet-tot-nghiep/danh-sach`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -906,7 +906,7 @@ export default function XetTotNghiepPage() {
         setConfirmError(null);
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("${ENV.BACKEND_URL}/sinh-vien/xet-tot-nghiep/xac-nhan", {
+            const res = await fetch(`${ENV.BACKEND_URL}/sinh-vien/xet-tot-nghiep/xac-nhan`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -936,7 +936,7 @@ export default function XetTotNghiepPage() {
         if (!nienKhoaId) return;
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("${ENV.BACKEND_URL}/sinh-vien/xet-tot-nghiep/xuat-excel", {
+            const res = await fetch(`${ENV.BACKEND_URL}/sinh-vien/xet-tot-nghiep/xuat-excel`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

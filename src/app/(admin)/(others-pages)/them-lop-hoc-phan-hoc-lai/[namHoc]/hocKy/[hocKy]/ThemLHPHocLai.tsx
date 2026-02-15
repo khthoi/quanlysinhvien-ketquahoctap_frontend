@@ -687,7 +687,7 @@ export default function ThemLHPHocLai() {
 
         for (const lhp of toAdd) {
             try {
-                const res = await fetch("${ENV.BACKEND_URL}/giang-day/tao-lop-hoc-phan-cho-hoc-lai", {
+                const res = await fetch(`${ENV.BACKEND_URL}/giang-day/tao-lop-hoc-phan-cho-hoc-lai`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",

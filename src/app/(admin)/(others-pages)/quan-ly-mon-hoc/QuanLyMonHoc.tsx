@@ -388,7 +388,7 @@ const ImportMonHocExcelModal: React.FC<ImportMonHocExcelModalProps> = ({
             const formData = new FormData();
             formData.append("file", selectedFile);
 
-            const res = await fetch("${ENV.BACKEND_URL}/danh-muc/mon-hoc/import-excel", {
+            const res = await fetch(`${ENV.BACKEND_URL}/danh-muc/mon-hoc/import-excel`, {
                 method: "POST",
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
@@ -906,7 +906,7 @@ const ExportMonHocExcelModal: React.FC<ExportMonHocExcelModalProps> = ({
         try {
             const accessToken = getCookie("access_token");
 
-            const res = await fetch("${ENV.BACKEND_URL}/danh-muc/mon-hoc/export-excel", {
+            const res = await fetch(`${ENV.BACKEND_URL}/danh-muc/mon-hoc/export-excel`, {
                 method: "GET",
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
@@ -1299,7 +1299,7 @@ export default function QuanLyMonHocPage() {
             const tenMonHoc = monHoc?.tenMonHoc || monHocId;
 
             try {
-                const res = await fetch("${ENV.BACKEND_URL}/danh-muc/giang-vien/phancongmonhoc", {
+                const res = await fetch(`${ENV.BACKEND_URL}/danh-muc/giang-vien/phancongmonhoc`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -1470,7 +1470,7 @@ export default function QuanLyMonHocPage() {
 
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("${ENV.BACKEND_URL}/danh-muc/mon-hoc", {
+            const res = await fetch(`${ENV.BACKEND_URL}/danh-muc/mon-hoc`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

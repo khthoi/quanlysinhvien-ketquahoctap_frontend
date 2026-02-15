@@ -162,7 +162,7 @@ export default function UserDropdown() {
       try {
         // Các role khác → fetch như cũ
         const response = await fetch(
-          "${ENV.BACKEND_URL}/danh-muc/giang-vien/me/my-profile",
+          `${ENV.BACKEND_URL}/danh-muc/giang-vien/me/my-profile`,
           {
             method: "GET",
             headers: {

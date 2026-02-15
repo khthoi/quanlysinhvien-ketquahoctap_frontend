@@ -296,7 +296,7 @@ const ImportNganhExcelModal: React.FC<ImportNganhExcelModalProps> = ({
             const formData = new FormData();
             formData.append("file", selectedFile);
 
-            const res = await fetch("${ENV.BACKEND_URL}/danh-muc/nganh/import-excel", {
+            const res = await fetch(`${ENV.BACKEND_URL}/danh-muc/nganh/import-excel`, {
                 method: "POST",
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
@@ -921,7 +921,7 @@ export default function QuanLyNganhPage() {
 
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("${ENV.BACKEND_URL}/danh-muc/nganh", {
+            const res = await fetch(`${ENV.BACKEND_URL}/danh-muc/nganh`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

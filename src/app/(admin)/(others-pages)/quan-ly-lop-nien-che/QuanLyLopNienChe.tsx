@@ -369,7 +369,7 @@ const ImportLopExcelModal: React.FC<ImportLopExcelModalProps> = ({
             const formData = new FormData();
             formData.append("file", selectedFile);
 
-            const res = await fetch("${ENV.BACKEND_URL}/danh-muc/lop/import-excel", {
+            const res = await fetch(`${ENV.BACKEND_URL}/danh-muc/lop/import-excel`, {
                 method: "POST",
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
@@ -1007,7 +1007,7 @@ export default function QuanLyLopNienChePage() {
 
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("${ENV.BACKEND_URL}/danh-muc/lop", {
+            const res = await fetch(`${ENV.BACKEND_URL}/danh-muc/lop`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

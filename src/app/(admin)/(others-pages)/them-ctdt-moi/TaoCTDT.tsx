@@ -374,7 +374,7 @@ export default function TaoCTDT() {
     const fetchChuongTrinhs = async () => {
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("${ENV.BACKEND_URL}/dao-tao/chuong-trinh?page=1&limit=9999", {
+            const res = await fetch(`${ENV.BACKEND_URL}/dao-tao/chuong-trinh?page=1&limit=9999`, {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
                 },
@@ -391,7 +391,7 @@ export default function TaoCTDT() {
     const fetchNganhs = async () => {
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("${ENV.BACKEND_URL}/danh-muc/nganh?limit=9999&page=1", {
+            const res = await fetch(`${ENV.BACKEND_URL}/danh-muc/nganh?limit=9999&page=1`, {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
                 },
@@ -411,7 +411,7 @@ export default function TaoCTDT() {
     const fetchNienKhoas = async () => {
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("${ENV.BACKEND_URL}/danh-muc/nien-khoa?page=1&limit=9999", {
+            const res = await fetch(`${ENV.BACKEND_URL}/danh-muc/nien-khoa?page=1&limit=9999`, {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
                 },
@@ -428,7 +428,7 @@ export default function TaoCTDT() {
     const fetchMonHocs = async () => {
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("${ENV.BACKEND_URL}/danh-muc/mon-hoc", {
+            const res = await fetch(`${ENV.BACKEND_URL}/danh-muc/mon-hoc`, {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
                 },
@@ -522,7 +522,7 @@ export default function TaoCTDT() {
         if (draft.formData.maChuongTrinh.trim()) {
             try {
                 const accessToken = getCookie("access_token");
-                const res = await fetch("${ENV.BACKEND_URL}/dao-tao/chuong-trinh?page=1&limit=9999", {
+                const res = await fetch(`${ENV.BACKEND_URL}/dao-tao/chuong-trinh?page=1&limit=9999`, {
                     headers: {
                         Authorization: `Bearer ${accessToken}`,
                     },
@@ -873,7 +873,7 @@ export default function TaoCTDT() {
 
         // Step 1: Create chuong trinh
         try {
-            const step1Res = await fetch("${ENV.BACKEND_URL}/dao-tao/chuong-trinh", {
+            const step1Res = await fetch(`${ENV.BACKEND_URL}/dao-tao/chuong-trinh`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -910,7 +910,7 @@ export default function TaoCTDT() {
             // Step 2: Apply to nien khoas
             const step2Promises = formData.nienKhoaIds.map(async (nienKhoaId) => {
                 try {
-                    const step2Res = await fetch("${ENV.BACKEND_URL}/dao-tao/ap-dung", {
+                    const step2Res = await fetch(`${ENV.BACKEND_URL}/dao-tao/ap-dung`, {
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json",

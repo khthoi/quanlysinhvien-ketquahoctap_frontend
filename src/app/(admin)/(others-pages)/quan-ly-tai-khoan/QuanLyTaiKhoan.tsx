@@ -621,7 +621,7 @@ export default function QuanLyNguoiDungPage() {
 
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("${ENV.BACKEND_URL}/auth/new-users", {
+            const res = await fetch(`${ENV.BACKEND_URL}/auth/new-users`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -674,7 +674,7 @@ export default function QuanLyNguoiDungPage() {
 
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("${ENV.BACKEND_URL}/auth/reset-password", {
+            const res = await fetch(`${ENV.BACKEND_URL}/auth/reset-password`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

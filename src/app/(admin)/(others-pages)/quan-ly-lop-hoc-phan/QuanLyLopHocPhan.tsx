@@ -1735,7 +1735,7 @@ const ThongKeSVTruotMonModal: React.FC<ThongKeSVTruotMonModalProps> = ({
                 return;
             }
 
-            const res = await fetch("${ENV.BACKEND_URL}/bao-cao/de-xuat-hoc-lai", {
+            const res = await fetch(`${ENV.BACKEND_URL}/bao-cao/de-xuat-hoc-lai`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -2296,7 +2296,7 @@ export default function QuanLyLopHocPhanPage() {
     const fetchMonHoc = async () => {
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("${ENV.BACKEND_URL}/danh-muc/mon-hoc", {
+            const res = await fetch(`${ENV.BACKEND_URL}/danh-muc/mon-hoc`, {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
                 },
@@ -2320,7 +2320,7 @@ export default function QuanLyLopHocPhanPage() {
     const fetchGiangVien = async (monHocIdParam?: string) => {
         try {
             const accessToken = getCookie("access_token");
-            let url = "${ENV.BACKEND_URL}/danh-muc/giang-vien?page=1&limit=9999";
+            let url = `${ENV.BACKEND_URL}/danh-muc/giang-vien?page=1&limit=9999`;
             if (monHocIdParam) url += `&monHocId=${monHocIdParam}`;
 
             const res = await fetch(url, {
@@ -2346,7 +2346,7 @@ export default function QuanLyLopHocPhanPage() {
     const fetchNamHoc = async () => {
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("${ENV.BACKEND_URL}/dao-tao/nam-hoc?page=1&limit=9999", {
+            const res = await fetch(`${ENV.BACKEND_URL}/dao-tao/nam-hoc?page=1&limit=9999`, {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
                 },
@@ -2369,7 +2369,7 @@ export default function QuanLyLopHocPhanPage() {
     const fetchNienKhoa = async () => {
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("${ENV.BACKEND_URL}/danh-muc/nien-khoa?page=1&limit=9999", {
+            const res = await fetch(`${ENV.BACKEND_URL}/danh-muc/nien-khoa?page=1&limit=9999`, {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
                 },
@@ -2391,7 +2391,7 @@ export default function QuanLyLopHocPhanPage() {
     const fetchNganh = async () => {
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("${ENV.BACKEND_URL}/danh-muc/nganh?page=1&limit=9999", {
+            const res = await fetch(`${ENV.BACKEND_URL}/danh-muc/nganh?page=1&limit=9999`, {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
                 },

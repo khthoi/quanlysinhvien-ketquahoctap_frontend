@@ -752,7 +752,7 @@ export default function QuanLyNamHocHocKyPage() {
 
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("${ENV.BACKEND_URL}/dao-tao/nam-hoc", {
+            const res = await fetch(`${ENV.BACKEND_URL}/dao-tao/nam-hoc`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -870,7 +870,7 @@ export default function QuanLyNamHocHocKyPage() {
 
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("${ENV.BACKEND_URL}/dao-tao/hoc-ky", {
+            const res = await fetch(`${ENV.BACKEND_URL}/dao-tao/hoc-ky`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

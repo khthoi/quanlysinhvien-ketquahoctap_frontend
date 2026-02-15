@@ -359,7 +359,7 @@ export default function QuanLyNienKhoaPage() {
 
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("${ENV.BACKEND_URL}/danh-muc/nien-khoa", {
+            const res = await fetch(`${ENV.BACKEND_URL}/danh-muc/nien-khoa`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

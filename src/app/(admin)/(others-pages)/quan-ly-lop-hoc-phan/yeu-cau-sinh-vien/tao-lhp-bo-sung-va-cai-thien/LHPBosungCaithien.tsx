@@ -705,7 +705,7 @@ export default function LHPBosungCaithien() {
 
         for (const lhp of toAdd) {
             try {
-                const res = await fetch("${ENV.BACKEND_URL}/giang-day/tao-lop-hoc-phan-cho-hoc-bo-sung-cai-thien", {
+                const res = await fetch(`${ENV.BACKEND_URL}/giang-day/tao-lop-hoc-phan-cho-hoc-bo-sung-cai-thien`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",

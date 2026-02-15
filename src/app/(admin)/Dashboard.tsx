@@ -699,7 +699,7 @@ export default function DashboardOverview() {
       try {
         const accessToken = getCookie("access_token");
         const res = await fetch(
-          "${ENV.BACKEND_URL}/bao-cao/thong-ke/tong-quan",
+          `${ENV.BACKEND_URL}/bao-cao/thong-ke/tong-quan`,
           {
             headers: {
               Authorization: `Bearer ${accessToken}`,

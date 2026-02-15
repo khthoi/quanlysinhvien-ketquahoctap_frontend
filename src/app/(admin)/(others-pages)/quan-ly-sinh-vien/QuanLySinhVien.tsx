@@ -728,7 +728,7 @@ const ImportSinhVienExcelModal: React.FC<ImportSinhVienExcelModalProps> = ({
             const formData = new FormData();
             formData.append("file", selectedFile);
 
-            const res = await fetch("${ENV.BACKEND_URL}/sinh-vien/import", {
+            const res = await fetch(`${ENV.BACKEND_URL}/sinh-vien/import`, {
                 method: "POST",
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
@@ -1524,7 +1524,7 @@ const ThongKeSVTruotMonModal: React.FC<ThongKeSVTruotMonModalProps> = ({
                 return;
             }
 
-            const res = await fetch("${ENV.BACKEND_URL}/bao-cao/de-xuat-hoc-lai", {
+            const res = await fetch(`${ENV.BACKEND_URL}/bao-cao/de-xuat-hoc-lai`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -2006,7 +2006,7 @@ export default function QuanLySinhVienPage() {
     const fetchNamHoc = async () => {
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("${ENV.BACKEND_URL}/dao-tao/nam-hoc?page=1&limit=9999", {
+            const res = await fetch(`${ENV.BACKEND_URL}/dao-tao/nam-hoc?page=1&limit=9999`, {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
                 },
@@ -2226,7 +2226,7 @@ export default function QuanLySinhVienPage() {
         const ngayNhapHocFormatted = formatToYMD(ngayNhapHoc);
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("${ENV.BACKEND_URL}/sinh-vien", {
+            const res = await fetch(`${ENV.BACKEND_URL}/sinh-vien`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -2527,7 +2527,7 @@ export default function QuanLySinhVienPage() {
         try {
             const accessToken = getCookie("access_token");
             const res = await fetch(
-                "${ENV.BACKEND_URL}/auth/users/sinh-vien/auto-create-accounts",
+                `${ENV.BACKEND_URL}/auth/users/sinh-vien/auto-create-accounts`,
                 {
                     method: "POST",
                     headers: {

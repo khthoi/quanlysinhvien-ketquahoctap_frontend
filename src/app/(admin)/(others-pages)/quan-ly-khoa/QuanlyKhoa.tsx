@@ -347,7 +347,7 @@ export default function QuanLyKhoaPage() {
 
     try {
       const accessToken = getCookie("access_token");
-      const res = await fetch("${ENV.BACKEND_URL}/danh-muc/khoa", {
+      const res = await fetch(`${ENV.BACKEND_URL}/danh-muc/khoa`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
