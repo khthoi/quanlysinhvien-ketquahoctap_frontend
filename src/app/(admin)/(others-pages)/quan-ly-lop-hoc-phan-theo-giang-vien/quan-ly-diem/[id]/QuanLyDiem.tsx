@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
+import { ENV } from "@/config/env";
 import {
     Table,
     TableBody,
@@ -459,7 +460,7 @@ const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
         try {
             const accessToken = getCookie("access_token");
             const res = await fetch(
-                `http://localhost:3000/giang-day/lop-hoc-phan/${lopHocPhanId}/export-mau-nhap-diem`,
+                `${ENV.BACKEND_URL}/giang-day/lop-hoc-phan/${lopHocPhanId}/export-mau-nhap-diem`,
                 {
                     method: "GET",
                     headers: {
@@ -512,7 +513,7 @@ const ImportExcelModal: React.FC<ImportExcelModalProps> = ({
             formData.append("file", selectedFile);
 
             const res = await fetch(
-                `http://localhost:3000/ket-qua/nhap-diem-excel/${lopHocPhanId}`,
+                `${ENV.BACKEND_URL}/ket-qua/nhap-diem-excel/${lopHocPhanId}`,
                 {
                     method: "POST",
                     headers: {
@@ -1127,7 +1128,7 @@ export default function ChiTietLopHocPhanPage() {
     const fetchDanhSachSinhVien = async (page: number = 1, search: string = "") => {
         try {
             const accessToken = getCookie("access_token");
-            let url = `http://localhost:3000/giang-day/lop-hoc-phan/danh-sach-sinh-vien/${lopHocPhanId}?page=${page}&limit=10`;
+            let url = `${ENV.BACKEND_URL}/giang-day/lop-hoc-phan/danh-sach-sinh-vien/${lopHocPhanId}?page=${page}&limit=10`;
             if (search) url += `&search=${encodeURIComponent(search)}`;
 
             const res = await fetch(url, {
@@ -1216,7 +1217,7 @@ export default function ChiTietLopHocPhanPage() {
 
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch(`http://localhost:3000/ket-qua/${editingSinhVien.diem.id}`, {
+            const res = await fetch(`${ENV.BACKEND_URL}/ket-qua/${editingSinhVien.diem.id}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",

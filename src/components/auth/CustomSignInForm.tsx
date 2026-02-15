@@ -7,6 +7,7 @@ import Alert from "@/components/ui/alert/Alert";
 import { ChevronLeftIcon, EyeCloseIcon, EyeIcon } from "@/icons";
 import Link from "next/link";
 import React, { useState } from "react";
+import { ENV } from "@/config/env";
 
 export default function SignInForm() {
   const [showPassword, setShowPassword] = useState(false);
@@ -82,7 +83,7 @@ export default function SignInForm() {
     setShowError(false); // Ẩn error cũ nếu có
 
     try {
-      const response = await fetch("http://localhost:3000/auth/login", {
+      const response = await fetch(`${ENV.BACKEND_URL}/auth/login`, {
         method:  "POST",
         headers: {
           "Content-Type": "application/json",

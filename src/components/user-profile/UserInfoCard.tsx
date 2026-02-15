@@ -1,4 +1,5 @@
 "use client";
+import { ENV } from "@/config/env";
 import React, { useState, useEffect } from "react";
 import { useModal } from "../../hooks/useModal";
 import { Modal } from "../ui/modal";
@@ -211,7 +212,7 @@ export default function UserInfoCard() {
           return;
         }
 
-        const response = await fetch("http://localhost:3000/danh-muc/giang-vien/me/my-profile", {
+        const response = await fetch("${ENV.BACKEND_URL}/danh-muc/giang-vien/me/my-profile", {
           method: "GET",
           headers: {
             "Authorization": `Bearer ${token}`,
@@ -425,7 +426,7 @@ export default function UserInfoCard() {
         return;
       }
 
-      const response = await fetch("http://localhost:3000/danh-muc/giang-vien/me/my-profile", {
+      const response = await fetch("${ENV.BACKEND_URL}/danh-muc/giang-vien/me/my-profile", {
         method: "PUT",
         headers: {
           "Authorization": `Bearer ${token}`,
@@ -585,7 +586,7 @@ export default function UserInfoCard() {
         return;
       }
 
-      const response = await fetch("http://localhost:3000/auth/change-password/me", {
+      const response = await fetch("${ENV.BACKEND_URL}/auth/change-password/me", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${token}`,
@@ -665,7 +666,7 @@ export default function UserInfoCard() {
         return;
       }
 
-      const response = await fetch("http://localhost:3000/auth/change-password/verify-otp", {
+      const response = await fetch("${ENV.BACKEND_URL}/auth/change-password/verify-otp", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${token}`,

@@ -1,4 +1,5 @@
 "use client";
+import { ENV } from "@/config/env";
 
 import React, { useEffect, useState, useMemo } from "react";
 import { useParams } from "next/navigation";
@@ -154,7 +155,7 @@ const DownloadExcelLHPDeXuatModal: React.FC<DownloadExcelLHPDeXuatModalProps> = 
                 const accessToken = getCookie("access_token");
 
                 // Fetch năm học
-                const namHocRes = await fetch(`http://localhost:3000/dao-tao/nam-hoc?search=${namHocId}`, {
+                const namHocRes = await fetch(`${ENV.BACKEND_URL}/dao-tao/nam-hoc?search=${namHocId}`, {
                     headers: {
                         Authorization: `Bearer ${accessToken}`,
                     },
@@ -202,7 +203,7 @@ const DownloadExcelLHPDeXuatModal: React.FC<DownloadExcelLHPDeXuatModalProps> = 
         try {
             const accessToken = getCookie("access_token");
 
-            const res = await fetch("http://localhost:3000/giang-day/len-ke-hoach-tao-lhp", {
+            const res = await fetch("${ENV.BACKEND_URL}/giang-day/len-ke-hoach-tao-lhp", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -1071,7 +1072,7 @@ export default function ThemLopHocPhanPage() {
     const fetchGiangViens = async () => {
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("http://localhost:3000/danh-muc/giang-vien?page=1&limit=9999", {
+            const res = await fetch("${ENV.BACKEND_URL}/danh-muc/giang-vien?page=1&limit=9999", {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
                 },
@@ -1091,7 +1092,7 @@ export default function ThemLopHocPhanPage() {
         setIsLoading(true);
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("http://localhost:3000/giang-day/len-ke-hoach-tao-lhp/json", {
+            const res = await fetch("${ENV.BACKEND_URL}/giang-day/len-ke-hoach-tao-lhp/json", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -1324,7 +1325,7 @@ export default function ThemLopHocPhanPage() {
                 })),
             };
 
-            const res = await fetch("http://localhost:3000/giang-day/lop-hoc-phan/import-tu-json", {
+            const res = await fetch("${ENV.BACKEND_URL}/giang-day/lop-hoc-phan/import-tu-json", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
+import { ENV } from "@/config/env";
 import {
     Table,
     TableBody,
@@ -727,7 +728,7 @@ const ImportSinhVienExcelModal: React.FC<ImportSinhVienExcelModalProps> = ({
             const formData = new FormData();
             formData.append("file", selectedFile);
 
-            const res = await fetch("http://localhost:3000/sinh-vien/import", {
+            const res = await fetch("${ENV.BACKEND_URL}/sinh-vien/import", {
                 method: "POST",
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
@@ -1523,7 +1524,7 @@ const ThongKeSVTruotMonModal: React.FC<ThongKeSVTruotMonModalProps> = ({
                 return;
             }
 
-            const res = await fetch("http://localhost:3000/bao-cao/de-xuat-hoc-lai", {
+            const res = await fetch("${ENV.BACKEND_URL}/bao-cao/de-xuat-hoc-lai", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -1577,7 +1578,7 @@ const ThongKeSVTruotMonModal: React.FC<ThongKeSVTruotMonModalProps> = ({
         }
 
         // Điều hướng sang giao diện theo maNamHoc và hocKy, dùng Next router để chuyển trang nhanh
-        const url = `http://localhost:3001/them-sinh-vien-hoc-lai/${selectedNamHocData.maNamHoc}/hoc-ky/${selectedHocKyData.hocKy}`;
+        const url = `${ENV.FRONTEND_ADMIN_URL}/them-sinh-vien-hoc-lai/${selectedNamHocData.maNamHoc}/hoc-ky/${selectedHocKyData.hocKy}`;
         router.push(url);
     };
 
@@ -1931,7 +1932,7 @@ export default function QuanLySinhVienPage() {
     ) => {
         try {
             const accessToken = getCookie("access_token");
-            let url = `http://localhost:3000/sinh-vien?page=${page}&limit=10`;
+            let url = `${ENV.BACKEND_URL}/sinh-vien?page=${page}&limit=10`;
             if (search) url += `&search=${encodeURIComponent(search)}`;
             if (tinhTrangFilter) url += `&tinhTrang=${tinhTrangFilter}`;
             if (lopIdFilter) url += `&lopId=${lopIdFilter}`;
@@ -1957,7 +1958,7 @@ export default function QuanLySinhVienPage() {
     const fetchLopAndFilters = async (search: string = "") => {
         try {
             const accessToken = getCookie("access_token");
-            let url = `http://localhost:3000/danh-muc/lop?page=1&limit=9999`;
+            let url = `${ENV.BACKEND_URL}/danh-muc/lop?page=1&limit=9999`;
             if (search) url += `?search=${encodeURIComponent(search)}`;
 
             const res = await fetch(url, {
@@ -2005,7 +2006,7 @@ export default function QuanLySinhVienPage() {
     const fetchNamHoc = async () => {
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("http://localhost:3000/dao-tao/nam-hoc?page=1&limit=9999", {
+            const res = await fetch("${ENV.BACKEND_URL}/dao-tao/nam-hoc?page=1&limit=9999", {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
                 },
@@ -2030,7 +2031,7 @@ export default function QuanLySinhVienPage() {
     const fetchLopForModal = async (search: string = "") => {
         try {
             const accessToken = getCookie("access_token");
-            let url = `http://localhost:3000/danh-muc/lop?page=1&limit=9999`;
+            let url = `${ENV.BACKEND_URL}/danh-muc/lop?page=1&limit=9999`;
             if (search) url += `?search=${encodeURIComponent(search)}`;
 
             const res = await fetch(url, {
@@ -2225,7 +2226,7 @@ export default function QuanLySinhVienPage() {
         const ngayNhapHocFormatted = formatToYMD(ngayNhapHoc);
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("http://localhost:3000/sinh-vien", {
+            const res = await fetch("${ENV.BACKEND_URL}/sinh-vien", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -2274,7 +2275,7 @@ export default function QuanLySinhVienPage() {
 
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch(`http://localhost:3000/sinh-vien/${editingSinhVien.id}`, {
+            const res = await fetch(`${ENV.BACKEND_URL}/sinh-vien/${editingSinhVien.id}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -2324,7 +2325,7 @@ export default function QuanLySinhVienPage() {
 
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch(`http://localhost:3000/sinh-vien/${deletingSinhVien.id}`, {
+            const res = await fetch(`${ENV.BACKEND_URL}/sinh-vien/${deletingSinhVien.id}`, {
                 method: "DELETE",
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
@@ -2467,7 +2468,7 @@ export default function QuanLySinhVienPage() {
             const { maSinhVien, hoTen } = displayInfo(sinhVienId);
             try {
                 const res = await fetch(
-                    `http://localhost:3000/sinh-vien/${sinhVienId}`,
+                    `${ENV.BACKEND_URL}/sinh-vien/${sinhVienId}`,
                     {
                         method: "DELETE",
                         headers: {
@@ -2526,7 +2527,7 @@ export default function QuanLySinhVienPage() {
         try {
             const accessToken = getCookie("access_token");
             const res = await fetch(
-                "http://localhost:3000/auth/users/sinh-vien/auto-create-accounts",
+                "${ENV.BACKEND_URL}/auth/users/sinh-vien/auto-create-accounts",
                 {
                     method: "POST",
                     headers: {
@@ -2620,7 +2621,7 @@ export default function QuanLySinhVienPage() {
     const fetchThanhTich = async (sinhVienId: number, loai: LoaiQuyetDinh | "" = "") => {
         try {
             const accessToken = getCookie("access_token");
-            let url = `http://localhost:3000/sinh-vien/thanh-tich/${sinhVienId}`;
+            let url = `${ENV.BACKEND_URL}/sinh-vien/thanh-tich/${sinhVienId}`;
             if (loai) url += `?loai=${loai}`;
 
             const res = await fetch(url, {
@@ -2645,7 +2646,7 @@ export default function QuanLySinhVienPage() {
 
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch(`http://localhost:3000/sinh-vien/khen-thuong/${quyetDinhId}`, {
+            const res = await fetch(`${ENV.BACKEND_URL}/sinh-vien/khen-thuong/${quyetDinhId}`, {
                 method: "DELETE",
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
@@ -2735,7 +2736,7 @@ export default function QuanLySinhVienPage() {
 
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch(`http://localhost:3000/sinh-vien/khen-thuong/${selectedSinhVienForAdd?.id}`, {
+            const res = await fetch(`${ENV.BACKEND_URL}/sinh-vien/khen-thuong/${selectedSinhVienForAdd?.id}`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -2792,7 +2793,7 @@ export default function QuanLySinhVienPage() {
         try {
             const accessToken = getCookie("access_token");
             const res = await fetch(
-                `http://localhost:3000/auth/users/sinh-vien/${creatingAccountSinhVien.id}`,
+                `${ENV.BACKEND_URL}/auth/users/sinh-vien/${creatingAccountSinhVien.id}`,
                 {
                     method: "POST",
                     headers: {

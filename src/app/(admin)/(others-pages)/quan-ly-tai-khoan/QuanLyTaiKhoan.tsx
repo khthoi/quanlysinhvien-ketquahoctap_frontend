@@ -1,4 +1,5 @@
 "use client";
+import { ENV } from "@/config/env";
 
 import React, { useEffect, useState } from "react";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
@@ -507,7 +508,7 @@ export default function QuanLyNguoiDungPage() {
     ) => {
         try {
             const accessToken = getCookie("access_token");
-            let url = `http://localhost:3000/auth/users?page=${page}&limit=10`;
+            let url = `${ENV.BACKEND_URL}/auth/users?page=${page}&limit=10`;
             if (search) url += `&search=${encodeURIComponent(search)}`;
 
             const res = await fetch(url, {
@@ -587,7 +588,7 @@ export default function QuanLyNguoiDungPage() {
 
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch(`http://localhost:3000/auth/users/${editingNguoiDung.id}`, {
+            const res = await fetch(`${ENV.BACKEND_URL}/auth/users/${editingNguoiDung.id}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -620,7 +621,7 @@ export default function QuanLyNguoiDungPage() {
 
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("http://localhost:3000/auth/new-users", {
+            const res = await fetch("${ENV.BACKEND_URL}/auth/new-users", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -673,7 +674,7 @@ export default function QuanLyNguoiDungPage() {
 
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("http://localhost:3000/auth/reset-password", {
+            const res = await fetch("${ENV.BACKEND_URL}/auth/reset-password", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -718,7 +719,7 @@ export default function QuanLyNguoiDungPage() {
 
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch(`http://localhost:3000/auth/users/${deletingNguoiDung.id}`, {
+            const res = await fetch(`${ENV.BACKEND_URL}/auth/users/${deletingNguoiDung.id}`, {
                 method: "DELETE",
                 headers: {
                     Authorization: `Bearer ${accessToken}`,

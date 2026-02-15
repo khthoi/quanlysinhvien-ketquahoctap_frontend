@@ -1,4 +1,5 @@
 "use client";
+import { ENV } from "@/config/env";
 
 import React, { useEffect, useState } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
@@ -562,7 +563,7 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
     ) => {
         try {
             const accessToken = getCookie("access_token");
-            let url = `http://localhost:3000/dao-tao/chuong-trinh?page=${page}&limit=10`;
+            let url = `${ENV.BACKEND_URL}/dao-tao/chuong-trinh?page=${page}&limit=10`;
             if (search) url += `&search=${encodeURIComponent(search)}`;
             if (nganhId) url += `&nganhId=${nganhId}`;
             if (nienKhoaId) url += `&nienKhoaId=${nienKhoaId}`;
@@ -591,7 +592,7 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
     const fetchNganhs = async (khoaId: string = "") => {
         try {
             const accessToken = getCookie("access_token");
-            let url = `http://localhost:3000/danh-muc/nganh?page=1&limit=9999`;
+            let url = `${ENV.BACKEND_URL}/danh-muc/nganh?page=1&limit=9999`;
             if (khoaId) url += `&khoaId=${khoaId}`;
 
             const res = await fetch(url, {
@@ -614,7 +615,7 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
     const fetchNganhsForModal = async (khoaId: string = "") => {
         try {
             const accessToken = getCookie("access_token");
-            let url = `http://localhost:3000/danh-muc/nganh?page=1&limit=100`;
+            let url = `${ENV.BACKEND_URL}/danh-muc/nganh?page=1&limit=100`;
             if (khoaId) url += `&khoaId=${khoaId}`;
 
             const res = await fetch(url, {
@@ -634,7 +635,7 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
     const fetchNganhsForApDungModal = async (khoaId: string = "") => {
         try {
             const accessToken = getCookie("access_token");
-            let url = `http://localhost:3000/danh-muc/nganh?page=1&limit=100`;
+            let url = `${ENV.BACKEND_URL}/danh-muc/nganh?page=1&limit=100`;
             if (khoaId) url += `&khoaId=${khoaId}`;
 
             const res = await fetch(url, {
@@ -654,7 +655,7 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
     const fetchNienKhoas = async () => {
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch(`http://localhost:3000/danh-muc/nien-khoa?page=1&limit=9999`, {
+            const res = await fetch(`${ENV.BACKEND_URL}/danh-muc/nien-khoa?page=1&limit=9999`, {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
                 },
@@ -844,7 +845,7 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
         try {
             const accessToken = getCookie("access_token");
             const res = await fetch(
-                `http://localhost:3000/dao-tao/chuong-trinh/${editingChuongTrinh.id}`,
+                `${ENV.BACKEND_URL}/dao-tao/chuong-trinh/${editingChuongTrinh.id}`,
                 {
                     method: "PUT",
                     headers: {
@@ -890,7 +891,7 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
         try {
             const accessToken = getCookie("access_token");
             const res = await fetch(
-                `http://localhost:3000/dao-tao/chuong-trinh/${deletingChuongTrinh.id}`,
+                `${ENV.BACKEND_URL}/dao-tao/chuong-trinh/${deletingChuongTrinh.id}`,
                 {
                     method: "DELETE",
                     headers: {
@@ -933,7 +934,7 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
 
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("http://localhost:3000/dao-tao/ap-dung", {
+            const res = await fetch("${ENV.BACKEND_URL}/dao-tao/ap-dung", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -977,7 +978,7 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
         try {
             const accessToken = getCookie("access_token");
             const res = await fetch(
-                `http://localhost:3000/dao-tao/ap-dung/${deletingApDung.apDung.id}`,
+                `${ENV.BACKEND_URL}/dao-tao/ap-dung/${deletingApDung.apDung.id}`,
                 {
                     method: "DELETE",
                     headers: {
@@ -1016,7 +1017,7 @@ export default function QuanLyChuongTrinhDaoTaoPage() {
         try {
             const token = getCookie("access_token");
             const response = await fetch(
-                `http://localhost:3000/dao-tao/chuong-trinh/export-excel/${exportingChuongTrinh.id}`,
+                `${ENV.BACKEND_URL}/dao-tao/chuong-trinh/export-excel/${exportingChuongTrinh.id}`,
                 {
                     method: "GET",
                     headers: {

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
+import { ENV } from "@/config/env";
 import {
     Table,
     TableBody,
@@ -437,7 +438,7 @@ export default function QuanLyLopHocPhanPage() {
     ) => {
         try {
             const accessToken = getCookie("access_token");
-            let url = `http://localhost:3000/giang-day/lop-hoc-phan/giang-vien/me?page=${page}&limit=10`;
+            let url = `${ENV.BACKEND_URL}/giang-day/lop-hoc-phan/giang-vien/me?page=${page}&limit=10`;
             if (search) url += `&search=${encodeURIComponent(search)}`;
             if (monHocIdFilter) url += `&monHocId=${monHocIdFilter}`;
             if (giangVienIdFilter) url += `&giangVienId=${giangVienIdFilter}`;
@@ -465,7 +466,7 @@ export default function QuanLyLopHocPhanPage() {
     const fetchMonHoc = async () => {
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("http://localhost:3000/danh-muc/mon-hoc", {
+            const res = await fetch("${ENV.BACKEND_URL}/danh-muc/mon-hoc", {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
                 },
@@ -488,7 +489,7 @@ export default function QuanLyLopHocPhanPage() {
     const fetchNamHoc = async () => {
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("http://localhost:3000/dao-tao/nam-hoc?page=1&limit=9999", {
+            const res = await fetch("${ENV.BACKEND_URL}/dao-tao/nam-hoc?page=1&limit=9999", {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
                 },
@@ -511,7 +512,7 @@ export default function QuanLyLopHocPhanPage() {
     const fetchNienKhoa = async () => {
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("http://localhost:3000/danh-muc/nien-khoa?page=1&limit=9999", {
+            const res = await fetch("${ENV.BACKEND_URL}/danh-muc/nien-khoa?page=1&limit=9999", {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
                 },
@@ -533,7 +534,7 @@ export default function QuanLyLopHocPhanPage() {
     const fetchNganh = async () => {
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("http://localhost:3000/danh-muc/nganh?page=1&limit=9999", {
+            const res = await fetch("${ENV.BACKEND_URL}/danh-muc/nganh?page=1&limit=9999", {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
                 },
@@ -576,7 +577,7 @@ export default function QuanLyLopHocPhanPage() {
         try {
             const accessToken = getCookie("access_token");
             const res = await fetch(
-                `http://localhost:3000/giang-day/lop-hoc-phan/khoa-diem/${khoaDiemLopHocPhan.id}`,
+                `${ENV.BACKEND_URL}/giang-day/lop-hoc-phan/khoa-diem/${khoaDiemLopHocPhan.id}`,
                 {
                     method: "PATCH",
                     headers: {
@@ -630,7 +631,7 @@ export default function QuanLyLopHocPhanPage() {
         try {
             const accessToken = getCookie("access_token");
             const res = await fetch(
-                `http://localhost:3000/bao-cao/bang-diem-lop-hoc-phan/${downloadingExcelLopHocPhan.id}`,
+                `${ENV.BACKEND_URL}/bao-cao/bang-diem-lop-hoc-phan/${downloadingExcelLopHocPhan.id}`,
                 {
                     method: "GET",
                     headers: {
@@ -1102,7 +1103,7 @@ export default function QuanLyLopHocPhanPage() {
                                                                 </DropdownItem>
                                                                 <DropdownItem
                                                                     tag="a"
-                                                                    href={`http://localhost:3001/quan-ly-lop-hoc-phan-theo-giang-vien/quan-ly-diem/${lhp.id}`}
+                                                                    href={`${ENV.FRONTEND_ADMIN_URL}/quan-ly-lop-hoc-phan-theo-giang-vien/quan-ly-diem/${lhp.id}`}
                                                                     onItemClick={closeDropdown}
                                                                 >
                                                                     <FontAwesomeIcon icon={lhp.khoaDiem ? faEye : faFileExcel} className="mr-2 w-4" />

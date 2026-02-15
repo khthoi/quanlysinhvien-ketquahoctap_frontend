@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
+import { ENV } from "@/config/env";
 import {
   Table,
   TableBody,
@@ -757,7 +758,7 @@ export default function YeuCauSinhvienPage() {
     }
 
     const res = await fetch(
-      `http://localhost:3000/giang-day/yeu-cau-hoc-phan?${qs.join("&")}`,
+      `${ENV.BACKEND_URL}/giang-day/yeu-cau-hoc-phan?${qs.join("&")}`,
       { headers }
     );
     const json = (await res.json()) as FetchYeuCauResponse & { message?: string };
@@ -826,7 +827,7 @@ export default function YeuCauSinhvienPage() {
     }
 
     const res = await fetch(
-      `http://localhost:3000/giang-day/yeu-cau-hoc-phan?${qs.join("&")}`,
+      `${ENV.BACKEND_URL}/giang-day/yeu-cau-hoc-phan?${qs.join("&")}`,
       { headers }
     );
     const json = (await res.json()) as FetchYeuCauResponse & { message?: string };
@@ -870,7 +871,7 @@ export default function YeuCauSinhvienPage() {
     }
 
     const res = await fetch(
-      `http://localhost:3000/giang-day/yeu-cau-hoc-phan?${qs.join("&")}`,
+      `${ENV.BACKEND_URL}/giang-day/yeu-cau-hoc-phan?${qs.join("&")}`,
       { headers }
     );
     const json = (await res.json()) as FetchYeuCauResponse & { message?: string };
@@ -914,7 +915,7 @@ export default function YeuCauSinhvienPage() {
     }
 
     const res = await fetch(
-      `http://localhost:3000/giang-day/yeu-cau-hoc-phan?${qs.join("&")}`,
+      `${ENV.BACKEND_URL}/giang-day/yeu-cau-hoc-phan?${qs.join("&")}`,
       { headers }
     );
     const json = (await res.json()) as FetchYeuCauResponse & { message?: string };
@@ -1143,7 +1144,7 @@ export default function YeuCauSinhvienPage() {
   // ========== Actions ==========
 
   const handleViewBangDiem = (sinhVienId: number) => {
-    const url = `http://localhost:3001/quan-ly-sinh-vien/bang-diem/${sinhVienId}`;
+    const url = `${ENV.FRONTEND_ADMIN_URL}/quan-ly-sinh-vien/bang-diem/${sinhVienId}`;
     window.open(url, "_blank");
   };
 
@@ -1157,7 +1158,7 @@ export default function YeuCauSinhvienPage() {
       try {
         const accessToken = getCookie("access_token");
         await fetch(
-          "http://localhost:3000/giang-day/yeu-cau-hoc-phan/chuyen-trang-thai-dang-xu-ly",
+          "${ENV.BACKEND_URL}/giang-day/yeu-cau-hoc-phan/chuyen-trang-thai-dang-xu-ly",
           {
             method: "POST",
             headers: {
@@ -1318,7 +1319,7 @@ export default function YeuCauSinhvienPage() {
       }
 
       try {
-        const res = await fetch("http://localhost:3000/giang-day/yeu-cau-hoc-phan/duyet", {
+        const res = await fetch("${ENV.BACKEND_URL}/giang-day/yeu-cau-hoc-phan/duyet", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -1388,7 +1389,7 @@ export default function YeuCauSinhvienPage() {
 
       try {
         const res = await fetch(
-          "http://localhost:3000/giang-day/yeu-cau-hoc-phan/chuyen-trang-thai-dang-xu-ly",
+          "${ENV.BACKEND_URL}/giang-day/yeu-cau-hoc-phan/chuyen-trang-thai-dang-xu-ly",
           {
             method: "POST",
             headers: {
@@ -1456,7 +1457,7 @@ export default function YeuCauSinhvienPage() {
 
       try {
         const res = await fetch(
-          `http://localhost:3000/giang-day/yeu-cau-hoc-phan/${id}`,
+          `${ENV.BACKEND_URL}/giang-day/yeu-cau-hoc-phan/${id}`,
           {
             method: "DELETE",
             headers: {
@@ -1521,7 +1522,7 @@ export default function YeuCauSinhvienPage() {
       const hoTen = yc.sinhVien.hoTen;
 
       try {
-        const res = await fetch("http://localhost:3000/giang-day/yeu-cau-hoc-phan/tu-choi", {
+        const res = await fetch("${ENV.BACKEND_URL}/giang-day/yeu-cau-hoc-phan/tu-choi", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -3063,7 +3064,7 @@ export default function YeuCauSinhvienPage() {
               variant="primary"
               onClick={() => {
                 window.open(
-                  "http://localhost:3001/quan-ly-lop-hoc-phan/yeu-cau-sinh-vien/tao-lhp-bo-sung-va-cai-thien",
+                  "${ENV.FRONTEND_ADMIN_URL}/quan-ly-lop-hoc-phan/yeu-cau-sinh-vien/tao-lhp-bo-sung-va-cai-thien",
                   "_blank"
                 );
                 setIsCreateLHPModalOpen(false);

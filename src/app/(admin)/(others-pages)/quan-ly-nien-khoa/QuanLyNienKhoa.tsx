@@ -1,4 +1,5 @@
 "use client";
+import { ENV } from "@/config/env";
 
 import React, { useEffect, useState } from "react";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
@@ -244,7 +245,7 @@ export default function QuanLyNienKhoaPage() {
             const accessToken = getCookie("access_token");
             const searchParam = keyword ? `&search=${encodeURIComponent(keyword)}` : "";
             const res = await fetch(
-                `http://localhost:3000/danh-muc/nien-khoa?page=${page}&limit=10${searchParam}`,
+                `${ENV.BACKEND_URL}/danh-muc/nien-khoa?page=${page}&limit=10${searchParam}`,
                 {
                     headers: {
                         Authorization: `Bearer ${accessToken}`,
@@ -358,7 +359,7 @@ export default function QuanLyNienKhoaPage() {
 
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("http://localhost:3000/danh-muc/nien-khoa", {
+            const res = await fetch("${ENV.BACKEND_URL}/danh-muc/nien-khoa", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -400,7 +401,7 @@ export default function QuanLyNienKhoaPage() {
         try {
             const accessToken = getCookie("access_token");
             const res = await fetch(
-                `http://localhost:3000/danh-muc/nien-khoa/${editingNienKhoa.id}`,
+                `${ENV.BACKEND_URL}/danh-muc/nien-khoa/${editingNienKhoa.id}`,
                 {
                     method: "PUT",
                     headers: {
@@ -449,7 +450,7 @@ export default function QuanLyNienKhoaPage() {
         try {
             const accessToken = getCookie("access_token");
             const res = await fetch(
-                `http://localhost:3000/danh-muc/nien-khoa/${deletingNienKhoa.id}`,
+                `${ENV.BACKEND_URL}/danh-muc/nien-khoa/${deletingNienKhoa.id}`,
                 {
                     method: "DELETE",
                     headers: {

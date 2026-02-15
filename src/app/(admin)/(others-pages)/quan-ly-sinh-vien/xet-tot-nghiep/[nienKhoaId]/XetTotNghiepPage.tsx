@@ -1,4 +1,5 @@
 "use client";
+import { ENV } from "@/config/env";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -703,7 +704,7 @@ const ViewBangDiemModal: React.FC<ViewBangDiemModalProps> = ({ isOpen, onClose, 
     if (!isOpen || !sinhVien) return null;
 
     const handleConfirm = () => {
-        const url = `http://localhost:3001/quan-ly-sinh-vien/bang-diem/${sinhVien.id}`;
+        const url = `${ENV.FRONTEND_ADMIN_URL}/quan-ly-sinh-vien/bang-diem/${sinhVien.id}`;
         window.open(url, '_blank');
         onClose();
     };
@@ -826,7 +827,7 @@ export default function XetTotNghiepPage() {
         setLoadingNienKhoa(true);
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch(`http://localhost:3000/danh-muc/nien-khoa/${nienKhoaId}`, {
+            const res = await fetch(`${ENV.BACKEND_URL}/danh-muc/nien-khoa/${nienKhoaId}`, {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
                 },
@@ -850,7 +851,7 @@ export default function XetTotNghiepPage() {
         setLoadingDuDoan(true);
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("http://localhost:3000/sinh-vien/xet-tot-nghiep/du-doan", {
+            const res = await fetch("${ENV.BACKEND_URL}/sinh-vien/xet-tot-nghiep/du-doan", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -877,7 +878,7 @@ export default function XetTotNghiepPage() {
         setLoadingDanhSach(true);
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("http://localhost:3000/sinh-vien/xet-tot-nghiep/danh-sach", {
+            const res = await fetch("${ENV.BACKEND_URL}/sinh-vien/xet-tot-nghiep/danh-sach", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -905,7 +906,7 @@ export default function XetTotNghiepPage() {
         setConfirmError(null);
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("http://localhost:3000/sinh-vien/xet-tot-nghiep/xac-nhan", {
+            const res = await fetch("${ENV.BACKEND_URL}/sinh-vien/xet-tot-nghiep/xac-nhan", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -935,7 +936,7 @@ export default function XetTotNghiepPage() {
         if (!nienKhoaId) return;
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("http://localhost:3000/sinh-vien/xet-tot-nghiep/xuat-excel", {
+            const res = await fetch("${ENV.BACKEND_URL}/sinh-vien/xet-tot-nghiep/xuat-excel", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

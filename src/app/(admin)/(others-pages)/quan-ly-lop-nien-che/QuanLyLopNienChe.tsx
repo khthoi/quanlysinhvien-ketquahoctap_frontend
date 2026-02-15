@@ -1,4 +1,5 @@
 "use client";
+import { ENV } from "@/config/env";
 
 import React, { useEffect, useState } from "react";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
@@ -368,7 +369,7 @@ const ImportLopExcelModal: React.FC<ImportLopExcelModalProps> = ({
             const formData = new FormData();
             formData.append("file", selectedFile);
 
-            const res = await fetch("http://localhost:3000/danh-muc/lop/import-excel", {
+            const res = await fetch("${ENV.BACKEND_URL}/danh-muc/lop/import-excel", {
                 method: "POST",
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
@@ -891,7 +892,7 @@ export default function QuanLyLopNienChePage() {
     const fetchLops = async (page: number = 1, search: string = "", nganhFilter: number | "" = "", nienKhoaFilter: number | "" = "") => {
         try {
             const accessToken = getCookie("access_token");
-            let url = `http://localhost:3000/danh-muc/lop?page=${page}&limit=10`;
+            let url = `${ENV.BACKEND_URL}/danh-muc/lop?page=${page}&limit=10`;
             if (search) url += `&search=${encodeURIComponent(search)}`;
             if (nganhFilter) url += `&nganhId=${nganhFilter}`;
             if (nienKhoaFilter) url += `&nienKhoaId=${nienKhoaFilter}`;
@@ -1006,7 +1007,7 @@ export default function QuanLyLopNienChePage() {
 
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("http://localhost:3000/danh-muc/lop", {
+            const res = await fetch("${ENV.BACKEND_URL}/danh-muc/lop", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -1053,7 +1054,7 @@ export default function QuanLyLopNienChePage() {
 
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch(`http://localhost:3000/danh-muc/lop/${editingLop.id}`, {
+            const res = await fetch(`${ENV.BACKEND_URL}/danh-muc/lop/${editingLop.id}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -1099,7 +1100,7 @@ export default function QuanLyLopNienChePage() {
 
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch(`http://localhost:3000/danh-muc/lop/${deletingLop.id}`, {
+            const res = await fetch(`${ENV.BACKEND_URL}/danh-muc/lop/${deletingLop.id}`, {
                 method: "DELETE",
                 headers: {
                     Authorization: `Bearer ${accessToken}`,

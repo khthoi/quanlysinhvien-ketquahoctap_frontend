@@ -1,4 +1,5 @@
 "use client";
+import { ENV } from "@/config/env";
 
 import React, { useEffect, useState } from "react";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
@@ -558,7 +559,7 @@ export default function QuanLyNamHocHocKyPage() {
         try {
             setIsLoadingNamHoc(true);
             const accessToken = getCookie("access_token");
-            let url = `http://localhost:3000/dao-tao/nam-hoc?page=1&limit=9999`;
+            let url = `${ENV.BACKEND_URL}/dao-tao/nam-hoc?page=1&limit=9999`;
             if (search) url += `&search=${encodeURIComponent(search)}`;
 
             const res = await fetch(url, {
@@ -595,7 +596,7 @@ export default function QuanLyNamHocHocKyPage() {
     const fetchNamHocs = async (page: number = 1, search: string = "") => {
         try {
             const accessToken = getCookie("access_token");
-            let url = `http://localhost:3000/dao-tao/nam-hoc?page=${page}&limit=10`;
+            let url = `${ENV.BACKEND_URL}/dao-tao/nam-hoc?page=${page}&limit=10`;
             if (search) url += `&search=${encodeURIComponent(search)}`;
 
             const res = await fetch(url, {
@@ -751,7 +752,7 @@ export default function QuanLyNamHocHocKyPage() {
 
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("http://localhost:3000/dao-tao/nam-hoc", {
+            const res = await fetch("${ENV.BACKEND_URL}/dao-tao/nam-hoc", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -787,7 +788,7 @@ export default function QuanLyNamHocHocKyPage() {
         try {
             const accessToken = getCookie("access_token");
             const res = await fetch(
-                `http://localhost:3000/dao-tao/nam-hoc/${editingNamHoc.id}`,
+                `${ENV.BACKEND_URL}/dao-tao/nam-hoc/${editingNamHoc.id}`,
                 {
                     method: "PUT",
                     headers: {
@@ -833,7 +834,7 @@ export default function QuanLyNamHocHocKyPage() {
         try {
             const accessToken = getCookie("access_token");
             const res = await fetch(
-                `http://localhost:3000/dao-tao/nam-hoc/${deletingNamHoc.id}`,
+                `${ENV.BACKEND_URL}/dao-tao/nam-hoc/${deletingNamHoc.id}`,
                 {
                     method: "DELETE",
                     headers: {
@@ -869,7 +870,7 @@ export default function QuanLyNamHocHocKyPage() {
 
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("http://localhost:3000/dao-tao/hoc-ky", {
+            const res = await fetch("${ENV.BACKEND_URL}/dao-tao/hoc-ky", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -905,7 +906,7 @@ export default function QuanLyNamHocHocKyPage() {
         try {
             const accessToken = getCookie("access_token");
             const res = await fetch(
-                `http://localhost:3000/dao-tao/hoc-ky/${deletingHocKy.hocKy.id}`,
+                `${ENV.BACKEND_URL}/dao-tao/hoc-ky/${deletingHocKy.hocKy.id}`,
                 {
                     method: "DELETE",
                     headers: {
@@ -990,7 +991,7 @@ export default function QuanLyNamHocHocKyPage() {
             if (editHocKyFormData.ngayKetThuc?.trim()) body.ngayKetThuc = editHocKyFormData.ngayKetThuc.trim();
 
             const res = await fetch(
-                `http://localhost:3000/dao-tao/hoc-ky/${editingHocKy.hocKy.id}`,
+                `${ENV.BACKEND_URL}/dao-tao/hoc-ky/${editingHocKy.hocKy.id}`,
                 {
                     method: "PUT",
                     headers: {

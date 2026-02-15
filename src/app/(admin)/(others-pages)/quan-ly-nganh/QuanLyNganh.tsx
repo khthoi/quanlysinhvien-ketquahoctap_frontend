@@ -1,4 +1,5 @@
 "use client";
+import { ENV } from "@/config/env";
 
 import React, { useEffect, useState } from "react";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
@@ -295,7 +296,7 @@ const ImportNganhExcelModal: React.FC<ImportNganhExcelModalProps> = ({
             const formData = new FormData();
             formData.append("file", selectedFile);
 
-            const res = await fetch("http://localhost:3000/danh-muc/nganh/import-excel", {
+            const res = await fetch("${ENV.BACKEND_URL}/danh-muc/nganh/import-excel", {
                 method: "POST",
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
@@ -825,7 +826,7 @@ export default function QuanLyNganhPage() {
     const fetchNganhs = async (page: number = 1, search: string = "", khoaFilter: number | "" = "") => {
         try {
             const accessToken = getCookie("access_token");
-            let url = `http://localhost:3000/danh-muc/nganh?page=${page}&limit=10`;
+            let url = `${ENV.BACKEND_URL}/danh-muc/nganh?page=${page}&limit=10`;
             if (search) url += `&search=${encodeURIComponent(search)}`;
             if (khoaFilter) url += `&khoaId=${khoaFilter}`;
 
@@ -920,7 +921,7 @@ export default function QuanLyNganhPage() {
 
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("http://localhost:3000/danh-muc/nganh", {
+            const res = await fetch("${ENV.BACKEND_URL}/danh-muc/nganh", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -960,7 +961,7 @@ export default function QuanLyNganhPage() {
 
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch(`http://localhost:3000/danh-muc/nganh/${editingNganh.id}`, {
+            const res = await fetch(`${ENV.BACKEND_URL}/danh-muc/nganh/${editingNganh.id}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -1005,7 +1006,7 @@ export default function QuanLyNganhPage() {
 
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch(`http://localhost:3000/danh-muc/nganh/${deletingNganh.id}`, {
+            const res = await fetch(`${ENV.BACKEND_URL}/danh-muc/nganh/${deletingNganh.id}`, {
                 method: "DELETE",
                 headers: {
                     Authorization: `Bearer ${accessToken}`,

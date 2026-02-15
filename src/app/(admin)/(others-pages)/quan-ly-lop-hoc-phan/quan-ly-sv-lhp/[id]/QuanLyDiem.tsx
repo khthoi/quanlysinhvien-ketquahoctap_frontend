@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useRouter, usePathname } from "next/navigation";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
+import { ENV } from "@/config/env";
 import {
     Table,
     TableBody,
@@ -390,7 +391,7 @@ export default function ChiTietLopHocPhanPage() {
     const fetchDanhSachSinhVien = async (page: number = 1, search: string = "", loaiThamGia: string = "") => {
         try {
             const accessToken = getCookie("access_token");
-            let url = `http://localhost:3000/giang-day/lop-hoc-phan/danh-sach-sinh-vien/${lopHocPhanId}?page=${page}&limit=10`;
+            let url = `${ENV.BACKEND_URL}/giang-day/lop-hoc-phan/danh-sach-sinh-vien/${lopHocPhanId}?page=${page}&limit=10`;
             if (search) url += `&search=${encodeURIComponent(search)}`;
             if (loaiThamGia) url += `&loaiThamGia=${encodeURIComponent(loaiThamGia)}`;
 
@@ -454,7 +455,7 @@ export default function ChiTietLopHocPhanPage() {
         try {
             const accessToken = getCookie("access_token");
             const res = await fetch(
-                `http://localhost:3000/giang-day/lop-hoc-phan/${lopHocPhanId}/sinh-vien-dang-ky/${deletingSinhVien.sinhVien.id}`,
+                `${ENV.BACKEND_URL}/giang-day/lop-hoc-phan/${lopHocPhanId}/sinh-vien-dang-ky/${deletingSinhVien.sinhVien.id}`,
                 {
                     method: "DELETE",
                     headers: {
@@ -642,7 +643,7 @@ export default function ChiTietLopHocPhanPage() {
             const { maSinhVien, hoTen } = displayInfo(sinhVienId);
             try {
                 const res = await fetch(
-                    `http://localhost:3000/giang-day/lop-hoc-phan/${lopHocPhanId}/sinh-vien-dang-ky/${sinhVienId}`,
+                    `${ENV.BACKEND_URL}/giang-day/lop-hoc-phan/${lopHocPhanId}/sinh-vien-dang-ky/${sinhVienId}`,
                     {
                         method: "DELETE",
                         headers: {

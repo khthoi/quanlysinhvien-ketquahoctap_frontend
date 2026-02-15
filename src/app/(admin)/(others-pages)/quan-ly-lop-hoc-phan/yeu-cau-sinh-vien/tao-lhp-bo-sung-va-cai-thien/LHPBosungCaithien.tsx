@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
+import { ENV } from "@/config/env";
 import {
     Table,
     TableBody,
@@ -564,7 +565,7 @@ export default function LHPBosungCaithien() {
         try {
             const accessToken = getCookie("access_token");
             const res = await fetch(
-                `http://localhost:3000/giang-day/de-xuat-lop-hoc-phan-cho-hoc-bo-sung-cai-thien`,
+                `${ENV.BACKEND_URL}/giang-day/de-xuat-lop-hoc-phan-cho-hoc-bo-sung-cai-thien`,
                 {
                     headers: {
                         Authorization: `Bearer ${accessToken}`,
@@ -704,7 +705,7 @@ export default function LHPBosungCaithien() {
 
         for (const lhp of toAdd) {
             try {
-                const res = await fetch("http://localhost:3000/giang-day/tao-lop-hoc-phan-cho-hoc-bo-sung-cai-thien", {
+                const res = await fetch("${ENV.BACKEND_URL}/giang-day/tao-lop-hoc-phan-cho-hoc-bo-sung-cai-thien", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",

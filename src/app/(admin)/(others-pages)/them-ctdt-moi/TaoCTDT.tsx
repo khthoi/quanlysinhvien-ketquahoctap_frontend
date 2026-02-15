@@ -1,4 +1,5 @@
 "use client";
+import { ENV } from "@/config/env";
 
 import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -373,7 +374,7 @@ export default function TaoCTDT() {
     const fetchChuongTrinhs = async () => {
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("http://localhost:3000/dao-tao/chuong-trinh?page=1&limit=9999", {
+            const res = await fetch("${ENV.BACKEND_URL}/dao-tao/chuong-trinh?page=1&limit=9999", {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
                 },
@@ -390,7 +391,7 @@ export default function TaoCTDT() {
     const fetchNganhs = async () => {
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("http://localhost:3000/danh-muc/nganh?limit=9999&page=1", {
+            const res = await fetch("${ENV.BACKEND_URL}/danh-muc/nganh?limit=9999&page=1", {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
                 },
@@ -410,7 +411,7 @@ export default function TaoCTDT() {
     const fetchNienKhoas = async () => {
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("http://localhost:3000/danh-muc/nien-khoa?page=1&limit=9999", {
+            const res = await fetch("${ENV.BACKEND_URL}/danh-muc/nien-khoa?page=1&limit=9999", {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
                 },
@@ -427,7 +428,7 @@ export default function TaoCTDT() {
     const fetchMonHocs = async () => {
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("http://localhost:3000/danh-muc/mon-hoc", {
+            const res = await fetch("${ENV.BACKEND_URL}/danh-muc/mon-hoc", {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
                 },
@@ -444,7 +445,7 @@ export default function TaoCTDT() {
     const fetchMonHocsFromCTDT = async (chuongTrinhId: number) => {
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch(`http://localhost:3000/dao-tao/chuong-trinh/tat-ca-mon-hoc/${chuongTrinhId}`, {
+            const res = await fetch(`${ENV.BACKEND_URL}/dao-tao/chuong-trinh/tat-ca-mon-hoc/${chuongTrinhId}`, {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
                 },
@@ -490,7 +491,7 @@ export default function TaoCTDT() {
         const monHocValidationPromises = draft.monHocTrongCTDT.map(async (mh) => {
             try {
                 const accessToken = getCookie("access_token");
-                const res = await fetch(`http://localhost:3000/danh-muc/mon-hoc/${mh.monHoc.id}`, {
+                const res = await fetch(`${ENV.BACKEND_URL}/danh-muc/mon-hoc/${mh.monHoc.id}`, {
                     headers: {
                         Authorization: `Bearer ${accessToken}`,
                     },
@@ -521,7 +522,7 @@ export default function TaoCTDT() {
         if (draft.formData.maChuongTrinh.trim()) {
             try {
                 const accessToken = getCookie("access_token");
-                const res = await fetch("http://localhost:3000/dao-tao/chuong-trinh?page=1&limit=9999", {
+                const res = await fetch("${ENV.BACKEND_URL}/dao-tao/chuong-trinh?page=1&limit=9999", {
                     headers: {
                         Authorization: `Bearer ${accessToken}`,
                     },
@@ -872,7 +873,7 @@ export default function TaoCTDT() {
 
         // Step 1: Create chuong trinh
         try {
-            const step1Res = await fetch("http://localhost:3000/dao-tao/chuong-trinh", {
+            const step1Res = await fetch("${ENV.BACKEND_URL}/dao-tao/chuong-trinh", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -909,7 +910,7 @@ export default function TaoCTDT() {
             // Step 2: Apply to nien khoas
             const step2Promises = formData.nienKhoaIds.map(async (nienKhoaId) => {
                 try {
-                    const step2Res = await fetch("http://localhost:3000/dao-tao/ap-dung", {
+                    const step2Res = await fetch("${ENV.BACKEND_URL}/dao-tao/ap-dung", {
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json",
@@ -951,7 +952,7 @@ export default function TaoCTDT() {
             const step3Promises = monHocTrongCTDT.map(async (mh) => {
                 try {
                     const step3Res = await fetch(
-                        `http://localhost:3000/dao-tao/chuong-trinh/mon-hoc/${step1Data.id}`,
+                        `${ENV.BACKEND_URL}/dao-tao/chuong-trinh/mon-hoc/${step1Data.id}`,
                         {
                             method: "POST",
                             headers: {

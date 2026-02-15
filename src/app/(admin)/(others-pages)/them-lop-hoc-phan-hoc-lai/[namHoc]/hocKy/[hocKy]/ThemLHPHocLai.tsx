@@ -1,4 +1,5 @@
 "use client";
+import { ENV } from "@/config/env";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
@@ -546,7 +547,7 @@ export default function ThemLHPHocLai() {
         try {
             const accessToken = getCookie("access_token");
             const res = await fetch(
-                `http://localhost:3000/giang-day/de-xuat-lop-hoc-phan-cho-hoc-lai/nam-hoc/${encodeURIComponent(namHoc)}/hoc-ky/${hocKyNum}`,
+                `${ENV.BACKEND_URL}/giang-day/de-xuat-lop-hoc-phan-cho-hoc-lai/nam-hoc/${encodeURIComponent(namHoc)}/hoc-ky/${hocKyNum}`,
                 {
                     headers: {
                         Authorization: `Bearer ${accessToken}`,
@@ -686,7 +687,7 @@ export default function ThemLHPHocLai() {
 
         for (const lhp of toAdd) {
             try {
-                const res = await fetch("http://localhost:3000/giang-day/tao-lop-hoc-phan-cho-hoc-lai", {
+                const res = await fetch("${ENV.BACKEND_URL}/giang-day/tao-lop-hoc-phan-cho-hoc-lai", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",

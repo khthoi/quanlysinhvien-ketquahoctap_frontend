@@ -1,4 +1,5 @@
 "use client";
+import { ENV } from "@/config/env";
 
 import React, { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -783,7 +784,7 @@ const ImportMonHocExcelModal: React.FC<ImportMonHocExcelModalProps> = ({
         setIsDownloading(true);
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("http://localhost:3000/dao-tao/chuong-trinh/export-mau-excel", {
+            const res = await fetch("${ENV.BACKEND_URL}/dao-tao/chuong-trinh/export-mau-excel", {
                 method: "GET",
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
@@ -833,7 +834,7 @@ const ImportMonHocExcelModal: React.FC<ImportMonHocExcelModalProps> = ({
             const formData = new FormData();
             formData.append("file", selectedFile);
 
-            const res = await fetch(`http://localhost:3000/dao-tao/chuong-trinh/${chuongTrinhId}/mon-hoc/import-excel`, {
+            const res = await fetch(`${ENV.BACKEND_URL}/dao-tao/chuong-trinh/${chuongTrinhId}/mon-hoc/import-excel`, {
                 method: "POST",
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
@@ -1445,7 +1446,7 @@ export default function QuanLyMonHocChuongTrinhPage() {
         try {
             const accessToken = getCookie("access_token");
             const res = await fetch(
-                `http://localhost:3000/dao-tao/chuong-trinh/tat-ca-mon-hoc/${chuongTrinhId}`,
+                `${ENV.BACKEND_URL}/dao-tao/chuong-trinh/tat-ca-mon-hoc/${chuongTrinhId}`,
                 {
                     headers: {
                         Authorization: `Bearer ${accessToken}`,
@@ -1472,7 +1473,7 @@ export default function QuanLyMonHocChuongTrinhPage() {
     ) => {
         try {
             const accessToken = getCookie("access_token");
-            let url = `http://localhost:3000/danh-muc/mon-hoc/paginated?page=1&limit=9999`;
+            let url = `${ENV.BACKEND_URL}/danh-muc/mon-hoc/paginated?page=1&limit=9999`;
             if (search) url += `&search=${encodeURIComponent(search)}`;
             if (loaiMon) url += `&loaiMon=${loaiMon}`;
 
@@ -1495,7 +1496,7 @@ export default function QuanLyMonHocChuongTrinhPage() {
     const fetchGiangVienOptions = async (monHocId: number, search: string = "") => {
         try {
             const accessToken = getCookie("access_token");
-            let url = `http://localhost:3000/danh-muc/giang-vien?page=1&limit=9999&monHocId=${monHocId}`;
+            let url = `${ENV.BACKEND_URL}/danh-muc/giang-vien?page=1&limit=9999&monHocId=${monHocId}`;
             if (search) url += `&search=${encodeURIComponent(search)}`;
 
             const res = await fetch(url, {
@@ -1648,7 +1649,7 @@ export default function QuanLyMonHocChuongTrinhPage() {
         try {
             const accessToken = getCookie("access_token");
             const res = await fetch(
-                `http://localhost:3000/giang-day/lop-hoc-phan`,
+                `${ENV.BACKEND_URL}/giang-day/lop-hoc-phan`,
                 {
                     method: "POST",
                     headers: {
@@ -1707,7 +1708,7 @@ export default function QuanLyMonHocChuongTrinhPage() {
         try {
             const accessToken = getCookie("access_token");
             const res = await fetch(
-                `http://localhost:3000/dao-tao/chuong-trinh/mon-hoc/${chuongTrinhId}`,
+                `${ENV.BACKEND_URL}/dao-tao/chuong-trinh/mon-hoc/${chuongTrinhId}`,
                 {
                     method: "POST",
                     headers: {
@@ -1744,7 +1745,7 @@ export default function QuanLyMonHocChuongTrinhPage() {
         try {
             const accessToken = getCookie("access_token");
             const res = await fetch(
-                `http://localhost:3000/dao-tao/chuong-trinh/chi-tiet/${editingChiTiet.id}`,
+                `${ENV.BACKEND_URL}/dao-tao/chuong-trinh/chi-tiet/${editingChiTiet.id}`,
                 {
                     method: "PUT",
                     headers: {
@@ -1781,7 +1782,7 @@ export default function QuanLyMonHocChuongTrinhPage() {
         try {
             const accessToken = getCookie("access_token");
             const res = await fetch(
-                `http://localhost:3000/dao-tao/chuong-trinh/chi-tiet/${deletingChiTiet.id}`,
+                `${ENV.BACKEND_URL}/dao-tao/chuong-trinh/chi-tiet/${deletingChiTiet.id}`,
                 {
                     method: "DELETE",
                     headers: {

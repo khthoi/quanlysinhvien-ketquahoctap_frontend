@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
+import { ENV } from "@/config/env";
 import {
     Table,
     TableBody,
@@ -802,7 +803,7 @@ export default function ThemSinhvienPage() {
         setExportError(null);
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("http://localhost:3000/bao-cao/de-xuat-hoc-lai", {
+            const res = await fetch("${ENV.BACKEND_URL}/bao-cao/de-xuat-hoc-lai", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -842,7 +843,7 @@ export default function ThemSinhvienPage() {
         setLoadingThongKe(true);
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("http://localhost:3000/bao-cao/thong-tin-sinh-vien-truot-mon", {
+            const res = await fetch("${ENV.BACKEND_URL}/bao-cao/thong-tin-sinh-vien-truot-mon", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -869,7 +870,7 @@ export default function ThemSinhvienPage() {
         setLoadingDeXuat(true);
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("http://localhost:3000/bao-cao/de-xuat-hoc-lai/json", {
+            const res = await fetch("${ENV.BACKEND_URL}/bao-cao/de-xuat-hoc-lai/json", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -1017,7 +1018,7 @@ export default function ThemSinhvienPage() {
     };
 
     const handleViewBangDiem = (sinhVienId: number) => {
-        const url = `http://localhost:3001/quan-ly-sinh-vien/bang-diem/${sinhVienId}`;
+        const url = `${ENV.FRONTEND_ADMIN_URL}/quan-ly-sinh-vien/bang-diem/${sinhVienId}`;
         window.open(url, "_blank");
     };
 
@@ -1044,7 +1045,7 @@ export default function ThemSinhvienPage() {
             const maLopHocPhan = lhp?.maLopHocPhan ?? String(lhpId);
             try {
                 const res = await fetch(
-                    `http://localhost:3000/giang-day/lop-hoc-phan/${lhpId}/sinh-vien-dang-ky/${sv.sinhVienId}`,
+                    `${ENV.BACKEND_URL}/giang-day/lop-hoc-phan/${lhpId}/sinh-vien-dang-ky/${sv.sinhVienId}`,
                     {
                         method: "POST",
                         headers: { Authorization: `Bearer ${accessToken}` },

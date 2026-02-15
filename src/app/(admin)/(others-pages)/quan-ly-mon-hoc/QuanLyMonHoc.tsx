@@ -1,4 +1,5 @@
 "use client";
+import { ENV } from "@/config/env";
 
 import React, { useEffect, useState } from "react";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
@@ -387,7 +388,7 @@ const ImportMonHocExcelModal: React.FC<ImportMonHocExcelModalProps> = ({
             const formData = new FormData();
             formData.append("file", selectedFile);
 
-            const res = await fetch("http://localhost:3000/danh-muc/mon-hoc/import-excel", {
+            const res = await fetch("${ENV.BACKEND_URL}/danh-muc/mon-hoc/import-excel", {
                 method: "POST",
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
@@ -905,7 +906,7 @@ const ExportMonHocExcelModal: React.FC<ExportMonHocExcelModalProps> = ({
         try {
             const accessToken = getCookie("access_token");
 
-            const res = await fetch("http://localhost:3000/danh-muc/mon-hoc/export-excel", {
+            const res = await fetch("${ENV.BACKEND_URL}/danh-muc/mon-hoc/export-excel", {
                 method: "GET",
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
@@ -1156,7 +1157,7 @@ export default function QuanLyMonHocPage() {
     const fetchMonHocs = async (page: number = 1, search: string = "", loaiMonFilter: LoaiMon | "" = "") => {
         try {
             const accessToken = getCookie("access_token");
-            let url = `http://localhost:3000/danh-muc/mon-hoc/paginated?page=${page}&limit=10`;
+            let url = `${ENV.BACKEND_URL}/danh-muc/mon-hoc/paginated?page=${page}&limit=10`;
             if (search) url += `&search=${encodeURIComponent(search)}`;
             if (loaiMonFilter) url += `&loaiMon=${loaiMonFilter}`;
 
@@ -1179,7 +1180,7 @@ export default function QuanLyMonHocPage() {
     const fetchMonHocForPhanCong = async (search: string = "") => {
         try {
             const accessToken = getCookie("access_token");
-            let url = `http://localhost:3000/danh-muc/mon-hoc`;
+            let url = `${ENV.BACKEND_URL}/danh-muc/mon-hoc`;
             if (search) url += `?search=${encodeURIComponent(search)}`;
 
             const res = await fetch(url, {
@@ -1200,7 +1201,7 @@ export default function QuanLyMonHocPage() {
     const fetchGiangVienForPhanCong = async (search: string = "") => {
         try {
             const accessToken = getCookie("access_token");
-            let url = `http://localhost:3000/danh-muc/giang-vien?page=1&limit=9999`;
+            let url = `${ENV.BACKEND_URL}/danh-muc/giang-vien?page=1&limit=9999`;
             if (search) url += `&search=${encodeURIComponent(search)}`;
 
             const res = await fetch(url, {
@@ -1298,7 +1299,7 @@ export default function QuanLyMonHocPage() {
             const tenMonHoc = monHoc?.tenMonHoc || monHocId;
 
             try {
-                const res = await fetch("http://localhost:3000/danh-muc/giang-vien/phancongmonhoc", {
+                const res = await fetch("${ENV.BACKEND_URL}/danh-muc/giang-vien/phancongmonhoc", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -1396,7 +1397,7 @@ export default function QuanLyMonHocPage() {
         try {
             const accessToken = getCookie("access_token");
             const res = await fetch(
-                `http://localhost:3000/danh-muc/giang-vien/${unassignData.giangVienId}/phan-cong-mon-hoc/${unassignData.monHocId}`,
+                `${ENV.BACKEND_URL}/danh-muc/giang-vien/${unassignData.giangVienId}/phan-cong-mon-hoc/${unassignData.monHocId}`,
                 {
                     method: "DELETE",
                     headers: { Authorization: `Bearer ${accessToken}` },
@@ -1469,7 +1470,7 @@ export default function QuanLyMonHocPage() {
 
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("http://localhost:3000/danh-muc/mon-hoc", {
+            const res = await fetch("${ENV.BACKEND_URL}/danh-muc/mon-hoc", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -1509,7 +1510,7 @@ export default function QuanLyMonHocPage() {
 
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch(`http://localhost:3000/danh-muc/mon-hoc/${editingMonHoc.id}`, {
+            const res = await fetch(`${ENV.BACKEND_URL}/danh-muc/mon-hoc/${editingMonHoc.id}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -1555,7 +1556,7 @@ export default function QuanLyMonHocPage() {
 
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch(`http://localhost:3000/danh-muc/mon-hoc/${deletingMonHoc.id}`, {
+            const res = await fetch(`${ENV.BACKEND_URL}/danh-muc/mon-hoc/${deletingMonHoc.id}`, {
                 method: "DELETE",
                 headers: {
                     Authorization: `Bearer ${accessToken}`,

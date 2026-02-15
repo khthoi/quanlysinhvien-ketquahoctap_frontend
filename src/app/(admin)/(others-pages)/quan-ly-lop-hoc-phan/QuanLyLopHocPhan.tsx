@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import PageBreadcrumb from "@/components/common/PageBreadCrumb";
+import { ENV } from "@/config/env";
 import {
     Table,
     TableBody,
@@ -746,7 +747,7 @@ const ImportSinhVienExcelModal: React.FC<ImportSinhVienExcelModalProps> = ({
             formData.append("file", selectedFile);
 
             const res = await fetch(
-                `http://localhost:3000/giang-day/lop-hoc-phan/them-sv-bang-excel`,
+                `${ENV.BACKEND_URL}/giang-day/lop-hoc-phan/them-sv-bang-excel`,
                 {
                     method: "POST",
                     headers: {
@@ -1168,7 +1169,7 @@ const ImportLHPExcelModal: React.FC<ImportLHPExcelModalProps> = ({
             formData.append("file", selectedFile);
 
             const res = await fetch(
-                `http://localhost:3000/giang-day/lop-hoc-phan/import-tu-excel`,
+                `${ENV.BACKEND_URL}/giang-day/lop-hoc-phan/import-tu-excel`,
                 {
                     method: "POST",
                     headers: {
@@ -1525,7 +1526,7 @@ const DownloadBangDiemModal: React.FC<DownloadBangDiemModalProps> = ({
         try {
             const accessToken = getCookie("access_token");
             const res = await fetch(
-                `http://localhost:3000/bao-cao/bang-diem-lop-hoc-phan/${lopHocPhan.id}`,
+                `${ENV.BACKEND_URL}/bao-cao/bang-diem-lop-hoc-phan/${lopHocPhan.id}`,
                 {
                     method: "GET",
                     headers: {
@@ -1734,7 +1735,7 @@ const ThongKeSVTruotMonModal: React.FC<ThongKeSVTruotMonModalProps> = ({
                 return;
             }
 
-            const res = await fetch("http://localhost:3000/bao-cao/de-xuat-hoc-lai", {
+            const res = await fetch("${ENV.BACKEND_URL}/bao-cao/de-xuat-hoc-lai", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -2263,7 +2264,7 @@ export default function QuanLyLopHocPhanPage() {
         try {
             const accessToken = getCookie("access_token");
             const FILTER_CHUA_CO_GIANG_VIEN = "__none__";
-            let url = `http://localhost:3000/giang-day/lop-hoc-phan?page=${page}&limit=10`;
+            let url = `${ENV.BACKEND_URL}/giang-day/lop-hoc-phan?page=${page}&limit=10`;
             if (search) url += `&search=${encodeURIComponent(search)}`;
             if (monHocIdFilter) url += `&monHocId=${monHocIdFilter}`;
             if (giangVienIdFilter === FILTER_CHUA_CO_GIANG_VIEN) {
@@ -2295,7 +2296,7 @@ export default function QuanLyLopHocPhanPage() {
     const fetchMonHoc = async () => {
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("http://localhost:3000/danh-muc/mon-hoc", {
+            const res = await fetch("${ENV.BACKEND_URL}/danh-muc/mon-hoc", {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
                 },
@@ -2319,7 +2320,7 @@ export default function QuanLyLopHocPhanPage() {
     const fetchGiangVien = async (monHocIdParam?: string) => {
         try {
             const accessToken = getCookie("access_token");
-            let url = "http://localhost:3000/danh-muc/giang-vien?page=1&limit=9999";
+            let url = "${ENV.BACKEND_URL}/danh-muc/giang-vien?page=1&limit=9999";
             if (monHocIdParam) url += `&monHocId=${monHocIdParam}`;
 
             const res = await fetch(url, {
@@ -2345,7 +2346,7 @@ export default function QuanLyLopHocPhanPage() {
     const fetchNamHoc = async () => {
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("http://localhost:3000/dao-tao/nam-hoc?page=1&limit=9999", {
+            const res = await fetch("${ENV.BACKEND_URL}/dao-tao/nam-hoc?page=1&limit=9999", {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
                 },
@@ -2368,7 +2369,7 @@ export default function QuanLyLopHocPhanPage() {
     const fetchNienKhoa = async () => {
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("http://localhost:3000/danh-muc/nien-khoa?page=1&limit=9999", {
+            const res = await fetch("${ENV.BACKEND_URL}/danh-muc/nien-khoa?page=1&limit=9999", {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
                 },
@@ -2390,7 +2391,7 @@ export default function QuanLyLopHocPhanPage() {
     const fetchNganh = async () => {
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch("http://localhost:3000/danh-muc/nganh?page=1&limit=9999", {
+            const res = await fetch("${ENV.BACKEND_URL}/danh-muc/nganh?page=1&limit=9999", {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
                 },
@@ -2539,7 +2540,7 @@ export default function QuanLyLopHocPhanPage() {
             const accessToken = getCookie("access_token");
             // Lấy tất cả lớp học phần của giảng viên trong học kỳ này
             const res = await fetch(
-                `http://localhost:3000/giang-day/lop-hoc-phan?giangVienId=${giangVienIdParam}&hocKyId=${hocKyId}&limit=9999`,
+                `${ENV.BACKEND_URL}/giang-day/lop-hoc-phan?giangVienId=${giangVienIdParam}&hocKyId=${hocKyId}&limit=9999`,
                 {
                     headers: {
                         Authorization: `Bearer ${accessToken}`,
@@ -2623,7 +2624,7 @@ export default function QuanLyLopHocPhanPage() {
 
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch(`http://localhost:3000/giang-day/lop-hoc-phan/${editingLopHocPhan.id}`, {
+            const res = await fetch(`${ENV.BACKEND_URL}/giang-day/lop-hoc-phan/${editingLopHocPhan.id}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -2666,7 +2667,7 @@ export default function QuanLyLopHocPhanPage() {
 
         try {
             const accessToken = getCookie("access_token");
-            const res = await fetch(`http://localhost:3000/giang-day/lop-hoc-phan/${deletingLopHocPhan.id}`, {
+            const res = await fetch(`${ENV.BACKEND_URL}/giang-day/lop-hoc-phan/${deletingLopHocPhan.id}`, {
                 method: "DELETE",
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
@@ -3174,7 +3175,7 @@ export default function QuanLyLopHocPhanPage() {
 
                                                                 <DropdownItem
                                                                     tag="a"
-                                                                    href={`http://localhost:3001/quan-ly-lop-hoc-phan/quan-ly-sv-lhp/${lhp.id}`}
+                                                                    href={`${ENV.FRONTEND_ADMIN_URL}/quan-ly-lop-hoc-phan/quan-ly-sv-lhp/${lhp.id}`}
                                                                 >
                                                                     <FontAwesomeIcon icon={faInfoCircle} className="mr-2 w-4" />
                                                                     Chi tiết lớp

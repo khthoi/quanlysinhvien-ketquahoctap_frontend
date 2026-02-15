@@ -1,4 +1,5 @@
  "use client";
+import { ENV } from "@/config/env";
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -698,7 +699,7 @@ export default function DashboardOverview() {
       try {
         const accessToken = getCookie("access_token");
         const res = await fetch(
-          "http://localhost:3000/bao-cao/thong-ke/tong-quan",
+          "${ENV.BACKEND_URL}/bao-cao/thong-ke/tong-quan",
           {
             headers: {
               Authorization: `Bearer ${accessToken}`,

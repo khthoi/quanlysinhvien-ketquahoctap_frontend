@@ -1,4 +1,5 @@
 "use client";
+import { ENV } from "@/config/env";
 
 import React, { useEffect, useMemo, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -319,7 +320,7 @@ const BangDiemSV: React.FC = () => {
       try {
         const accessToken = getCookie("access_token");
         const res = await fetch(
-          `http://localhost:3000/ket-qua/sinh-vien/${encodeURIComponent(sinhVienId)}`,
+          `${ENV.BACKEND_URL}/ket-qua/sinh-vien/${encodeURIComponent(sinhVienId)}`,
           {
             headers: {
               ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
@@ -375,7 +376,7 @@ const BangDiemSV: React.FC = () => {
     try {
       const accessToken = getCookie("access_token");
       const res = await fetch(
-        `http://localhost:3000/bao-cao/phieu-diem/${sinhVienId}`,
+        `${ENV.BACKEND_URL}/bao-cao/phieu-diem/${sinhVienId}`,
         {
           method: "GET",
           headers: {

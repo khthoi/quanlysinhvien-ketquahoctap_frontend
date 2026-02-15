@@ -1,4 +1,5 @@
 "use client";
+import { ENV } from "@/config/env";
 import Image from "next/image";
 import Link from "next/link";
 import React, { useState, useEffect } from "react";
@@ -161,7 +162,7 @@ export default function UserDropdown() {
       try {
         // Các role khác → fetch như cũ
         const response = await fetch(
-          "http://localhost:3000/danh-muc/giang-vien/me/my-profile",
+          "${ENV.BACKEND_URL}/danh-muc/giang-vien/me/my-profile",
           {
             method: "GET",
             headers: {

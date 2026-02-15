@@ -1,4 +1,5 @@
 "use client";
+import { ENV } from "@/config/env";
 
 import React, { useEffect, useState } from "react";
 import { useSearchParams, usePathname, useRouter } from "next/navigation";
@@ -253,7 +254,7 @@ export default function QuanLyKhoaPage() {
       const accessToken = getCookie("access_token");
       const searchParam = keyword ? `&search=${encodeURIComponent(keyword)}` : "";
       const res = await fetch(
-        `http://localhost:3000/danh-muc/khoa?page=${page}&limit=10${searchParam}`,
+        `${ENV.BACKEND_URL}/danh-muc/khoa?page=${page}&limit=10${searchParam}`,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -346,7 +347,7 @@ export default function QuanLyKhoaPage() {
 
     try {
       const accessToken = getCookie("access_token");
-      const res = await fetch("http://localhost:3000/danh-muc/khoa", {
+      const res = await fetch("${ENV.BACKEND_URL}/danh-muc/khoa", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -387,7 +388,7 @@ export default function QuanLyKhoaPage() {
     try {
       const accessToken = getCookie("access_token");
       const res = await fetch(
-        `http://localhost:3000/danh-muc/khoa/${editingKhoa.id}`,
+        `${ENV.BACKEND_URL}/danh-muc/khoa/${editingKhoa.id}`,
         {
           method: "PUT",
           headers: {
@@ -431,7 +432,7 @@ export default function QuanLyKhoaPage() {
 
     try {
       const accessToken = getCookie("access_token");
-      const res = await fetch(`http://localhost:3000/danh-muc/khoa/${deletingKhoa.id}`, {
+      const res = await fetch(`${ENV.BACKEND_URL}/danh-muc/khoa/${deletingKhoa.id}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${accessToken}`,
