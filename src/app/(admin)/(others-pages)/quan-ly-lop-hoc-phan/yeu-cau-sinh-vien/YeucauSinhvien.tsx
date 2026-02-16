@@ -488,7 +488,7 @@ const EditRequestModal: React.FC<EditModalProps> = ({
                 }`}
               >
                 <p className="font-semibold">
-                  {selectedLHP.maLopHocPhan} · {selectedLHP.nienKhoa.tenNienKhoa} · HK {selectedLHP.hocKy.hocKy}
+                  {selectedLHP.maLopHocPhan} · {selectedLHP.nienKhoa.tenNienKhoa} · NH {selectedLHP.hocKy.namHoc.namBatDau} - {selectedLHP.hocKy.namHoc.namKetThuc} · HK {selectedLHP.hocKy.hocKy}
                 </p>
                 <p className="mt-1">
                   Sĩ số hiện tại: {baseSiSo}. Sau khi gán các yêu cầu đang chọn: {proposedSiSo} sinh viên.
