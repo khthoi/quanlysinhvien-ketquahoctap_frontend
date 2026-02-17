@@ -1088,6 +1088,8 @@ export default function QuanLyMonHocPage() {
     const [isPhanCongModalOpen, setIsPhanCongModalOpen] = useState(false);
     const [monHocOptionsForPhanCong, setMonHocOptionsForPhanCong] = useState<MonHoc[]>([]);
     const [giangVienOptions, setGiangVienOptions] = useState<GiangVienOption[]>([]);
+    const [selectedGiangVienMonHocs, setSelectedGiangVienMonHocs] = useState<MonHoc[]>([]);
+    const [isLoadingGiangVienMonHocs, setIsLoadingGiangVienMonHocs] = useState(false);
     const [selectedMonHocIds, setSelectedMonHocIds] = useState<string[]>([]);
     const [selectedGiangVienId, setSelectedGiangVienId] = useState<string>("");
     const [monHocSearchKeyword, setMonHocSearchKeyword] = useState("");
@@ -1224,6 +1226,43 @@ export default function QuanLyMonHocPage() {
         }
     };
 
+    // Fetch danh sách môn học đã được phân công cho một giảng viên
+    const fetchMonHocsByGiangVien = async (giangVienId: string) => {
+        if (!giangVienId) {
+            setSelectedGiangVienMonHocs([]);
+            return;
+        }
+
+        try {
+            setIsLoadingGiangVienMonHocs(true);
+            const accessToken = getCookie("access_token");
+            const res = await fetch(
+                `${ENV.BACKEND_URL}/danh-muc/giang-vien/${giangVienId}/phan-cong-mon-hoc`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                    },
+                }
+            );
+
+            if (res.ok) {
+                const data = await res.json();
+                if (data && Array.isArray(data.monHocs)) {
+                    setSelectedGiangVienMonHocs(data.monHocs);
+                } else {
+                    setSelectedGiangVienMonHocs([]);
+                }
+            } else {
+                setSelectedGiangVienMonHocs([]);
+            }
+        } catch (error) {
+            console.error("Không thể tải danh sách môn học đã phân công cho giảng viên:", error);
+            setSelectedGiangVienMonHocs([]);
+        } finally {
+            setIsLoadingGiangVienMonHocs(false);
+        }
+    };
+
     // Xử lý tìm kiếm môn học trong modal phân công
     const handleSearchMonHocForPhanCong = () => {
         fetchMonHocForPhanCong(monHocSearchKeyword.trim());
@@ -1240,6 +1279,7 @@ export default function QuanLyMonHocPage() {
         setSelectedGiangVienId("");
         setMonHocSearchKeyword("");
         setGiangVienSearchKeyword("");
+        setSelectedGiangVienMonHocs([]);
         setPhanCongProgress({
             total: 0,
             current: 0,
@@ -1262,6 +1302,7 @@ export default function QuanLyMonHocPage() {
         setGiangVienSearchKeyword("");
         setMonHocOptionsForPhanCong([]);
         setGiangVienOptions([]);
+        setSelectedGiangVienMonHocs([]);
         setPhanCongProgress({
             total: 0,
             current: 0,
@@ -2179,11 +2220,18 @@ export default function QuanLyMonHocPage() {
                                             onChange={(values) => setSelectedMonHocIds(values)}
                                             defaultValue={selectedMonHocIds}
                                             showSecondary={true}
-                                            maxDisplayOptions={10}
+                                            maxDisplayOptions={
+                                                monHocOptionsForPhanCong.length > 0
+                                                    ? monHocOptionsForPhanCong.length
+                                                    : 10
+                                            }
                                             maxDisplayTags={3}
                                             searchPlaceholder="Tìm môn học..."
                                             selectAllLabel="Chọn tất cả môn học"
                                             showSelectAll={true}
+                                            disabledValues={selectedGiangVienMonHocs.map((mh) =>
+                                                mh.id.toString()
+                                            )}
                                         />
                                     </div>
                                     {selectedMonHocIds.length > 0 && (
@@ -2210,10 +2258,20 @@ export default function QuanLyMonHocPage() {
                                                 secondary: gv.hoTen,
                                             }))}
                                             placeholder="Chọn giảng viên"
-                                            onChange={(value) => setSelectedGiangVienId(value)}
+                                            onChange={(value) => {
+                                                setSelectedGiangVienId(value);
+                                                setSelectedMonHocIds([]);
+                                                if (value) {
+                                                    fetchMonHocsByGiangVien(value);
+                                                } else {
+                                                    setSelectedGiangVienMonHocs([]);
+                                                }
+                                            }}
                                             defaultValue={selectedGiangVienId}
                                             showSecondary={true}
-                                            maxDisplayOptions={10}
+                                            maxDisplayOptions={
+                                                giangVienOptions.length > 0 ? giangVienOptions.length : 10
+                                            }
                                             searchPlaceholder="Tìm trong danh sách..."
                                         />
                                     </div>
@@ -2225,6 +2283,41 @@ export default function QuanLyMonHocPage() {
                                             </p>
                                         </div>
                                     )}
+                                            {/* Danh sách các môn đã được phân công cho giảng viên */}
+                                            {selectedGiangVienId && (
+                                                <div className="mt-4">
+                                                    <Label className="block mb-2">
+                                                        Các môn đã được phân công cho giảng viên này
+                                                    </Label>
+                                                    {isLoadingGiangVienMonHocs ? (
+                                                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                                                            Đang tải danh sách môn học đã phân công...
+                                                        </p>
+                                                    ) : selectedGiangVienMonHocs.length > 0 ? (
+                                                        <SearchableSelect
+                                                            options={selectedGiangVienMonHocs.map((mh) => ({
+                                                                value: mh.id.toString(),
+                                                                label: mh.maMonHoc,
+                                                                secondary: mh.tenMonHoc,
+                                                            }))}
+                                                            placeholder="Danh sách môn đã được phân công"
+                                                            onChange={() => { }}
+                                                            defaultValue=""
+                                                            showSecondary={true}
+                                                            maxDisplayOptions={
+                                                                selectedGiangVienMonHocs.length > 0
+                                                                    ? selectedGiangVienMonHocs.length
+                                                                    : 10
+                                                            }
+                                                            searchPlaceholder="Tìm trong danh sách môn đã phân công..."
+                                                        />
+                                                    ) : (
+                                                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                                                            Giảng viên hiện chưa được phân công môn học nào.
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            )}
                                 </div>
 
                                 {/* Thông tin tổng hợp */}

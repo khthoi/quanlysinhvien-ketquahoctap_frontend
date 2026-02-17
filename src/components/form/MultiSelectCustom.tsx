@@ -23,6 +23,7 @@ interface MultiSelectProps {
   maxDisplayTags?: number;
   selectAllLabel?: string;
   showSelectAll?: boolean;
+  disabledValues?: string[];
 }
 
 const MultiSelectCustom: React.FC<MultiSelectProps> = ({
@@ -39,6 +40,7 @@ const MultiSelectCustom: React.FC<MultiSelectProps> = ({
   maxDisplayTags = 3,
   selectAllLabel = "Chọn tất cả",
   showSelectAll = true,
+  disabledValues = [],
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -212,8 +214,9 @@ const MultiSelectCustom: React.FC<MultiSelectProps> = ({
 
   // Kiểm tra đã chọn tất cả chưa
   const isAllSelected = useMemo(() => {
-    return options.length > 0 && options.every((opt) => selectedValues.includes(opt.value));
-  }, [options, selectedValues]);
+    const enabledOptions = options.filter((opt) => !disabledValues.includes(opt.value));
+    return enabledOptions.length > 0 && enabledOptions.every((opt) => selectedValues.includes(opt.value));
+  }, [options, selectedValues, disabledValues]);
 
   // Kiểm tra có một số được chọn
   const isSomeSelected = useMemo(() => {
@@ -226,6 +229,9 @@ const MultiSelectCustom: React.FC<MultiSelectProps> = ({
   };
 
   const handleSelect = (value: string) => {
+    if (disabledValues.includes(value)) {
+      return;
+    }
     let newValues: string[];
     if (selectedValues.includes(value)) {
       newValues = selectedValues.filter((v) => v !== value);
@@ -241,7 +247,9 @@ const MultiSelectCustom: React.FC<MultiSelectProps> = ({
     if (isAllSelected) {
       newValues = [];
     } else {
-      newValues = options.map((opt) => opt.value);
+      newValues = options
+        .filter((opt) => !disabledValues.includes(opt.value))
+        .map((opt) => opt.value);
     }
     setSelectedValues(newValues);
     onChange(newValues);
@@ -382,13 +390,20 @@ const MultiSelectCustom: React.FC<MultiSelectProps> = ({
             <>
               {displayedOptions.map((option) => {
                 const isSelected = selectedValues.includes(option.value);
+                const isDisabledOption = disabledValues.includes(option.value);
                 return (
                   <div
                     key={option.value}
-                    onClick={() => handleSelect(option.value)}
+                    onClick={() => {
+                      if (!isDisabledOption) {
+                        handleSelect(option.value);
+                      }
+                    }}
                     onMouseDown={(e) => e.preventDefault()}
                     className={`px-4 py-2.5 text-sm cursor-pointer transition-colors flex items-center gap-3 ${
-                      isSelected
+                      isDisabledOption
+                        ? "cursor-not-allowed text-gray-400 bg-gray-50 dark:bg-gray-800/40 dark:text-gray-500"
+                        : isSelected
                         ? "bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400"
                         : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
                     }`}

@@ -4,7 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCheck, faMinus } from "@fortawesome/free-solid-svg-icons";
 
 interface CheckboxProps {
-  label?: string;
+  label?: React.ReactNode;
   checked: boolean;
   className?: string;
   id?: string;
