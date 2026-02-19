@@ -1237,6 +1237,8 @@ export default function QuanLyGiangVienPage() {
     const [phanCongGiangVien, setPhanCongGiangVien] = useState<GiangVien | null>(null);
     const [selectedMonHocIdsForPhanCong, setSelectedMonHocIdsForPhanCong] = useState<string[]>([]);
     const [isPhanCongLoading, setIsPhanCongLoading] = useState(false);
+    // Môn học đang được chọn để xem chi tiết trong modal phân công
+    const [selectedMonHocDetailId, setSelectedMonHocDetailId] = useState<string>("");
 
     // State cho checkbox và xóa hàng loạt (giữ selection khi chuyển trang)
     const [selectedGiangVienIds, setSelectedGiangVienIds] = useState<number[]>([]);
@@ -1729,6 +1731,7 @@ export default function QuanLyGiangVienPage() {
         setPhanCongGiangVien(giangVien);
         setSelectedMonHocIdsForPhanCong([]);
         setIsPhanCongModalOpen(true);
+        setSelectedMonHocDetailId("");
     };
 
     const closePhanCongMonHocModal = () => {
@@ -1736,6 +1739,7 @@ export default function QuanLyGiangVienPage() {
         setPhanCongGiangVien(null);
         setSelectedMonHocIdsForPhanCong([]);
         setIsPhanCongLoading(false);
+        setSelectedMonHocDetailId("");
     };
 
     // Xử lý phân công môn học cho giảng viên
@@ -1781,6 +1785,7 @@ export default function QuanLyGiangVienPage() {
         setIsPhanCongModalOpen(false);
         setSelectedMonHocIdsForPhanCong([]);
         setPhanCongGiangVien(null);
+        setSelectedMonHocDetailId("");
 
         if (success > 0 && failed === 0) {
             showAlert("success", "Thành công", `Đã phân công ${success} môn học cho giảng viên "${tenGV}"`);
@@ -2708,34 +2713,130 @@ export default function QuanLyGiangVienPage() {
                             </div>
 
                             {/* Chọn môn học phân công */}
-                            <div className="mb-6">
-                                <Label className="block mb-2">Chọn môn học để phân công (có thể chọn nhiều)</Label>
-                                <MultiSelectCustom
-                                    options={monHocOptions.map((mh) => ({
-                                        value: mh.id.toString(),
-                                        label: mh.maMonHoc,
-                                        secondary: mh.tenMonHoc,
-                                    }))}
-                                    placeholder="Chọn các môn học"
-                                    onChange={(values) => setSelectedMonHocIdsForPhanCong(values)}
-                                    defaultValue={selectedMonHocIdsForPhanCong}
-                                    showSecondary={true}
-                                    maxDisplayOptions={monHocOptions.length > 0 ? monHocOptions.length : 10}
-                                    maxDisplayTags={3}
-                                    searchPlaceholder="Tìm môn học..."
-                                    selectAllLabel="Chọn tất cả môn học"
-                                    showSelectAll={true}
-                                    disabledValues={phanCongGiangVien.monHocGiangViens.map((mh) =>
-                                        mh.monHoc.id.toString()
+                            <div className="mb-6 space-y-4">
+                                <div>
+                                    <Label className="block mb-2">Chọn môn học để phân công (có thể chọn nhiều)</Label>
+                                    <MultiSelectCustom
+                                        options={monHocOptions.map((mh) => ({
+                                            value: mh.id.toString(),
+                                            label: mh.maMonHoc,
+                                            secondary: mh.tenMonHoc,
+                                        }))}
+                                        placeholder="Chọn các môn học"
+                                        onChange={(values) => {
+                                            setSelectedMonHocIdsForPhanCong(values);
+                                            // Nếu môn chi tiết hiện tại không còn trong danh sách đã chọn thì reset
+                                            if (selectedMonHocDetailId && !values.includes(selectedMonHocDetailId)) {
+                                                setSelectedMonHocDetailId("");
+                                            }
+                                        }}
+                                        defaultValue={selectedMonHocIdsForPhanCong}
+                                        showSecondary={true}
+                                        maxDisplayOptions={monHocOptions.length > 0 ? monHocOptions.length : 10}
+                                        maxDisplayTags={3}
+                                        searchPlaceholder="Tìm môn học..."
+                                        selectAllLabel="Chọn tất cả môn học"
+                                        showSelectAll={true}
+                                        disabledValues={phanCongGiangVien.monHocGiangViens.map((mh) =>
+                                            mh.monHoc.id.toString()
+                                        )}
+                                    />
+                                    {selectedMonHocIdsForPhanCong.length > 0 && (
+                                        <div className="mt-2 p-3 bg-brand-50 dark:bg-brand-500/10 rounded-lg text-sm text-brand-700 dark:text-brand-300">
+                                            Đã chọn{" "}
+                                            <span className="font-semibold">
+                                                {selectedMonHocIdsForPhanCong.length} môn học
+                                            </span>{" "}
+                                            để phân công.
+                                        </div>
                                     )}
-                                />
+                                </div>
+
+                                {/* Searchable select các môn sẽ phân công */}
                                 {selectedMonHocIdsForPhanCong.length > 0 && (
-                                    <div className="mt-2 p-3 bg-brand-50 dark:bg-brand-500/10 rounded-lg text-sm text-brand-700 dark:text-brand-300">
-                                        Đã chọn{" "}
-                                        <span className="font-semibold">
-                                            {selectedMonHocIdsForPhanCong.length} môn học
-                                        </span>{" "}
-                                        để phân công.
+                                    <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                                        <Label className="block mb-2">Chọn môn học để xem chi tiết</Label>
+                                        <SearchableSelect
+                                            options={monHocOptions
+                                                .filter((mh) =>
+                                                    selectedMonHocIdsForPhanCong.includes(mh.id.toString())
+                                                )
+                                                .map((mh) => ({
+                                                    value: mh.id.toString(),
+                                                    label: mh.maMonHoc,
+                                                    secondary: mh.tenMonHoc,
+                                                }))}
+                                            placeholder="Chọn một môn học trong danh sách đã chọn..."
+                                            onChange={(value: string) => setSelectedMonHocDetailId(value || "")}
+                                            defaultValue={selectedMonHocDetailId}
+                                            showSecondary={true}
+                                            maxDisplayOptions={10}
+                                            searchPlaceholder="Tìm môn học theo mã hoặc tên..."
+                                        />
+
+                                        {/* Khối hiển thị chi tiết môn học */}
+                                        {selectedMonHocDetailId && (
+                                            (() => {
+                                                const detail = monHocOptions.find(
+                                                    (mh) => mh.id.toString() === selectedMonHocDetailId
+                                                );
+                                                if (!detail) return null;
+                                                return (
+                                                    <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/40 p-4 text-sm">
+                                                        <h4 className="font-semibold text-gray-800 dark:text-white mb-3">
+                                                            Thông tin chi tiết môn học
+                                                        </h4>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                            <div>
+                                                                <span className="text-gray-500 dark:text-gray-400">
+                                                                    Mã môn:
+                                                                </span>{" "}
+                                                                <span className="font-medium text-gray-800 dark:text-white">
+                                                                    {detail.maMonHoc}
+                                                                </span>
+                                                            </div>
+                                                            <div>
+                                                                <span className="text-gray-500 dark:text-gray-400">
+                                                                    Tên môn học:
+                                                                </span>{" "}
+                                                                <span className="font-medium text-gray-800 dark:text-white">
+                                                                    {detail.tenMonHoc}
+                                                                </span>
+                                                            </div>
+                                                            <div>
+                                                                <span className="text-gray-500 dark:text-gray-400">
+                                                                    Loại môn:
+                                                                </span>{" "}
+                                                                <Badge
+                                                                    variant="solid"
+                                                                    color={getLoaiMonColor(detail.loaiMon)}
+                                                                >
+                                                                    {getLoaiMonLabel(detail.loaiMon)}
+                                                                </Badge>
+                                                            </div>
+                                                            <div>
+                                                                <span className="text-gray-500 dark:text-gray-400">
+                                                                    Số tín chỉ:
+                                                                </span>{" "}
+                                                                <span className="font-medium text-gray-800 dark:text-white">
+                                                                    {detail.soTinChi}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        {detail.moTa && (
+                                                            <div className="mt-3">
+                                                                <span className="text-gray-500 dark:text-gray-400 block mb-1">
+                                                                    Mô tả:
+                                                                </span>
+                                                                <p className="text-gray-700 dark:text-gray-300 whitespace-pre-line">
+                                                                    {detail.moTa}
+                                                                </p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })()
+                                        )}
                                     </div>
                                 )}
                             </div>
