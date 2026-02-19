@@ -80,8 +80,13 @@ interface LopHocPhanDeXuat {
     maNamHoc: string;
     hocKy: number;
     soTinChi: number;
-    maGiangVien: string;
+    giangVien: string; // Chỉ là maGiangVien (string), có thể là rỗng ""
     soSinhVienThamGia: number;
+}
+
+interface GiangVienTinChiInfo {
+    maGiangVien: string;
+    soTinChi: number;
 }
 
 interface ImportResult {
@@ -452,6 +457,10 @@ export default function ThemLopHocPhanPage() {
     // Map lưu số lượng sinh viên gốc theo ngành + niên khóa + môn học (từ API)
     const [originalSinhVienMap, setOriginalSinhVienMap] = useState<Map<string, number>>(new Map());
 
+    // Map theo dõi số tín chỉ giảng dạy của từng giảng viên trong học kỳ này
+    // Key: maGiangVien, Value: tổng số tín chỉ
+    const [giangVienTinChiMap, setGiangVienTinChiMap] = useState<Map<string, number>>(new Map());
+
     // Tạo key cho map sinh viên
     const getSinhVienMapKey = (maNganh: string, maNienKhoa: string, maMonHoc: string) => {
         return `${maNganh}_${maNienKhoa}_${maMonHoc}`;
@@ -671,58 +680,25 @@ export default function ThemLopHocPhanPage() {
         };
     }, [lopHocPhans]);
 
-    // Map theo dõi số tín chỉ giảng dạy của từng giảng viên trong học kỳ này
-    const giangVienTinChiMap = useMemo(() => {
-        const map = new Map<string, { tongTinChi: number; danhSachLop: string[] }>();
+    // Hàm tính toán lại map tín chỉ giảng viên từ danh sách lớp học phần
+    const calculateGiangVienTinChiMap = (lopHocPhansData: LopHocPhanDeXuat[]): Map<string, number> => {
+        const map = new Map<string, number>();
+        
+        // Khởi tạo map với tất cả giảng viên có tín chỉ = 0
+        giangViens.forEach((gv) => {
+            map.set(gv.maGiangVien, 0);
+        });
 
-        lopHocPhans.forEach((lhp) => {
-            const maGV = lhp.maGiangVien;
-            if (map.has(maGV)) {
-                const current = map.get(maGV)!;
-                map.set(maGV, {
-                    tongTinChi: current.tongTinChi + lhp.soTinChi,
-                    danhSachLop: [...current.danhSachLop, lhp.maLopHocPhan],
-                });
-            } else {
-                map.set(maGV, {
-                    tongTinChi: lhp.soTinChi,
-                    danhSachLop: [lhp.maLopHocPhan],
-                });
+        // Tính tổng tín chỉ cho từng giảng viên từ danh sách lớp học phần
+        lopHocPhansData.forEach((lhp) => {
+            const maGV = lhp.giangVien || "";
+            if (maGV) {
+                const currentTinChi = map.get(maGV) || 0;
+                map.set(maGV, currentTinChi + lhp.soTinChi);
             }
         });
 
         return map;
-    }, [lopHocPhans]);
-
-    // Hàm kiểm tra tín chỉ khi thay đổi giảng viên
-    const checkGiangVienTinChi = (
-        maGiangVienMoi: string,
-        soTinChiLopHienTai: number,
-        maGiangVienCu: string,
-        maLopHocPhanHienTai: string
-    ): { isOverLimit: boolean; currentTinChi: number; newTinChi: number } => {
-        // Lấy tổng tín chỉ hiện tại của giảng viên mới (không tính lớp đang edit nếu cùng GV)
-        let currentTinChi = 0;
-
-        if (giangVienTinChiMap.has(maGiangVienMoi)) {
-            const data = giangVienTinChiMap.get(maGiangVienMoi)!;
-            currentTinChi = data.tongTinChi;
-
-            // Nếu giảng viên mới trùng với giảng viên cũ, không cần trừ đi vì đã tính
-            // Nếu khác, giữ nguyên tổng tín chỉ hiện tại
-        }
-
-        // Nếu giảng viên mới khác giảng viên cũ, tính tổng tín chỉ mới
-        let newTinChi = currentTinChi;
-        if (maGiangVienMoi !== maGiangVienCu) {
-            newTinChi = currentTinChi + soTinChiLopHienTai;
-        }
-
-        return {
-            isOverLimit: newTinChi > 12,
-            currentTinChi,
-            newTinChi,
-        };
     };
 
     // Lấy danh sách unique ngành, niên khóa, môn học từ data
@@ -755,11 +731,21 @@ export default function ThemLopHocPhanPage() {
 
     // Lấy danh sách giảng viên options
     const giangVienOptions = useMemo(() => {
-        return giangViens.map(gv => ({
+        const options = giangViens.map(gv => ({
             value: gv.maGiangVien,
             label: gv.maGiangVien,
             secondary: gv.hoTen,
         }));
+        
+        // Thêm option "Chưa có giảng viên" ở đầu danh sách
+        return [
+            {
+                value: "__CHUA_CO_GIANG_VIEN__",
+                label: "Chưa có giảng viên",
+                secondary: "Lớp học phần chưa được phân công",
+            },
+            ...options,
+        ];
     }, [giangViens]);
 
     // Lọc danh sách lớp học phần
@@ -770,8 +756,18 @@ export default function ThemLopHocPhanPage() {
                 return false;
             }
             // Filter by giảng viên
-            if (selectedFilterGiangVien && lhp.maGiangVien !== selectedFilterGiangVien) {
-                return false;
+            if (selectedFilterGiangVien) {
+                if (selectedFilterGiangVien === "__CHUA_CO_GIANG_VIEN__") {
+                    // Lọc các lớp chưa có giảng viên (giangVien là rỗng hoặc null)
+                    if (lhp.giangVien && lhp.giangVien.trim() !== "") {
+                        return false;
+                    }
+                } else {
+                    // Lọc theo giảng viên cụ thể
+                    if ((lhp.giangVien || "") !== selectedFilterGiangVien) {
+                        return false;
+                    }
+                }
             }
             // Filter by ngành
             if (selectedFilterNganh && lhp.maNganh !== selectedFilterNganh) {
@@ -908,20 +904,74 @@ export default function ThemLopHocPhanPage() {
         }
 
         // Kiểm tra tín chỉ giảng viên
-        if (field === "maGiangVien" && value) {
+        if (field === "maGiangVien") {
+            const maGiangVienMoi = (value as string) || "";
             const maMonHoc = createFormData.maMonHoc;
             const soTinChi = getSoTinChiMonHoc(maMonHoc);
 
-            const currentTinChi = giangVienTinChiMap.get(value as string)?.tongTinChi || 0;
-            const newTinChi = currentTinChi + soTinChi;
+            if (maGiangVienMoi && maMonHoc) {
+                // Lấy tín chỉ hiện tại của giảng viên từ map
+                const currentTinChi = giangVienTinChiMap.get(maGiangVienMoi) || 0;
+                const newTinChi = currentTinChi + soTinChi;
 
-            if (newTinChi > 12) {
-                const gv = giangViens.find(g => g.maGiangVien === value);
-                const tenGV = gv ? gv.hoTen : value;
-                setCreateGiangVienWarning(
-                    `Giảng viên "${tenGV}" hiện đang có ${currentTinChi} tín chỉ. ` +
-                    `Nếu thêm lớp này (${soTinChi} TC), tổng sẽ là ${newTinChi} TC, vượt quá giới hạn 12 tín chỉ!`
-                );
+                const gv = giangViens.find(g => g.maGiangVien === maGiangVienMoi);
+                const tenGV = gv ? gv.hoTen : maGiangVienMoi;
+                const maLopMoi = createFormData.maLopHocPhan || `[Lớp mới - ${maMonHoc}]`;
+
+                // Lấy danh sách lớp học phần hiện tại của giảng viên
+                const danhSachLopHienTai: Array<{ maLopHocPhan: string; soTinChi: number }> = [];
+                lopHocPhans.forEach((lhp) => {
+                    if (lhp.giangVien === maGiangVienMoi) {
+                        danhSachLopHienTai.push({
+                            maLopHocPhan: lhp.maLopHocPhan,
+                            soTinChi: lhp.soTinChi,
+                        });
+                    }
+                });
+
+                if (newTinChi > 12) {
+                    // Cảnh báo vượt quá giới hạn
+                    const danhSachLopText = danhSachLopHienTai.length > 0
+                        ? `\n\nGiảng viên này hiện đang phụ trách ${danhSachLopHienTai.length} lớp học phần:\n` +
+                          danhSachLopHienTai.map((lop) => 
+                              `  • ${lop.maLopHocPhan}: ${lop.soTinChi} tín chỉ`
+                          ).join('\n') +
+                          `\n  • ${maLopMoi} (lớp mới): ${soTinChi} tín chỉ`
+                        : `\n\nLớp học phần mới: ${maLopMoi} (${soTinChi} tín chỉ)`;
+                    
+                    setCreateGiangVienWarning(
+                        `CẢNH BÁO: Vượt quá giới hạn tín chỉ giảng dạy!\n\n` +
+                        `Giảng viên "${tenGV}" (${maGiangVienMoi}) hiện đang có ${currentTinChi} tín chỉ từ các lớp học phần khác. ` +
+                        `Nếu tạo lớp học phần mới "${maLopMoi}" (${soTinChi} tín chỉ) và gán cho giảng viên này, ` +
+                        `tổng số tín chỉ sẽ là ${newTinChi} tín chỉ, vượt quá giới hạn tối đa 12 tín chỉ/học kỳ theo quy định.` +
+                        `${danhSachLopText}\n\n` +
+                        `Tổng: ${newTinChi} tín chỉ (vượt quá ${newTinChi - 12} tín chỉ so với giới hạn)\n\n` +
+                        `Vui lòng chọn giảng viên khác hoặc điều chỉnh phân công để không vượt quá 12 tín chỉ.`
+                    );
+                } else {
+                    // Hiển thị thông tin khi chưa vượt quá nhưng gần giới hạn
+                    const danhSachLopText = danhSachLopHienTai.length > 0
+                        ? `\n\nGiảng viên này hiện đang phụ trách ${danhSachLopHienTai.length} lớp học phần:\n` +
+                          danhSachLopHienTai.map((lop) => 
+                              `  • ${lop.maLopHocPhan}: ${lop.soTinChi} tín chỉ`
+                          ).join('\n')
+                        : '';
+                    
+                    if (newTinChi > 0) {
+                        const conLai = 12 - newTinChi;
+                        if (conLai < 3) {
+                            setCreateGiangVienWarning(
+                                `Lưu ý: Giảng viên "${tenGV}" (${maGiangVienMoi}) sẽ có tổng ${newTinChi} tín chỉ sau khi tạo lớp này. ` +
+                                `Còn lại ${conLai} tín chỉ trong giới hạn 12 tín chỉ/học kỳ.` +
+                                `${danhSachLopText}`
+                            );
+                        } else {
+                            setCreateGiangVienWarning(null);
+                        }
+                    } else {
+                        setCreateGiangVienWarning(null);
+                    }
+                }
             } else {
                 setCreateGiangVienWarning(null);
             }
@@ -1013,13 +1063,14 @@ export default function ThemLopHocPhanPage() {
             maNamHoc: namHocId,
             hocKy: parseInt(hocKyId),
             soTinChi,
-            maGiangVien,
+            giangVien: maGiangVien || "", // Chỉ là string maGiangVien
             soSinhVienThamGia,
         };
 
         // Nếu bật phân bổ lại, cập nhật số sinh viên các lớp khác
         if (phanBoLaiSinhVien && phanBoPreview && phanBoPreview.isValid) {
             setLopHocPhans(prev => {
+                // Cập nhật số sinh viên các lớp khác và thêm lớp mới
                 const updated = prev.map(lhp => {
                     const found = phanBoPreview.danhSachLop.find(p => p.maLopHocPhan === lhp.maLopHocPhan);
                     if (found) {
@@ -1031,6 +1082,16 @@ export default function ThemLopHocPhanPage() {
             });
         } else {
             setLopHocPhans(prev => [...prev, newLop]);
+        }
+
+        // Cập nhật map tín chỉ giảng viên
+        if (maGiangVien) {
+            setGiangVienTinChiMap((prevMap) => {
+                const newMap = new Map(prevMap);
+                const currentTinChi = newMap.get(maGiangVien) || 0;
+                newMap.set(maGiangVien, currentTinChi + soTinChi);
+                return newMap;
+            });
         }
 
         closeCreateLopModal();
@@ -1045,7 +1106,8 @@ export default function ThemLopHocPhanPage() {
             return false;
         }
 
-        if (createGiangVienWarning) {
+        // Chỉ chặn khi cảnh báo vượt quá 12 tín chỉ (chứa "CẢNH BÁO: Vượt quá giới hạn tín chỉ giảng dạy!")
+        if (createGiangVienWarning?.includes("CẢNH BÁO: Vượt quá giới hạn tín chỉ giảng dạy!")) {
             return false;
         }
 
@@ -1080,6 +1142,13 @@ export default function ThemLopHocPhanPage() {
             const json = await res.json();
             if (json.data) {
                 setGiangViens(json.data);
+                
+                // Khởi tạo map tín chỉ với tất cả giảng viên có tín chỉ = 0
+                const newMap = new Map<string, number>();
+                json.data.forEach((gv: GiangVien) => {
+                    newMap.set(gv.maGiangVien, 0);
+                });
+                setGiangVienTinChiMap(newMap);
             }
         } catch (err) {
             showAlert("error", "Lỗi", "Không thể tải danh sách giảng viên");
@@ -1118,6 +1187,21 @@ export default function ThemLopHocPhanPage() {
                     }
                 });
                 setOriginalSinhVienMap(sinhVienMap);
+
+                // Cập nhật map tín chỉ giảng viên từ mảng giangVien trong response
+                // Mảng này đã bao gồm tín chỉ từ các lớp học phần hiện có và các lớp học phần đề xuất
+                if (json.giangVien && Array.isArray(json.giangVien)) {
+                    const newTinChiMap = new Map<string, number>();
+                    // Khởi tạo map với tất cả giảng viên có tín chỉ = 0
+                    giangViens.forEach((gv) => {
+                        newTinChiMap.set(gv.maGiangVien, 0);
+                    });
+                    // Cập nhật từ mảng giangVien trong response
+                    json.giangVien.forEach((gvInfo: GiangVienTinChiInfo) => {
+                        newTinChiMap.set(gvInfo.maGiangVien, gvInfo.soTinChi);
+                    });
+                    setGiangVienTinChiMap(newTinChiMap);
+                }
             }
         } catch (err) {
             showAlert("error", "Lỗi", "Không thể tải kế hoạch tạo lớp học phần");
@@ -1181,7 +1265,7 @@ export default function ThemLopHocPhanPage() {
         setEditFormData({
             maLopHocPhan: lhp.maLopHocPhan,
             ghiChu: lhp.ghiChu,
-            maGiangVien: lhp.maGiangVien,
+            maGiangVien: lhp.giangVien || "",
             soSinhVienThamGia: lhp.soSinhVienThamGia,
         });
         setGiangVienTinChiWarning(null); // Reset warning khi mở modal
@@ -1193,23 +1277,94 @@ export default function ThemLopHocPhanPage() {
     const handleEditFormChange = (field: string, value: string | number) => {
         setEditFormData((prev) => ({ ...prev, [field]: value }));
 
-        // Kiểm tra tín chỉ khi thay đổi giảng viên
+        // Kiểm tra tín chỉ khi thay đổi giảng viên (chỉ tính toán tạm thời để hiển thị cảnh báo, không cập nhật map)
         if (field === "maGiangVien" && editingLopHocPhan) {
-            const result = checkGiangVienTinChi(
-                value as string,
-                editingLopHocPhan.soTinChi,
-                editingLopHocPhan.maGiangVien,
-                editingLopHocPhan.maLopHocPhan
-            );
+            const maGiangVienCu = editingLopHocPhan.giangVien || "";
+            const maGiangVienMoi = (value as string) || "";
+            const soTinChiLop = editingLopHocPhan.soTinChi;
 
-            if (result.isOverLimit) {
-                const gv = giangViens.find(g => g.maGiangVien === value);
-                const tenGV = gv ? gv.hoTen : value;
-                setGiangVienTinChiWarning(
-                    `Giảng viên "${tenGV}" hiện đang có ${result.currentTinChi} tín chỉ. ` +
-                    `Nếu thêm lớp này (${editingLopHocPhan.soTinChi} TC), tổng sẽ là ${result.newTinChi} TC, vượt quá giới hạn 12 tín chỉ!`
-                );
+            // Tính toán tạm thời dựa trên map hiện tại (KHÔNG cập nhật map)
+            if (maGiangVienMoi) {
+                // Lấy tín chỉ hiện tại của giảng viên mới từ map
+                const currentTinChiMoi = giangVienTinChiMap.get(maGiangVienMoi) || 0;
+                
+                // Tính toán tín chỉ sau khi gán lớp này (tạm thời)
+                // Cần trừ tín chỉ của lớp đang edit nếu lớp này đang được gán cho giảng viên khác
+                let tinChiLopDangEdit = 0;
+                if (maGiangVienCu && maGiangVienCu === maGiangVienMoi) {
+                    // Nếu giảng viên cũ và mới giống nhau, lớp này đã được tính trong map rồi
+                    tinChiLopDangEdit = 0;
+                } else if (maGiangVienCu) {
+                    // Nếu đổi từ giảng viên khác, cần cộng tín chỉ của lớp này vào giảng viên mới
+                    tinChiLopDangEdit = soTinChiLop;
+                } else {
+                    // Nếu lớp này chưa có giảng viên, cần cộng tín chỉ
+                    tinChiLopDangEdit = soTinChiLop;
+                }
+                
+                const newTinChi = currentTinChiMoi + tinChiLopDangEdit;
+
+                // Kiểm tra và hiển thị cảnh báo
+                const gv = giangViens.find(g => g.maGiangVien === maGiangVienMoi);
+                const tenGV = gv ? gv.hoTen : maGiangVienMoi;
+
+                // Lấy danh sách lớp học phần hiện tại của giảng viên mới (trừ lớp đang edit)
+                const danhSachLopHienTai: Array<{ maLopHocPhan: string; soTinChi: number }> = [];
+                lopHocPhans.forEach((lhp) => {
+                    if (lhp.maLopHocPhan !== editingLopHocPhan.maLopHocPhan && 
+                        lhp.giangVien === maGiangVienMoi) {
+                        danhSachLopHienTai.push({
+                            maLopHocPhan: lhp.maLopHocPhan,
+                            soTinChi: lhp.soTinChi,
+                        });
+                    }
+                });
+
+                if (newTinChi > 12) {
+                    // Cảnh báo vượt quá giới hạn
+                    const danhSachLopText = danhSachLopHienTai.length > 0
+                        ? `\n\nGiảng viên này hiện đang phụ trách ${danhSachLopHienTai.length} lớp học phần:\n` +
+                          danhSachLopHienTai.map((lop) => 
+                              `  • ${lop.maLopHocPhan}: ${lop.soTinChi} tín chỉ`
+                          ).join('\n') +
+                          `\n  • ${editingLopHocPhan.maLopHocPhan} (lớp đang chỉnh sửa): ${soTinChiLop} tín chỉ`
+                        : `\n\nLớp học phần đang chỉnh sửa: ${editingLopHocPhan.maLopHocPhan} (${soTinChiLop} tín chỉ)`;
+                    
+                    setGiangVienTinChiWarning(
+                        `CẢNH BÁO: Vượt quá giới hạn tín chỉ giảng dạy!\n\n` +
+                        `Giảng viên "${tenGV}" (${maGiangVienMoi}) hiện đang có ${currentTinChiMoi} tín chỉ từ các lớp học phần khác. ` +
+                        `Nếu gán lớp học phần "${editingLopHocPhan.maLopHocPhan}" (${soTinChiLop} tín chỉ) cho giảng viên này, ` +
+                        `tổng số tín chỉ sẽ là ${newTinChi} tín chỉ, vượt quá giới hạn tối đa 12 tín chỉ/học kỳ theo quy định.` +
+                        `${danhSachLopText}\n\n` +
+                        `Tổng: ${newTinChi} tín chỉ (vượt quá ${newTinChi - 12} tín chỉ so với giới hạn)\n\n` +
+                        `Vui lòng chọn giảng viên khác hoặc điều chỉnh phân công để không vượt quá 12 tín chỉ.`
+                    );
+                } else {
+                    // Hiển thị thông tin khi chưa vượt quá nhưng gần giới hạn
+                    const danhSachLopText = danhSachLopHienTai.length > 0
+                        ? `\n\nGiảng viên này hiện đang phụ trách ${danhSachLopHienTai.length} lớp học phần:\n` +
+                          danhSachLopHienTai.map((lop) => 
+                              `  • ${lop.maLopHocPhan}: ${lop.soTinChi} tín chỉ`
+                          ).join('\n')
+                        : '';
+                    
+                    if (newTinChi > 0) {
+                        const conLai = 12 - newTinChi;
+                        if (conLai < 3) {
+                            setGiangVienTinChiWarning(
+                                `Lưu ý: Giảng viên "${tenGV}" (${maGiangVienMoi}) sẽ có tổng ${newTinChi} tín chỉ sau khi gán lớp này. ` +
+                                `Còn lại ${conLai} tín chỉ trong giới hạn 12 tín chỉ/học kỳ.` +
+                                `${danhSachLopText}`
+                            );
+                        } else {
+                            setGiangVienTinChiWarning(null);
+                        }
+                    } else {
+                        setGiangVienTinChiWarning(null);
+                    }
+                }
             } else {
+                // Nếu xóa giảng viên (để trống)
                 setGiangVienTinChiWarning(null);
             }
         }
@@ -1266,19 +1421,44 @@ export default function ThemLopHocPhanPage() {
     const handleSaveEdit = () => {
         if (!editingLopHocPhan) return;
 
-        setLopHocPhans((prev) =>
-            prev.map((lhp) =>
-                lhp.stt === editingLopHocPhan.stt
-                    ? {
+        const maGiangVienCu = editingLopHocPhan.giangVien || "";
+        const maGiangVienMoi = editFormData.maGiangVien || "";
+        const soTinChiLop = editingLopHocPhan.soTinChi;
+
+        // Cập nhật lớp học phần đang edit
+        setLopHocPhans((prev) => {
+            return prev.map((lhp) => {
+                if (lhp.stt === editingLopHocPhan.stt) {
+                    return {
                         ...lhp,
                         maLopHocPhan: editFormData.maLopHocPhan,
                         ghiChu: editFormData.ghiChu,
-                        maGiangVien: editFormData.maGiangVien,
+                        giangVien: maGiangVienMoi, // Chỉ là string maGiangVien
                         soSinhVienThamGia: editFormData.soSinhVienThamGia,
-                    }
-                    : lhp
-            )
-        );
+                    };
+                }
+                return lhp;
+            });
+        });
+
+        // Cập nhật map tín chỉ giảng viên
+        setGiangVienTinChiMap((prevMap) => {
+            const newMap = new Map(prevMap);
+
+            // Trừ tín chỉ của giảng viên cũ (nếu có)
+            if (maGiangVienCu) {
+                const currentTinChiCu = newMap.get(maGiangVienCu) || 0;
+                newMap.set(maGiangVienCu, Math.max(0, currentTinChiCu - soTinChiLop));
+            }
+
+            // Cộng tín chỉ cho giảng viên mới (nếu có)
+            if (maGiangVienMoi) {
+                const currentTinChiMoi = newMap.get(maGiangVienMoi) || 0;
+                newMap.set(maGiangVienMoi, currentTinChiMoi + soTinChiLop);
+            }
+
+            return newMap;
+        });
 
         setIsEditModalOpen(false);
         setEditingLopHocPhan(null);
@@ -1296,6 +1476,19 @@ export default function ThemLopHocPhanPage() {
 
     const handleDelete = () => {
         if (!deletingLopHocPhan) return;
+
+        // Trừ tín chỉ của giảng viên khi xóa lớp học phần
+        const maGiangVien = deletingLopHocPhan.giangVien || "";
+        const soTinChi = deletingLopHocPhan.soTinChi;
+
+        if (maGiangVien) {
+            setGiangVienTinChiMap((prevMap) => {
+                const newMap = new Map(prevMap);
+                const currentTinChi = newMap.get(maGiangVien) || 0;
+                newMap.set(maGiangVien, Math.max(0, currentTinChi - soTinChi));
+                return newMap;
+            });
+        }
 
         setLopHocPhans((prev) => prev.filter((lhp) => lhp.stt !== deletingLopHocPhan.stt));
         setIsDeleteModalOpen(false);
@@ -1320,7 +1513,7 @@ export default function ThemLopHocPhanPage() {
                     maMonHoc: lhp.maMonHoc,
                     maNamHoc: lhp.maNamHoc,
                     hocKy: lhp.hocKy,
-                    maGiangVien: lhp.maGiangVien,
+                    maGiangVien: lhp.giangVien || "",
                     soSinhVienSeThamGia: lhp.soSinhVienThamGia,
                 })),
             };
@@ -1622,7 +1815,7 @@ export default function ThemLopHocPhanPage() {
                                                     </Badge>
                                                 </TableCell>
                                                 <TableCell className="px-5 py-4 text-center text-gray-600 dark:text-gray-400">
-                                                    {lhp.maGiangVien}
+                                                    {lhp.giangVien || "-"}
                                                 </TableCell>
                                                 <TableCell className="px-5 py-4 text-center">
                                                     <Badge variant="solid" color="success">
@@ -1841,7 +2034,7 @@ export default function ThemLopHocPhanPage() {
                                             <p className="text-xs text-blue-700 dark:text-blue-300">
                                                 <FontAwesomeIcon icon={faInfoCircle} className="mr-1" />
                                                 Giảng viên này hiện đang có{" "}
-                                                <strong>{giangVienTinChiMap.get(editFormData.maGiangVien)?.tongTinChi || 0}</strong> tín chỉ
+                                                <strong>{giangVienTinChiMap.get(editFormData.maGiangVien) || 0}</strong> tín chỉ
                                                 trong học kỳ này
                                             </p>
                                         </div>
@@ -1849,15 +2042,27 @@ export default function ThemLopHocPhanPage() {
 
                                     {/* Cảnh báo vượt quá tín chỉ */}
                                     {giangVienTinChiWarning && (
-                                        <div className="mt-2 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+                                        <div className={`mt-2 p-3 rounded-lg border ${
+                                            giangVienTinChiWarning.includes("CẢNH BÁO: Vượt quá giới hạn tín chỉ giảng dạy!") 
+                                                ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
+                                                : "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"
+                                        }`}>
                                             <div className="flex items-start gap-2">
                                                 <FontAwesomeIcon
-                                                    icon={faTriangleExclamation}
-                                                    className="text-red-500 dark:text-red-400 mt-0.5"
+                                                    icon={giangVienTinChiWarning.includes("CẢNH BÁO: Vượt quá giới hạn tín chỉ giảng dạy!") ? faTriangleExclamation : faInfoCircle}
+                                                    className={`mt-0.5 ${
+                                                        giangVienTinChiWarning.includes("CẢNH BÁO: Vượt quá giới hạn tín chỉ giảng dạy!")
+                                                            ? "text-red-500 dark:text-red-400"
+                                                            : "text-blue-500 dark:text-blue-400"
+                                                    }`}
                                                 />
-                                                <p className="text-sm text-red-700 dark:text-red-300">
+                                                <div className={`text-sm whitespace-pre-line ${
+                                                    giangVienTinChiWarning.includes("CẢNH BÁO: Vượt quá giới hạn tín chỉ giảng dạy!")
+                                                        ? "text-red-700 dark:text-red-300"
+                                                        : "text-blue-700 dark:text-blue-300"
+                                                }`}>
                                                     {giangVienTinChiWarning}
-                                                </p>
+                                                </div>
                                             </div>
                                         </div>
                                     )}
@@ -1878,8 +2083,16 @@ export default function ThemLopHocPhanPage() {
                                 </Button>
                                 <Button
                                     onClick={handleSaveEdit}
-                                    disabled={!!giangVienTinChiWarning || sinhVienWarning?.type === "error"}
-                                    className={(giangVienTinChiWarning || sinhVienWarning?.type === "error") ? "opacity-50 cursor-not-allowed" : ""}
+                                    disabled={
+                                        (giangVienTinChiWarning?.includes("CẢNH BÁO: Vượt quá giới hạn tín chỉ giảng dạy!") || false) || 
+                                        sinhVienWarning?.type === "error"
+                                    }
+                                    className={
+                                        ((giangVienTinChiWarning?.includes("CẢNH BÁO: Vượt quá giới hạn tín chỉ giảng dạy!") || false) || 
+                                        sinhVienWarning?.type === "error") 
+                                            ? "opacity-50 cursor-not-allowed" 
+                                            : ""
+                                    }
                                 >
                                     Lưu thay đổi
                                 </Button>
@@ -2393,7 +2606,7 @@ export default function ThemLopHocPhanPage() {
                                         <p className="text-xs text-blue-700 dark:text-blue-300">
                                             <FontAwesomeIcon icon={faInfoCircle} className="mr-1" />
                                             Giảng viên này hiện đang có{" "}
-                                            <strong>{giangVienTinChiMap.get(createFormData.maGiangVien)?.tongTinChi || 0}</strong> tín chỉ
+                                            <strong>{giangVienTinChiMap.get(createFormData.maGiangVien) || 0}</strong> tín chỉ
                                             trong học kỳ này
                                         </p>
                                     </div>
@@ -2401,15 +2614,27 @@ export default function ThemLopHocPhanPage() {
 
                                 {/* Cảnh báo vượt quá tín chỉ */}
                                 {createGiangVienWarning && (
-                                    <div className="mt-2 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+                                    <div className={`mt-2 p-3 rounded-lg border ${
+                                        createGiangVienWarning.includes("CẢNH BÁO: Vượt quá giới hạn tín chỉ giảng dạy!") 
+                                            ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
+                                            : "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"
+                                    }`}>
                                         <div className="flex items-start gap-2">
                                             <FontAwesomeIcon
-                                                icon={faTriangleExclamation}
-                                                className="text-red-500 dark:text-red-400 mt-0.5"
+                                                icon={createGiangVienWarning.includes("CẢNH BÁO: Vượt quá giới hạn tín chỉ giảng dạy!") ? faTriangleExclamation : faInfoCircle}
+                                                className={`mt-0.5 ${
+                                                    createGiangVienWarning.includes("CẢNH BÁO: Vượt quá giới hạn tín chỉ giảng dạy!")
+                                                        ? "text-red-500 dark:text-red-400"
+                                                        : "text-blue-500 dark:text-blue-400"
+                                                }`}
                                             />
-                                            <p className="text-sm text-red-700 dark:text-red-300">
+                                            <div className={`text-sm whitespace-pre-line ${
+                                                createGiangVienWarning.includes("CẢNH BÁO: Vượt quá giới hạn tín chỉ giảng dạy!")
+                                                    ? "text-red-700 dark:text-red-300"
+                                                    : "text-blue-700 dark:text-blue-300"
+                                            }`}>
                                                 {createGiangVienWarning}
-                                            </p>
+                                            </div>
                                         </div>
                                     </div>
                                 )}

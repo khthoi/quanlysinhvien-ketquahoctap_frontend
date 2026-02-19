@@ -64,7 +64,7 @@ interface NienKhoaInfo {
 enum KetQuaXetTotNghiepEnum {
     DAT = 'Đạt',
     KHONG_DAT = 'Không đạt',
-    KHONG_DU_DIEU_KIEN = 'Không đủ ĐK',
+    KHONG_DU_DIEU_KIEN = 'Không đủ ĐK xét',
 }
 
 // Enum xếp loại tốt nghiệp
@@ -1027,7 +1027,7 @@ export default function XetTotNghiepPage() {
         const ketQuaOptions: FilterOption[] = [
             { value: KetQuaXetTotNghiepEnum.DAT, label: 'Đạt' },
             { value: KetQuaXetTotNghiepEnum.KHONG_DAT, label: 'Không đạt' },
-            { value: KetQuaXetTotNghiepEnum.KHONG_DU_DIEU_KIEN, label: 'Không đủ ĐK' },
+            { value: KetQuaXetTotNghiepEnum.KHONG_DU_DIEU_KIEN, label: 'Không đủ ĐK xét' },
         ];
 
         const lopOptions: FilterOption[] = Array.from(lopSet).sort().map(lop => ({
