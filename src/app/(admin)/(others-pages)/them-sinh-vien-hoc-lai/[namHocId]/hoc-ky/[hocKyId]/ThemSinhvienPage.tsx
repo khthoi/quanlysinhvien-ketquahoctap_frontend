@@ -1347,7 +1347,10 @@ export default function ThemSinhvienPage() {
                                     </TableRow>
                                 ) : (
                                     paginatedItems.map((sv) => (
-                                        <TableRow key={sv.sinhVienId} className="grid grid-cols-[8%_14%_16%_7%_7%_7%_7%_7%_16%_11%] items-center hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors">
+                                        <TableRow
+                                            key={`${sv.sinhVienId}-${sv.maLopHocPhanTruot}`}
+                                            className="grid grid-cols-[8%_14%_16%_7%_7%_7%_7%_7%_16%_11%] items-center hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors"
+                                        >
                                             <TableCell className="px-2 py-2 font-mono text-gray-800 dark:text-white/90 text-left"><span className="block truncate" title={sv.maSinhVien}>{sv.maSinhVien}</span></TableCell>
                                             <TableCell className="px-2 py-2 text-gray-800 dark:text-white/90 text-left"><span className="block truncate" title={sv.hoTen}>{sv.hoTen}</span></TableCell>
                                             <TableCell className="px-2 py-2 text-gray-800 dark:text-white/90 text-left"><span className="block truncate" title={sv.maLopHocPhanTruot}>{sv.maLopHocPhanTruot}</span></TableCell>
@@ -1502,7 +1505,10 @@ export default function ThemSinhvienPage() {
                                             </TableRow>
                                         ) : (
                                             paginatedDaHocLai.map((sv) => (
-                                                <TableRow key={sv.sinhVienId} className="grid grid-cols-[10%_18%_22%_18%_8%_10%_14%] items-center hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors">
+                                                <TableRow
+                                                    key={`${sv.sinhVienId}-${sv.maMonHocTruot}-${sv.maLopHocPhanTruot}`}
+                                                    className="grid grid-cols-[10%_18%_22%_18%_8%_10%_14%] items-center hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors"
+                                                >
                                                     <TableCell className="px-2 py-2 font-mono text-gray-800 dark:text-white/90"><span className="block truncate" title={sv.maSinhVien}>{sv.maSinhVien}</span></TableCell>
                                                     <TableCell className="px-2 py-2 text-gray-800 dark:text-white/90"><span className="block truncate" title={sv.hoTen}>{sv.hoTen}</span></TableCell>
                                                     <TableCell className="px-2 py-2 text-gray-800 dark:text-white/90"><span className="block truncate" title={sv.tenMonHocTruot}>{sv.tenMonHocTruot}</span></TableCell>
@@ -1643,7 +1649,10 @@ export default function ThemSinhvienPage() {
                                                     const lhpId = selectedLHPMap[sv.sinhVienId];
                                                     const lhp = sv.cacLopHocPhanCoTheDangKy.find((l) => l.lopHocPhanId === lhpId);
                                                     return (
-                                                        <TableRow key={sv.sinhVienId} className="grid grid-cols-[15%_25%_30%_30%] items-center">
+                                                        <TableRow
+                                                            key={`${sv.sinhVienId}-${sv.maLopHocPhanTruot}`}
+                                                            className="grid grid-cols-[15%_25%_30%_30%] items-center"
+                                                        >
                                                             <TableCell className="px-2 py-2 font-mono text-gray-800 dark:text-white/90">{sv.maSinhVien}</TableCell>
                                                             <TableCell className="px-2 py-2 text-gray-800 dark:text-white/90"><span className="block truncate" title={sv.hoTen}>{sv.hoTen}</span></TableCell>
                                                             <TableCell className="px-2 py-2 font-mono text-gray-800 dark:text-white/90">

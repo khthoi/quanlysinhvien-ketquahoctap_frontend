@@ -144,6 +144,10 @@ interface DuDoanXetTotNghiepResponse {
     thongKeTongQuan: ThongKeTongQuan;
     thongKeTheoNganh: ThongKeTheoNganh[];
     danhSachSinhVien: SinhVienXetTotNghiep[];
+    page?: number;
+    limit?: number;
+    totalItems?: number;
+    totalPages?: number;
 }
 
 interface DanhSachTotNghiepResponse {
@@ -155,6 +159,10 @@ interface DanhSachTotNghiepResponse {
     tongSinhVienTotNghiep: number;
     thongKeTheoNganh: ThongKeTheoNganh[];
     danhSachSinhVien: SinhVienTotNghiep[];
+    page?: number;
+    limit?: number;
+    totalItems?: number;
+    totalPages?: number;
 }
 
 interface XacNhanXetTotNghiepResponse {
@@ -812,6 +820,10 @@ export default function XetTotNghiepPage() {
     const [filterKetQua, setFilterKetQua] = useState(""); // For du-doan tab only
     const [isFiltersExpanded, setIsFiltersExpanded] = useState(false);
 
+    // Filter options from API
+    const [nganhOptions, setNganhOptions] = useState<FilterOption[]>([]);
+    const [lopOptions, setLopOptions] = useState<FilterOption[]>([]);
+
     // Modal states
     const [detailItem, setDetailItem] = useState<SinhVienXetTotNghiep | SinhVienTotNghiep | null>(null);
     const [detailType, setDetailType] = useState<'du-doan' | 'da-tot-nghiep'>('du-doan');
@@ -854,17 +866,30 @@ export default function XetTotNghiepPage() {
         setLoadingDuDoan(true);
         try {
             const accessToken = getCookie("access_token");
+            const requestBody: any = {
+                nienKhoaId,
+                page: currentPage,
+                limit: PAGE_SIZE,
+            };
+            
+            // Thêm các filter nếu có
+            if (filterKetQua) requestBody.ketQua = filterKetQua;
+            if (filterXepLoai) requestBody.xepLoai = filterXepLoai;
+            if (filterLop) requestBody.maLop = filterLop;
+            if (filterNganh) requestBody.maNganh = filterNganh;
+
             const res = await fetch(`${ENV.BACKEND_URL}/sinh-vien/xet-tot-nghiep/du-doan`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${accessToken}`,
                 },
-                body: JSON.stringify({ nienKhoaId }),
+                body: JSON.stringify(requestBody),
             });
             const data = await res.json();
             if (res.ok) {
                 setDuDoanData(data);
+                setFetchError(null); // Clear error when fetch succeeds
             } else {
                 setFetchError(data.message ?? "Không tải được dữ liệu dự đoán");
             }
@@ -873,7 +898,7 @@ export default function XetTotNghiepPage() {
         } finally {
             setLoadingDuDoan(false);
         }
-    }, [nienKhoaId]);
+    }, [nienKhoaId, currentPage, filterKetQua, filterXepLoai, filterLop, filterNganh]);
 
     // Fetch danh sách đã tốt nghiệp
     const fetchDanhSachTotNghiep = useCallback(async () => {
@@ -881,24 +906,81 @@ export default function XetTotNghiepPage() {
         setLoadingDanhSach(true);
         try {
             const accessToken = getCookie("access_token");
+            const requestBody: any = {
+                nienKhoaId,
+                page: currentPage,
+                limit: PAGE_SIZE,
+            };
+            
+            // Thêm các filter nếu có
+            if (filterXepLoai) requestBody.xepLoai = filterXepLoai;
+            if (filterLop) requestBody.maLop = filterLop;
+            if (filterNganh) requestBody.maNganh = filterNganh;
+
             const res = await fetch(`${ENV.BACKEND_URL}/sinh-vien/xet-tot-nghiep/danh-sach`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${accessToken}`,
                 },
-                body: JSON.stringify({ nienKhoaId }),
+                body: JSON.stringify(requestBody),
             });
             const data = await res.json();
             if (res.ok) {
                 setDanhSachTotNghiep(data);
+                setFetchError(null); // Clear error when fetch succeeds
             } else {
-                // Silent error for this API
+                setFetchError(data.message ?? "Không tải được danh sách tốt nghiệp");
             }
         } catch {
-            // Silent error
+            setFetchError("Lỗi kết nối khi tải danh sách tốt nghiệp");
         } finally {
             setLoadingDanhSach(false);
+        }
+    }, [nienKhoaId, currentPage, filterXepLoai, filterLop, filterNganh]);
+
+    // Fetch danh sách ngành cho filter
+    const fetchNganhOptions = useCallback(async () => {
+        try {
+            const accessToken = getCookie("access_token");
+            const res = await fetch(`${ENV.BACKEND_URL}/danh-muc/nganh?page=1&limit=99999`, {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+            });
+            const json = await res.json();
+            if (json.data && Array.isArray(json.data)) {
+                const options: FilterOption[] = json.data.map((nganh: any) => ({
+                    value: nganh.maNganh,
+                    label: `${nganh.tenNganh} (${nganh.maNganh})`,
+                })).sort((a: FilterOption, b: FilterOption) => a.label.localeCompare(b.label));
+                setNganhOptions(options);
+            }
+        } catch (err) {
+            console.error("Không thể tải danh sách ngành:", err);
+        }
+    }, []);
+
+    // Fetch danh sách lớp cho filter
+    const fetchLopOptions = useCallback(async () => {
+        if (!nienKhoaId) return;
+        try {
+            const accessToken = getCookie("access_token");
+            const res = await fetch(`${ENV.BACKEND_URL}/danh-muc/lop?page=1&limit=99999&nienKhoaId=${nienKhoaId}`, {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+            });
+            const json = await res.json();
+            if (json.data && Array.isArray(json.data)) {
+                const options: FilterOption[] = json.data.map((lop: any) => ({
+                    value: lop.maLop,
+                    label: lop.maLop,
+                })).sort((a: FilterOption, b: FilterOption) => a.label.localeCompare(b.label));
+                setLopOptions(options);
+            }
+        } catch (err) {
+            console.error("Không thể tải danh sách lớp:", err);
         }
     }, [nienKhoaId]);
 
@@ -968,19 +1050,47 @@ export default function XetTotNghiepPage() {
     useEffect(() => {
         setFetchError(null);
         fetchNienKhoaInfo();
-        fetchDuDoan();
-        fetchDanhSachTotNghiep();
-    }, [fetchNienKhoaInfo, fetchDuDoan, fetchDanhSachTotNghiep]);
+        fetchNganhOptions();
+        fetchLopOptions();
+    }, [fetchNienKhoaInfo, fetchNganhOptions, fetchLopOptions]);
+
+    // Fetch data when filters or page change
+    useEffect(() => {
+        if (activeTab === "du-doan") {
+            fetchDuDoan();
+        } else {
+            fetchDanhSachTotNghiep();
+        }
+    }, [activeTab, fetchDuDoan, fetchDanhSachTotNghiep]);
 
     const handleRefresh = async () => {
         setFetchError(null);
-        await Promise.all([fetchNienKhoaInfo(), fetchDuDoan(), fetchDanhSachTotNghiep()]);
+        if (activeTab === "du-doan") {
+            await fetchDuDoan();
+        } else {
+            await fetchDanhSachTotNghiep();
+        }
     };
 
-    // Get current data based on tab
+    // Get current data based on tab (đã được filter và phân trang từ API)
     const currentData = activeTab === "du-doan"
         ? duDoanData?.danhSachSinhVien ?? []
         : danhSachTotNghiep?.danhSachSinhVien ?? [];
+    
+    // Get pagination info from API response
+    const currentPagination = activeTab === "du-doan"
+        ? {
+            page: duDoanData?.page ?? 1,
+            limit: duDoanData?.limit ?? PAGE_SIZE,
+            totalItems: duDoanData?.totalItems ?? 0,
+            totalPages: duDoanData?.totalPages ?? 1,
+        }
+        : {
+            page: danhSachTotNghiep?.page ?? 1,
+            limit: danhSachTotNghiep?.limit ?? PAGE_SIZE,
+            totalItems: danhSachTotNghiep?.totalItems ?? 0,
+            totalPages: danhSachTotNghiep?.totalPages ?? 1,
+        };
 
     // Get current thongKeTheoNganh based on tab
     const currentThongKeTheoNganh = activeTab === "du-doan"
@@ -1009,16 +1119,8 @@ export default function XetTotNghiepPage() {
         return null;
     }, [activeTab, duDoanData, danhSachTotNghiep]);
 
-    // Extract unique values for filters
+    // Filter options (sử dụng dữ liệu từ API)
     const filterOptions = useMemo(() => {
-        const lopSet = new Set<string>();
-        const nganhSet = new Set<string>();
-        
-        currentData.forEach(sv => {
-            if (sv.maLop) lopSet.add(sv.maLop);
-            if (sv.maNganh) nganhSet.add(sv.maNganh);
-        });
-
         const xepLoaiOptions: FilterOption[] = [
             { value: XepLoaiTotNghiepEnum.XUAT_SAC, label: 'Xuất sắc' },
             { value: XepLoaiTotNghiepEnum.GIOI, label: 'Giỏi' },
@@ -1033,18 +1135,13 @@ export default function XetTotNghiepPage() {
             { value: KetQuaXetTotNghiepEnum.KHONG_DU_DIEU_KIEN, label: 'Không đủ ĐK' },
         ];
 
-        const lopOptions: FilterOption[] = Array.from(lopSet).sort().map(lop => ({
-            value: lop,
-            label: lop
-        }));
-
-        const nganhOptions: FilterOption[] = currentThongKeTheoNganh.map(nganh => ({
-            value: nganh.maNganh,
-            label: `${nganh.tenNganh} (${nganh.maNganh})`
-        }));
-
-        return { xepLoaiOptions, ketQuaOptions, lopOptions, nganhOptions };
-    }, [currentData, currentThongKeTheoNganh]);
+        return { 
+            xepLoaiOptions, 
+            ketQuaOptions, 
+            lopOptions, 
+            nganhOptions 
+        };
+    }, [lopOptions, nganhOptions]);
 
     // Clear filters when switching tabs
     useEffect(() => {
@@ -1081,11 +1178,11 @@ export default function XetTotNghiepPage() {
         setFilterKetQua("");
     };
 
-    // Filter and paginate
+    // Filter data by search keyword (client-side only, vì backend không hỗ trợ search)
     const filteredData = useMemo(() => {
         let result = [...currentData];
 
-        // Apply search
+        // Apply search (client-side filtering)
         if (searchKeyword.trim()) {
             const q = searchKeyword.trim().toLowerCase();
             result = result.filter(
@@ -1096,40 +1193,13 @@ export default function XetTotNghiepPage() {
             );
         }
 
-        // Apply filters
-        if (filterXepLoai) {
-            result = result.filter(sv => sv.xepLoaiTotNghiep === filterXepLoai);
-        }
-
-        if (filterLop) {
-            result = result.filter(sv => sv.maLop === filterLop);
-        }
-
-        if (filterNganh) {
-            result = result.filter(sv => sv.maNganh === filterNganh);
-        }
-
-        if (filterKetQua && activeTab === "du-doan") {
-            result = result.filter(sv => (sv as SinhVienXetTotNghiep).ketQuaXet === filterKetQua);
-        }
-
         return result;
-    }, [currentData, searchKeyword, filterXepLoai, filterLop, filterNganh, filterKetQua, activeTab]);
+    }, [currentData, searchKeyword]);
 
-    const totalFiltered = filteredData.length;
-    const totalPages = Math.max(1, Math.ceil(totalFiltered / PAGE_SIZE));
-    const paginatedData = useMemo(() => {
-        const start = (currentPage - 1) * PAGE_SIZE;
-        return filteredData.slice(start, start + PAGE_SIZE);
-    }, [filteredData, currentPage]);
-
+    // Reset page when filters change
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchKeyword, filterXepLoai, filterLop, filterNganh, filterKetQua]);
-
-    useEffect(() => {
-        if (currentPage > totalPages && totalPages >= 1) setCurrentPage(totalPages);
-    }, [totalPages, currentPage]);
+    }, [filterXepLoai, filterLop, filterNganh, filterKetQua, activeTab]);
 
     const thongKe = duDoanData?.thongKeTongQuan;
     const isLoading = loadingNienKhoa || loadingDuDoan;
@@ -1230,9 +1300,18 @@ export default function XetTotNghiepPage() {
                 {/* Error Banner */}
                 {fetchError && (
                     <div className="rounded-xl border border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800/50 p-4">
-                        <div className="flex items-center gap-3">
-                            <FontAwesomeIcon icon={faCircleExclamation} className="text-red-500" />
-                            <p className="text-red-800 dark:text-red-300">{fetchError}</p>
+                        <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                                <FontAwesomeIcon icon={faCircleExclamation} className="text-red-500" />
+                                <p className="text-red-800 dark:text-red-300">{fetchError}</p>
+                            </div>
+                            <button
+                                onClick={() => setFetchError(null)}
+                                className="flex-shrink-0 p-1 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                                aria-label="Đóng thông báo lỗi"
+                            >
+                                <FontAwesomeIcon icon={faTimes} className="text-red-600 dark:text-red-400 text-sm" />
+                            </button>
                         </div>
                     </div>
                 )}
@@ -1251,7 +1330,7 @@ export default function XetTotNghiepPage() {
                             <FontAwesomeIcon icon={faChartBar} />
                             Dự đoán xét tốt nghiệp
                             <Badge variant="light" color="info" className="ml-1">
-                                {duDoanData?.danhSachSinhVien?.length ?? 0}
+                                {duDoanData?.thongKeTongQuan?.tongSinhVienDuocXet ?? 0}
                             </Badge>
                         </button>
                         <button
@@ -1425,7 +1504,15 @@ export default function XetTotNghiepPage() {
                                     <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800/50">
                                         <FontAwesomeIcon icon={faMagnifyingGlass} className="text-xs text-indigo-600 dark:text-indigo-400" />
                                         <span className="text-indigo-700 dark:text-indigo-300">
-                                            Tìm thấy <strong className="font-semibold">{filteredData.length}</strong> kết quả
+                                            {searchKeyword ? (
+                                                <>
+                                                    Tìm thấy <strong className="font-semibold">{filteredData.length}</strong> kết quả (từ {currentPagination.totalItems} bản ghi)
+                                                </>
+                                            ) : (
+                                                <>
+                                                    Tổng cộng <strong className="font-semibold">{currentPagination.totalItems}</strong> kết quả
+                                                </>
+                                            )}
                                         </span>
                                     </div>
                                     {searchKeyword && (
@@ -1452,7 +1539,7 @@ export default function XetTotNghiepPage() {
                                 <FontAwesomeIcon icon={faSpinner} className="animate-spin text-4xl text-indigo-500 mb-4" />
                                 <p className="text-sm">Đang tải dữ liệu...</p>
                             </div>
-                        ) : paginatedData.length === 0 ? (
+                        ) : filteredData.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-20 text-gray-500 dark:text-gray-400">
                                 <FontAwesomeIcon icon={faUserGraduate} className="text-5xl mb-4 opacity-50" />
                                 <p className="text-lg font-medium">Không có dữ liệu</p>
@@ -1481,7 +1568,7 @@ export default function XetTotNghiepPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody className="divide-y divide-gray-100 dark:divide-gray-700/80">
-                                    {paginatedData.map((sv, idx) => {
+                                    {filteredData.map((sv, idx) => {
                                         const isDuDoan = activeTab === "du-doan";
                                         const duDoanSv = sv as SinhVienXetTotNghiep;
                                         return (
@@ -1493,7 +1580,7 @@ export default function XetTotNghiepPage() {
                                                     } hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors`}
                                             >
                                                 <TableCell className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-center">
-                                                    {(currentPage - 1) * PAGE_SIZE + idx + 1}
+                                                    {(currentPagination.page - 1) * currentPagination.limit + idx + 1}
                                                 </TableCell>
                                                 <TableCell className="px-4 py-3 font-mono text-sm text-gray-800 dark:text-gray-200">
                                                     {sv.maSinhVien}
@@ -1571,11 +1658,11 @@ export default function XetTotNghiepPage() {
                     </div>
 
                     {/* Pagination */}
-                    {totalFiltered > PAGE_SIZE && (
+                    {currentPagination.totalPages > 1 && (
                         <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
                             <Pagination
-                                currentPage={currentPage}
-                                totalPages={totalPages}
+                                currentPage={currentPagination.page}
+                                totalPages={currentPagination.totalPages}
                                 onPageChange={setCurrentPage}
                             />
                         </div>
