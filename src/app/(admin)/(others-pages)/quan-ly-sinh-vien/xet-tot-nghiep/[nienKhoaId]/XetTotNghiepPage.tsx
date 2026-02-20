@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/table";
 import { Modal } from "@/components/ui/modal";
 import Button from "@/components/ui/button/Button";
-import Input from "@/components/form/input/InputField";
 import SearchableSelect from "@/components/form/SelectCustom";
 import Badge from "@/components/ui/badge/Badge";
 import Pagination from "@/components/tables/Pagination";
@@ -41,6 +40,8 @@ import {
     faChartPie,
     faFileInvoice,
     faCircleInfo,
+    faChevronDown,
+    faChevronUp,
 } from "@fortawesome/free-solid-svg-icons";
 
 const getCookie = (name: string): string | null => {
@@ -64,7 +65,7 @@ interface NienKhoaInfo {
 enum KetQuaXetTotNghiepEnum {
     DAT = 'Đạt',
     KHONG_DAT = 'Không đạt',
-    KHONG_DU_DIEU_KIEN = 'Không đủ ĐK xét',
+    KHONG_DU_DIEU_KIEN = 'Không đủ ĐK',
 }
 
 // Enum xếp loại tốt nghiệp
@@ -74,7 +75,6 @@ enum XepLoaiTotNghiepEnum {
     KHA = 'Khá',
     TRUNG_BINH = 'Trung bình',
     KHONG_DAT = 'Không đạt',
-    KHONG_XET = 'Không xét',
 }
 
 interface SinhVienXetTotNghiep {
@@ -653,6 +653,7 @@ const StatisticsModal: React.FC<StatisticsModalProps> = ({
                                                 <th className="text-center py-3 px-2 font-medium text-gray-600 dark:text-gray-400">Tổng</th>
                                                 <th className="text-center py-3 px-2 font-medium text-green-600 dark:text-green-400">Đạt</th>
                                                 <th className="text-center py-3 px-2 font-medium text-red-600 dark:text-red-400">K.Đạt</th>
+                                                <th className="text-center py-3 px-2 font-medium text-amber-600 dark:text-amber-400">K.Đủ ĐK</th>
                                                 <th className="text-center py-3 px-2 font-medium text-purple-600 dark:text-purple-400">X.Sắc</th>
                                                 <th className="text-center py-3 px-2 font-medium text-blue-600 dark:text-blue-400">Giỏi</th>
                                                 <th className="text-center py-3 px-2 font-medium text-teal-600 dark:text-teal-400">Khá</th>
@@ -669,6 +670,7 @@ const StatisticsModal: React.FC<StatisticsModalProps> = ({
                                                     <td className="text-center py-3 px-2 font-bold text-gray-800 dark:text-white">{nganh.tongSinhVien}</td>
                                                     <td className="text-center py-3 px-2 text-green-600 dark:text-green-400 font-medium">{nganh.soSinhVienDat}</td>
                                                     <td className="text-center py-3 px-2 text-red-600 dark:text-red-400">{nganh.soSinhVienKhongDat}</td>
+                                                    <td className="text-center py-3 px-2 text-amber-600 dark:text-amber-400">{nganh.soSinhVienKhongDuDieuKien}</td>
                                                     <td className="text-center py-3 px-2 text-purple-600 dark:text-purple-400">{nganh.soXuatSac}</td>
                                                     <td className="text-center py-3 px-2 text-blue-600 dark:text-blue-400">{nganh.soGioi}</td>
                                                     <td className="text-center py-3 px-2 text-teal-600 dark:text-teal-400">{nganh.soKha}</td>
@@ -808,6 +810,7 @@ export default function XetTotNghiepPage() {
     const [filterLop, setFilterLop] = useState("");
     const [filterNganh, setFilterNganh] = useState("");
     const [filterKetQua, setFilterKetQua] = useState(""); // For du-doan tab only
+    const [isFiltersExpanded, setIsFiltersExpanded] = useState(false);
 
     // Modal states
     const [detailItem, setDetailItem] = useState<SinhVienXetTotNghiep | SinhVienTotNghiep | null>(null);
@@ -1027,7 +1030,7 @@ export default function XetTotNghiepPage() {
         const ketQuaOptions: FilterOption[] = [
             { value: KetQuaXetTotNghiepEnum.DAT, label: 'Đạt' },
             { value: KetQuaXetTotNghiepEnum.KHONG_DAT, label: 'Không đạt' },
-            { value: KetQuaXetTotNghiepEnum.KHONG_DU_DIEU_KIEN, label: 'Không đủ ĐK xét' },
+            { value: KetQuaXetTotNghiepEnum.KHONG_DU_DIEU_KIEN, label: 'Không đủ ĐK' },
         ];
 
         const lopOptions: FilterOption[] = Array.from(lopSet).sort().map(lop => ({
@@ -1051,6 +1054,7 @@ export default function XetTotNghiepPage() {
         setFilterKetQua("");
         setSearchKeyword("");
         setCurrentPage(1);
+        setIsFiltersExpanded(false);
     }, [activeTab]);
 
     // Count active filters
@@ -1062,6 +1066,13 @@ export default function XetTotNghiepPage() {
         if (filterKetQua && activeTab === "du-doan") count++;
         return count;
     }, [filterXepLoai, filterLop, filterNganh, filterKetQua, activeTab]);
+
+    // Auto-expand filters when filters are active
+    useEffect(() => {
+        if (activeFiltersCount > 0) {
+            setIsFiltersExpanded(true);
+        }
+    }, [activeFiltersCount]);
 
     const clearAllFilters = () => {
         setFilterXepLoai("");
@@ -1259,98 +1270,179 @@ export default function XetTotNghiepPage() {
                     </div>
 
                     {/* Search Bar & Filters */}
-                    <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                        <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+                    <div className="border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30">
+                        <div className="p-4">
                             {/* Search Input */}
-                            <div className="relative flex-1 max-w-md">
-                                <FontAwesomeIcon
-                                    icon={faMagnifyingGlass}
-                                    className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-                                />
-                                <Input
-                                    value={searchKeyword}
-                                    onChange={(e) => setSearchKeyword(e.target.value)}
-                                    placeholder="Tìm kiếm theo mã SV, họ tên, lớp..."
-                                    className="pl-10 w-full"
-                                />
+                            <div className="relative flex-1 max-w-md mb-4">
+                                <div className="relative">
+                                    <button
+                                        className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-auto"
+                                    >
+                                        <FontAwesomeIcon
+                                            icon={faMagnifyingGlass}
+                                            className="h-5 w-5 text-gray-500 dark:text-gray-400"
+                                        />
+                                    </button>
+                                    <input
+                                        type="text"
+                                        placeholder="Tìm kiếm theo mã SV, họ tên, lớp..."
+                                        value={searchKeyword}
+                                        onChange={(e) => setSearchKeyword(e.target.value)}
+                                        className="h-11 w-full rounded-lg border border-gray-200 bg-white dark:bg-gray-900 py-2.5 pl-12 pr-4 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-800 dark:text-white/90 dark:placeholder:text-white/30 dark:focus:border-brand-800"
+                                    />
+                                </div>
                             </div>
 
-                            {/* Filters */}
-                            <div className="flex flex-wrap items-center gap-3">
-                                <span className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
-                                    <FontAwesomeIcon icon={faFilter} className="text-xs" />
-                                    Lọc:
-                                </span>
-
-                                {activeTab === "du-doan" && (
-                                    <div className="w-40">
-                                        <SearchableSelect
-                                            placeholder="Kết quả"
-                                            options={filterOptions.ketQuaOptions}
-                                            defaultValue={filterKetQua}
-                                            onChange={setFilterKetQua}
-                                            showSecondary={false}
-                                            searchPlaceholder="Tìm kết quả..."
+                            {/* Filters Header - Collapsible */}
+                            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                                <button
+                                    onClick={() => setIsFiltersExpanded(!isFiltersExpanded)}
+                                    className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-100 dark:bg-indigo-900/30">
+                                            <FontAwesomeIcon 
+                                                icon={faFilter} 
+                                                className="text-sm text-indigo-600 dark:text-indigo-400" 
+                                            />
+                                        </div>
+                                        <div className="text-left">
+                                            <h3 className="text-sm font-semibold text-gray-800 dark:text-white">
+                                                Bộ lọc
+                                            </h3>
+                                            {activeFiltersCount > 0 && (
+                                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                                    {activeFiltersCount} bộ lọc đang áp dụng
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        {activeFiltersCount > 0 && (
+                                            <Badge 
+                                                variant="light" 
+                                                color="info" 
+                                                className="text-xs"
+                                            >
+                                                {activeFiltersCount}
+                                            </Badge>
+                                        )}
+                                        <FontAwesomeIcon
+                                            icon={isFiltersExpanded ? faChevronUp : faChevronDown}
+                                            className="h-4 w-4 text-gray-500 dark:text-gray-400 transition-transform duration-200"
                                         />
                                     </div>
-                                )}
+                                </button>
 
-                                <div className="w-40">
-                                    <SearchableSelect
-                                        placeholder="Xếp loại"
-                                        options={filterOptions.xepLoaiOptions}
-                                        defaultValue={filterXepLoai}
-                                        onChange={setFilterXepLoai}
-                                        showSecondary={false}
-                                        searchPlaceholder="Tìm xếp loại..."
-                                    />
+                                {/* Filters Content - Collapsible */}
+                                <div
+                                    className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                                        isFiltersExpanded ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0"
+                                    }`}
+                                >
+                                    <div className="px-5 pb-5 pt-2 space-y-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                            {activeTab === "du-doan" && (
+                                                <div className="w-full">
+                                                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                                                        Kết quả
+                                                    </label>
+                                                    <SearchableSelect
+                                                        placeholder="Chọn kết quả..."
+                                                        options={filterOptions.ketQuaOptions}
+                                                        defaultValue={filterKetQua}
+                                                        onChange={setFilterKetQua}
+                                                        showSecondary={false}
+                                                        searchPlaceholder="Tìm kết quả..."
+                                                    />
+                                                </div>
+                                            )}
+
+                                            <div className="w-full">
+                                                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                                                    Xếp loại
+                                                </label>
+                                                <SearchableSelect
+                                                    placeholder="Chọn xếp loại..."
+                                                    options={filterOptions.xepLoaiOptions}
+                                                    defaultValue={filterXepLoai}
+                                                    onChange={setFilterXepLoai}
+                                                    showSecondary={false}
+                                                    searchPlaceholder="Tìm xếp loại..."
+                                                />
+                                            </div>
+
+                                            <div className="w-full">
+                                                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                                                    Lớp
+                                                </label>
+                                                <SearchableSelect
+                                                    placeholder="Chọn lớp..."
+                                                    options={filterOptions.lopOptions}
+                                                    defaultValue={filterLop}
+                                                    onChange={setFilterLop}
+                                                    showSecondary={false}
+                                                    searchPlaceholder="Tìm lớp..."
+                                                />
+                                            </div>
+
+                                            <div className="w-full">
+                                                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                                                    Ngành
+                                                </label>
+                                                <SearchableSelect
+                                                    placeholder="Chọn ngành..."
+                                                    options={filterOptions.nganhOptions}
+                                                    defaultValue={filterNganh}
+                                                    onChange={setFilterNganh}
+                                                    showSecondary={false}
+                                                    searchPlaceholder="Tìm ngành..."
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {activeFiltersCount > 0 && (
+                                            <div className="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-700">
+                                                <span className="text-xs text-gray-600 dark:text-gray-400">
+                                                    Đang áp dụng <strong className="text-indigo-600 dark:text-indigo-400">{activeFiltersCount}</strong> bộ lọc
+                                                </span>
+                                                <button
+                                                    onClick={clearAllFilters}
+                                                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors border border-red-200 dark:border-red-800/50"
+                                                >
+                                                    <FontAwesomeIcon icon={faTimes} className="text-xs" />
+                                                    Xóa tất cả
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-
-                                <div className="w-36">
-                                    <SearchableSelect
-                                        placeholder="Lớp"
-                                        options={filterOptions.lopOptions}
-                                        defaultValue={filterLop}
-                                        onChange={setFilterLop}
-                                        showSecondary={false}
-                                        searchPlaceholder="Tìm lớp..."
-                                    />
-                                </div>
-
-                                <div className="w-64">
-                                    <SearchableSelect
-                                        placeholder="Ngành"
-                                        options={filterOptions.nganhOptions}
-                                        defaultValue={filterNganh}
-                                        onChange={setFilterNganh}
-                                        showSecondary={false}
-                                        searchPlaceholder="Tìm ngành..."
-                                    />
-                                </div>
-
-                                {activeFiltersCount > 0 && (
-                                    <button
-                                        onClick={clearAllFilters}
-                                        className="flex items-center gap-1.5 px-3 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors border border-red-200 dark:border-red-800/50"
-                                    >
-                                        <FontAwesomeIcon icon={faTimes} className="text-xs" />
-                                        Xóa bộ lọc ({activeFiltersCount})
-                                    </button>
-                                )}
                             </div>
+
+                            {/* Active filters summary */}
+                            {(searchKeyword || activeFiltersCount > 0) && (
+                                <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
+                                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800/50">
+                                        <FontAwesomeIcon icon={faMagnifyingGlass} className="text-xs text-indigo-600 dark:text-indigo-400" />
+                                        <span className="text-indigo-700 dark:text-indigo-300">
+                                            Tìm thấy <strong className="font-semibold">{filteredData.length}</strong> kết quả
+                                        </span>
+                                    </div>
+                                    {searchKeyword && (
+                                        <div className="px-2.5 py-1 rounded-md bg-gray-100 dark:bg-gray-800 text-xs text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                                            <span className="text-gray-500 dark:text-gray-400">Từ khóa:</span>
+                                            <span className="font-medium">&quot;{searchKeyword}&quot;</span>
+                                        </div>
+                                    )}
+                                    {activeFiltersCount > 0 && (
+                                        <div className="px-2.5 py-1 rounded-md bg-blue-100 dark:bg-blue-900/30 text-xs text-blue-700 dark:text-blue-300 flex items-center gap-1.5">
+                                            <FontAwesomeIcon icon={faFilter} className="text-xs" />
+                                            <span>{activeFiltersCount} bộ lọc</span>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
-
-                        {/* Active filters summary */}
-                        {(searchKeyword || activeFiltersCount > 0) && (
-                            <div className="mt-3 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                                <span>Tìm thấy <strong className="text-indigo-600 dark:text-indigo-400">{filteredData.length}</strong> kết quả</span>
-                                {searchKeyword && (
-                                    <span className="px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-xs">
-                                        từ khóa: &quot;{searchKeyword}&quot;
-                                    </span>
-                                )}
-                            </div>
-                        )}
                     </div>
 
                     {/* Table */}
@@ -1508,6 +1600,7 @@ export default function XetTotNghiepPage() {
                                         <th className="text-center py-3 px-2 font-medium text-gray-600 dark:text-gray-400">Tổng</th>
                                         <th className="text-center py-3 px-2 font-medium text-green-600 dark:text-green-400">Đạt</th>
                                         <th className="text-center py-3 px-2 font-medium text-red-600 dark:text-red-400">K.Đạt</th>
+                                        <th className="text-center py-3 px-2 font-medium text-amber-600 dark:text-amber-400">K.Đủ ĐK</th>
                                         <th className="text-center py-3 px-2 font-medium text-purple-600 dark:text-purple-400">X.Sắc</th>
                                         <th className="text-center py-3 px-2 font-medium text-blue-600 dark:text-blue-400">Giỏi</th>
                                         <th className="text-center py-3 px-2 font-medium text-teal-600 dark:text-teal-400">Khá</th>
@@ -1524,6 +1617,7 @@ export default function XetTotNghiepPage() {
                                             <td className="text-center py-3 px-2 font-bold text-gray-800 dark:text-white">{nganh.tongSinhVien}</td>
                                             <td className="text-center py-3 px-2 text-green-600 dark:text-green-400 font-medium">{nganh.soSinhVienDat}</td>
                                             <td className="text-center py-3 px-2 text-red-600 dark:text-red-400">{nganh.soSinhVienKhongDat}</td>
+                                            <td className="text-center py-3 px-2 text-amber-600 dark:text-amber-400">{nganh.soSinhVienKhongDuDieuKien}</td>
                                             <td className="text-center py-3 px-2 text-purple-600 dark:text-purple-400">{nganh.soXuatSac}</td>
                                             <td className="text-center py-3 px-2 text-blue-600 dark:text-blue-400">{nganh.soGioi}</td>
                                             <td className="text-center py-3 px-2 text-teal-600 dark:text-teal-400">{nganh.soKha}</td>
