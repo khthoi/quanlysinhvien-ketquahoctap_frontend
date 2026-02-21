@@ -438,6 +438,10 @@ Nếu gặp vấn đề trong quá trình cài đặt hoặc sử dụng, vui l�
 4. Xem log lỗi trong terminal để biết thêm chi tiết
 5. Thử xóa `node_modules` và `.next`, sau đó chạy lại `npm install`
 
+**Liên hệ hỗ trợ:**
+- **Facebook**: [https://www.facebook.com/khakham132](https://www.facebook.com/khakham132)
+- **Zalo**: [https://zalo.me/0346184217](https://zalo.me/0346184217)
+
 ---
 
 ## 📄 License
