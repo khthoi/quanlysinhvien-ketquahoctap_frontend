@@ -65,10 +65,15 @@ interface LopHocPhanDeXuat {
     nienKhoaId: number;
     maNienKhoa: string;
     tenNienKhoa: string;
-    hocKyId: number;
-    hocKy: number;
-    maNamHoc: string;
-    tenNamHoc: string;
+    hocKyId?: number | null;
+    hocKy?: number | null;
+    namHocId?: number | null;
+    maNamHoc?: string | null;
+    tenNamHoc?: string | null;
+    namBatDau?: number | null;
+    namKetThuc?: number | null;
+    ngayBatDau?: string | null;
+    ngayKetThuc?: string | null;
     giangVienId: number;
     maGiangVien: string;
     hoTenGiangVien: string;
@@ -77,9 +82,9 @@ interface LopHocPhanDeXuat {
 }
 
 interface DeXuatLHPResponse {
-    maNamHoc: string;
-    tenNamHoc: string;
-    hocKy: number;
+    maNamHoc?: string | null;
+    tenNamHoc?: string | null;
+    hocKy?: number | null;
     danhSachLopHocPhanDeXuat: LopHocPhanDeXuat[];
     tongSoLop: number;
     tongSoSinhVien: number;
@@ -115,22 +120,6 @@ interface CreateResult {
     message: string;
 }
 
-interface HocKy {
-    id: number;
-    hocKy: number;
-    ngayBatDau: string;
-    ngayKetThuc: string;
-    namHoc?: NamHoc;
-}
-
-interface NamHoc {
-    id: number;
-    maNamHoc: string;
-    tenNamHoc: string;
-    namBatDau: number;
-    namKetThuc: number;
-    hocKys: HocKy[];
-}
 
 const PAGE_SIZE = 10;
 
@@ -201,8 +190,29 @@ const DetailModal: React.FC<DetailModalProps> = ({ isOpen, onClose, lopHocPhan }
                             <p className="mt-0.5 text-gray-800 dark:text-white">{lopHocPhan.maGiangVien} - {lopHocPhan.hoTenGiangVien}</p>
                         </div>
                         <div>
-                            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Học kỳ</p>
-                            <p className="mt-0.5 text-gray-800 dark:text-white">HK{lopHocPhan.hocKy} - {lopHocPhan.tenNamHoc}</p>
+                            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Học kỳ dự kiến</p>
+                            <p className="mt-0.5 text-gray-800 dark:text-white">
+                                {lopHocPhan.hocKy !== null && lopHocPhan.hocKy !== undefined
+                                    ? `HK${lopHocPhan.hocKy} - ${lopHocPhan.tenNamHoc || "N/A"}`
+                                    : "N/A"}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Năm học dự kiến</p>
+                            <p className="mt-0.5 text-gray-800 dark:text-white">
+                                {lopHocPhan.maNamHoc || "N/A"}
+                                {lopHocPhan.namBatDau && lopHocPhan.namKetThuc
+                                    ? ` (${lopHocPhan.namBatDau} - ${lopHocPhan.namKetThuc})`
+                                    : ""}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Ngày bắt đầu - Kết thúc</p>
+                            <p className="mt-0.5 text-gray-800 dark:text-white">
+                                {lopHocPhan.ngayBatDau && lopHocPhan.ngayKetThuc
+                                    ? `${new Date(lopHocPhan.ngayBatDau).toLocaleDateString('vi-VN')} - ${new Date(lopHocPhan.ngayKetThuc).toLocaleDateString('vi-VN')}`
+                                    : "N/A"}
+                            </p>
                         </div>
                         <div>
                             <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Số sinh viên</p>
@@ -362,98 +372,6 @@ const ConfirmAddModal: React.FC<ConfirmAddModalProps> = ({
     );
 };
 
-// --- Confirm HocKy Modal ---
-interface ConfirmHocKyModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-    onConfirm: () => void;
-    selectedNamHoc: NamHoc | null;
-    selectedHocKy: HocKy | null;
-    totalLopHocPhan: number;
-}
-
-const ConfirmHocKyModal: React.FC<ConfirmHocKyModalProps> = ({
-    isOpen,
-    onClose,
-    onConfirm,
-    selectedNamHoc,
-    selectedHocKy,
-    totalLopHocPhan,
-}) => {
-    if (!isOpen) return null;
-
-    const getHocKyLabel = (hocKy: number): string => {
-        switch (hocKy) {
-            case 1:
-                return "Học kỳ 1";
-            case 2:
-                return "Học kỳ 2";
-            case 3:
-                return "Học kỳ hè";
-            default:
-                return `Học kỳ ${hocKy}`;
-        }
-    };
-
-    return (
-        <Modal isOpen={isOpen} onClose={onClose} className="max-w-2xl">
-            <div className="p-6 sm:p-8">
-                <h3 className="mb-6 text-xl font-semibold text-gray-800 dark:text-white/90">
-                    Xác nhận chọn học kỳ
-                </h3>
-
-                {/* Hướng dẫn */}
-                <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                    <div className="flex gap-3">
-                        <FontAwesomeIcon
-                            icon={faInfoCircle}
-                            className="text-blue-500 dark:text-blue-400 mt-0.5 flex-shrink-0"
-                        />
-                        <div className="text-sm text-blue-700 dark:text-blue-300">
-                            <p className="font-medium mb-1">Thông báo:</p>
-                            <ul className="list-disc list-inside space-y-1 text-blue-600 dark:text-blue-400">
-                                <li>Bạn đang chọn {selectedNamHoc?.tenNamHoc} - {selectedHocKy ? getHocKyLabel(selectedHocKy.hocKy) : ""}</li>
-                                <li>Tất cả {totalLopHocPhan} lớp học phần sẽ được tạo với học kỳ này</li>
-                                <li>Hành động này sẽ áp dụng học kỳ đã chọn cho tất cả lớp học phần khi tạo</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Thông tin đã chọn */}
-                <div className="mb-6 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                        <div>
-                            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Năm học</p>
-                            <p className="mt-0.5 text-gray-800 dark:text-white">
-                                {selectedNamHoc?.maNamHoc} - {selectedNamHoc?.tenNamHoc}
-                            </p>
-                        </div>
-                        <div>
-                            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Học kỳ</p>
-                            <p className="mt-0.5 text-gray-800 dark:text-white">
-                                {selectedHocKy ? getHocKyLabel(selectedHocKy.hocKy) : ""}
-                            </p>
-                        </div>
-                        <div>
-                            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Số lớp học phần</p>
-                            <p className="mt-0.5 text-gray-800 dark:text-white">{totalLopHocPhan} lớp</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="flex justify-end gap-3">
-                    <Button variant="outline" onClick={onClose}>
-                        Hủy
-                    </Button>
-                    <Button onClick={onConfirm}>
-                        Xác nhận
-                    </Button>
-                </div>
-            </div>
-        </Modal>
-    );
-};
 
 // --- Result Modal ---
 interface ResultModalProps {
@@ -659,14 +577,6 @@ export default function LHPBosungCaithien() {
     const [resultErrorList, setResultErrorList] = useState<CreateResult[]>([]);
     const [deleteConfirmItem, setDeleteConfirmItem] = useState<LopHocPhanDeXuat | null>(null);
 
-    // State cho năm học và học kỳ
-    const [namHocList, setNamHocList] = useState<NamHoc[]>([]);
-    const [selectedNamHocId, setSelectedNamHocId] = useState<string>("");
-    const [selectedHocKyId, setSelectedHocKyId] = useState<string>("");
-    const [selectedHocKyIdConfirmed, setSelectedHocKyIdConfirmed] = useState<number | null>(null);
-    const [isConfirmHocKyModalOpen, setIsConfirmHocKyModalOpen] = useState(false);
-    const [isEditingHocKy, setIsEditingHocKy] = useState(false);
-
     // Filter states
     const [filterNienKhoaId, setFilterNienKhoaId] = useState("");
     const [filterNganhId, setFilterNganhId] = useState("");
@@ -751,117 +661,6 @@ export default function LHPBosungCaithien() {
         fetchData();
     }, [fetchData]);
 
-    // Fetch năm học
-    const fetchNamHoc = useCallback(async () => {
-        try {
-            const accessToken = getCookie("access_token");
-            const res = await fetch(
-                `${ENV.BACKEND_URL}/dao-tao/nam-hoc?page=1&limit=9999`,
-                {
-                    headers: {
-                        Authorization: `Bearer ${accessToken}`,
-                    },
-                }
-            );
-            const json = await res.json();
-            if (res.ok && json.data) {
-                setNamHocList(json.data);
-            }
-        } catch (err) {
-            console.error("Không thể tải danh sách năm học:", err);
-        }
-    }, []);
-
-    useEffect(() => {
-        fetchNamHoc();
-    }, [fetchNamHoc]);
-
-    // Lấy danh sách học kỳ từ năm học đã chọn
-    const selectedNamHoc = useMemo(() => {
-        if (!selectedNamHocId) return null;
-        return namHocList.find((nh) => nh.id.toString() === selectedNamHocId) || null;
-    }, [selectedNamHocId, namHocList]);
-
-    const hocKyOptions = useMemo(() => {
-        if (!selectedNamHoc || !selectedNamHoc.hocKys) return [];
-        return selectedNamHoc.hocKys.map((hk) => ({
-            value: hk.id.toString(),
-            label: `Học kỳ ${hk.hocKy}`,
-            secondary: `${selectedNamHoc.tenNamHoc}`,
-        }));
-    }, [selectedNamHoc]);
-
-    // Xử lý khi chọn năm học
-    const handleNamHocChange = (value: string) => {
-        setSelectedNamHocId(value);
-        setSelectedHocKyId("");
-        setSelectedHocKyIdConfirmed(null);
-        setIsEditingHocKy(false);
-    };
-
-    // Xử lý khi chọn học kỳ
-    const handleHocKyChange = (value: string) => {
-        setSelectedHocKyId(value);
-    };
-
-    // Xử lý xác nhận học kỳ
-    const handleConfirmHocKy = () => {
-        if (selectedHocKyId) {
-            setIsConfirmHocKyModalOpen(true);
-        }
-    };
-
-    // Xác nhận trong modal
-    const handleConfirmHocKyInModal = () => {
-        if (selectedHocKyId && selectedNamHoc) {
-            const hocKyIdNum = Number(selectedHocKyId);
-            const selectedHocKy = selectedNamHoc.hocKys.find((hk) => hk.id === hocKyIdNum);
-            
-            if (selectedHocKy) {
-                setSelectedHocKyIdConfirmed(hocKyIdNum);
-                setIsConfirmHocKyModalOpen(false);
-                setIsEditingHocKy(false);
-                
-                // Cập nhật data cho tất cả các row trong table
-                if (apiData) {
-                    const updatedData = {
-                        ...apiData,
-                        hocKy: selectedHocKy.hocKy,
-                        maNamHoc: selectedNamHoc.maNamHoc,
-                        tenNamHoc: selectedNamHoc.tenNamHoc,
-                        danhSachLopHocPhanDeXuat: apiData.danhSachLopHocPhanDeXuat.map((lhp) => ({
-                            ...lhp,
-                            hocKyId: hocKyIdNum,
-                            hocKy: selectedHocKy.hocKy,
-                            maNamHoc: selectedNamHoc.maNamHoc,
-                            tenNamHoc: selectedNamHoc.tenNamHoc,
-                        })),
-                    };
-                    setApiData(updatedData);
-                }
-            }
-        }
-    };
-
-    // Xử lý sửa học kỳ
-    const handleEditHocKy = () => {
-        setIsEditingHocKy(true);
-        setSelectedHocKyId("");
-        setSelectedHocKyIdConfirmed(null);
-    };
-
-    // Lấy học kỳ đã chọn (đã xác nhận)
-    const getSelectedHocKy = (): HocKy | null => {
-        if (!selectedHocKyIdConfirmed || !selectedNamHoc) return null;
-        return selectedNamHoc.hocKys.find((hk) => hk.id === selectedHocKyIdConfirmed) || null;
-    };
-
-    // Lấy học kỳ đang chọn (chưa xác nhận, để hiển thị trong modal)
-    const getCurrentSelectedHocKy = (): HocKy | null => {
-        if (!selectedHocKyId || !selectedNamHoc) return null;
-        return selectedNamHoc.hocKys.find((hk) => hk.id.toString() === selectedHocKyId) || null;
-    };
-
     const displayItems = useMemo(() => {
         if (!apiData?.danhSachLopHocPhanDeXuat) return [];
         return apiData.danhSachLopHocPhanDeXuat.filter((lhp) => !removedIds.has(lhp.maLopHocPhan));
@@ -925,9 +724,9 @@ export default function LHPBosungCaithien() {
         const toAdd = displayItems;
         if (toAdd.length === 0) return;
 
-        // Kiểm tra học kỳ đã được chọn chưa
-        if (!selectedHocKyIdConfirmed) {
-            alert("Vui lòng chọn và xác nhận học kỳ trước khi thêm lớp học phần");
+        // Kiểm tra học kỳ có trong dữ liệu chưa
+        if (!toAdd[0]?.hocKyId) {
+            alert("Không có thông tin học kỳ dự kiến. Vui lòng làm mới trang và thử lại.");
             return;
         }
 
@@ -954,7 +753,7 @@ export default function LHPBosungCaithien() {
                         monHocId: lhp.monHocId,
                         nganhId: lhp.nganhId,
                         nienKhoaId: lhp.nienKhoaId,
-                        hocKyId: selectedHocKyIdConfirmed, // Sử dụng học kỳ đã chọn
+                        hocKyId: lhp.hocKyId, // Sử dụng học kỳ từ dữ liệu
                         giangVienId: lhp.giangVienId,
                         ghiChu: null,
                     }),
@@ -1030,18 +829,66 @@ export default function LHPBosungCaithien() {
                     </div>
                 )}
 
-                {/* Header với thông tin năm học */}
-                {apiData && (
+                {/* Header với thông tin năm học và học kỳ dự kiến */}
+                {apiData && apiData.danhSachLopHocPhanDeXuat.length > 0 && (
                     <div className="mb-6 p-5 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div className="flex flex-col gap-4">
                             <div>
                                 <h2 className="text-xl font-bold text-gray-800 dark:text-white">
-                                    Học kỳ {apiData.hocKy} - {apiData.tenNamHoc}
+                                    Thông tin năm học và học kỳ dự kiến
                                 </h2>
                                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                                    Tạo lớp học phần cho sinh viên học bổ sung và cải thiện
+                                    Hệ thống đã tự động chọn học kỳ cao nhất của năm học có năm bắt đầu lớn nhất
                                 </p>
                             </div>
+                            {apiData.danhSachLopHocPhanDeXuat[0] && (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    <div>
+                                        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Mã năm học</p>
+                                        <p className="mt-0.5 font-mono text-gray-800 dark:text-white">
+                                            {apiData.danhSachLopHocPhanDeXuat[0].maNamHoc || "N/A"}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tên năm học</p>
+                                        <p className="mt-0.5 text-gray-800 dark:text-white">
+                                            {apiData.danhSachLopHocPhanDeXuat[0].tenNamHoc || "N/A"}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Năm bắt đầu - Năm kết thúc</p>
+                                        <p className="mt-0.5 text-gray-800 dark:text-white">
+                                            {apiData.danhSachLopHocPhanDeXuat[0].namBatDau && apiData.danhSachLopHocPhanDeXuat[0].namKetThuc
+                                                ? `${apiData.danhSachLopHocPhanDeXuat[0].namBatDau} - ${apiData.danhSachLopHocPhanDeXuat[0].namKetThuc}`
+                                                : "N/A"}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Học kỳ</p>
+                                        <p className="mt-0.5 text-gray-800 dark:text-white">
+                                            {apiData.danhSachLopHocPhanDeXuat[0].hocKy !== null && apiData.danhSachLopHocPhanDeXuat[0].hocKy !== undefined
+                                                ? `Học kỳ ${apiData.danhSachLopHocPhanDeXuat[0].hocKy}`
+                                                : "N/A"}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Ngày bắt đầu</p>
+                                        <p className="mt-0.5 text-gray-800 dark:text-white">
+                                            {apiData.danhSachLopHocPhanDeXuat[0].ngayBatDau
+                                                ? new Date(apiData.danhSachLopHocPhanDeXuat[0].ngayBatDau).toLocaleDateString('vi-VN')
+                                                : "N/A"}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Ngày kết thúc</p>
+                                        <p className="mt-0.5 text-gray-800 dark:text-white">
+                                            {apiData.danhSachLopHocPhanDeXuat[0].ngayKetThuc
+                                                ? new Date(apiData.danhSachLopHocPhanDeXuat[0].ngayKetThuc).toLocaleDateString('vi-VN')
+                                                : "N/A"}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}
@@ -1113,78 +960,19 @@ export default function LHPBosungCaithien() {
                     </div>
                 </div>
 
-                {/* Chọn năm học và học kỳ */}
-                <div className="mb-6 p-5 rounded-xl bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
-                    <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
-                        Chọn năm học và học kỳ
-                    </h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                        <div>
-                            <Label className="block mb-2 text-xs">Năm học</Label>
-                            <SearchableSelect
-                                options={namHocList.map((nh) => ({
-                                    value: nh.id.toString(),
-                                    label: nh.maNamHoc,
-                                    secondary: nh.tenNamHoc,
-                                }))}
-                                placeholder="Chọn năm học"
-                                onChange={handleNamHocChange}
-                                defaultValue={selectedNamHocId}
-                                showSecondary={true}
-                                maxDisplayOptions={10}
-                                searchPlaceholder="Tìm năm học..."
-                            />
-                        </div>
-                        <div>
-                            <Label className="block mb-2 text-xs">Học kỳ</Label>
-                            <SearchableSelect
-                                options={hocKyOptions}
-                                placeholder="Chọn học kỳ"
-                                onChange={handleHocKyChange}
-                                defaultValue={selectedHocKyId}
-                                showSecondary={true}
-                                maxDisplayOptions={10}
-                                searchPlaceholder="Tìm học kỳ..."
-                                disabled={!selectedNamHocId || isEditingHocKy}
-                            />
-                        </div>
-                    </div>
-                    <div className="flex gap-3">
-                        {selectedHocKyIdConfirmed && !isEditingHocKy ? (
-                            <>
-                                <div className="flex-1 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/50">
-                                    <p className="text-sm text-green-700 dark:text-green-300">
-                                        <span className="font-medium">Đã chọn: </span>
-                                        {selectedNamHoc?.tenNamHoc} - {getSelectedHocKy() ? `Học kỳ ${getSelectedHocKy()?.hocKy}` : ""}
-                                    </p>
-                                </div>
-                                <Button variant="outline" onClick={handleEditHocKy}>
-                                    Sửa
-                                </Button>
-                            </>
-                        ) : (
-                            <Button
-                                onClick={handleConfirmHocKy}
-                                disabled={!selectedHocKyId || !selectedNamHocId}
-                            >
-                                Xác nhận
-                            </Button>
-                        )}
-                    </div>
-                </div>
 
                 {/* Nút thêm lớp học phần */}
                 <div className="mb-6">
                     <Button
                         startIcon={<FontAwesomeIcon icon={faBook} />}
                         onClick={() => setIsConfirmModalOpen(true)}
-                        disabled={displayItems.length === 0 || loading || !selectedHocKyIdConfirmed}
+                        disabled={displayItems.length === 0 || loading || !displayItems[0]?.hocKyId}
                     >
                         Thêm lớp học phần ({displayItems.length})
                     </Button>
-                    {!selectedHocKyIdConfirmed && (
+                    {displayItems.length > 0 && !displayItems[0]?.hocKyId && (
                         <p className="mt-2 text-sm text-amber-600 dark:text-amber-400">
-                            Vui lòng chọn và xác nhận năm học, học kỳ trước khi thêm lớp học phần
+                            Không có thông tin học kỳ dự kiến. Vui lòng làm mới trang và thử lại.
                         </p>
                     )}
                 </div>
@@ -1218,7 +1006,7 @@ export default function LHPBosungCaithien() {
                                     secondary: nk.tenNienKhoa,
                                 }))}
                                 placeholder="Tất cả niên khóa"
-                                onChange={(value) => setFilterNienKhoaId(value)}
+                                onChange={(value: string) => setFilterNienKhoaId(value)}
                                 defaultValue={filterNienKhoaId}
                                 showSecondary={true}
                                 maxDisplayOptions={10}
@@ -1234,7 +1022,7 @@ export default function LHPBosungCaithien() {
                                     secondary: n.tenNganh,
                                 }))}
                                 placeholder="Tất cả ngành"
-                                onChange={(value) => setFilterNganhId(value)}
+                                onChange={(value: string) => setFilterNganhId(value)}
                                 defaultValue={filterNganhId}
                                 showSecondary={true}
                                 maxDisplayOptions={10}
@@ -1250,7 +1038,7 @@ export default function LHPBosungCaithien() {
                                     secondary: mh.tenMonHoc,
                                 }))}
                                 placeholder="Tất cả môn học"
-                                onChange={(value) => setFilterMonHocId(value)}
+                                onChange={(value: string) => setFilterMonHocId(value)}
                                 defaultValue={filterMonHocId}
                                 showSecondary={true}
                                 maxDisplayOptions={10}
@@ -1266,7 +1054,7 @@ export default function LHPBosungCaithien() {
                                     secondary: gv.hoTen,
                                 }))}
                                 placeholder="Tất cả giảng viên"
-                                onChange={(value) => setFilterGiangVienId(value)}
+                                onChange={(value: string) => setFilterGiangVienId(value)}
                                 defaultValue={filterGiangVienId}
                                 showSecondary={true}
                                 maxDisplayOptions={10}
@@ -1486,14 +1274,6 @@ export default function LHPBosungCaithien() {
                 successList={resultSuccessList}
                 errorList={resultErrorList}
                 isSubmitting={isSubmitting}
-            />
-            <ConfirmHocKyModal
-                isOpen={isConfirmHocKyModalOpen}
-                onClose={() => setIsConfirmHocKyModalOpen(false)}
-                onConfirm={handleConfirmHocKyInModal}
-                selectedNamHoc={selectedNamHoc}
-                selectedHocKy={getCurrentSelectedHocKy()}
-                totalLopHocPhan={displayItems.length}
             />
         </div>
     );

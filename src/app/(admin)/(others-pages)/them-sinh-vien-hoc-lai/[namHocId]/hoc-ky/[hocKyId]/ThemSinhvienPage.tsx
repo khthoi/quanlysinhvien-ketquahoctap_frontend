@@ -773,7 +773,7 @@ export default function ThemSinhvienPage() {
     const [searchKeywordDaHocLai, setSearchKeywordDaHocLai] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [currentPageDaHocLai, setCurrentPageDaHocLai] = useState(1);
-    const [activeDropdownId, setActiveDropdownId] = useState<number | null>(null);
+    const [activeDropdownId, setActiveDropdownId] = useState<string | null>(null);
     const [editModalItem, setEditModalItem] = useState<DeXuatItem | null>(null);
     const [detailDeXuatItem, setDetailDeXuatItem] = useState<DeXuatItem | null>(null);
     const [detailDaHocLaiItem, setDetailDaHocLaiItem] = useState<SinhVienDaHocLaiItem | null>(null);
@@ -983,7 +983,7 @@ export default function ThemSinhvienPage() {
         if (currentPageDaHocLai > totalPagesDaHocLai && totalPagesDaHocLai >= 1) setCurrentPageDaHocLai(totalPagesDaHocLai);
     }, [totalPagesDaHocLai, currentPageDaHocLai]);
 
-    const toggleDropdown = (id: number) => {
+    const toggleDropdown = (id: string) => {
         setActiveDropdownId((prev) => (prev === id ? null : id));
     };
     const closeDropdown = () => setActiveDropdownId(null);
@@ -1346,9 +1346,11 @@ export default function ThemSinhvienPage() {
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    paginatedItems.map((sv) => (
-                                        <TableRow
-                                            key={`${sv.sinhVienId}-${sv.maLopHocPhanTruot}`}
+                                    paginatedItems.map((sv) => {
+                                        const rowKey = `${sv.sinhVienId}-${sv.maLopHocPhanTruot}`;
+                                        return (
+                                            <TableRow
+                                            key={rowKey}
                                             className="grid grid-cols-[8%_14%_16%_7%_7%_7%_7%_7%_16%_11%] items-center hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors"
                                         >
                                             <TableCell className="px-2 py-2 font-mono text-gray-800 dark:text-white/90 text-left"><span className="block truncate" title={sv.maSinhVien}>{sv.maSinhVien}</span></TableCell>
@@ -1371,16 +1373,16 @@ export default function ThemSinhvienPage() {
                                                     <Button
                                                         variant="outline"
                                                         size="sm"
-                                                        onClick={() => toggleDropdown(sv.sinhVienId)}
+                                                        onClick={() => toggleDropdown(rowKey)}
                                                         className="dropdown-toggle flex items-center gap-1.5 min-w-[90px] justify-between px-3 py-2"
                                                     >
                                                         Thao tác
                                                         <FaAngleDown
-                                                            className={`text-gray-500 transition-transform duration-300 shrink-0 ${activeDropdownId === sv.sinhVienId ? "rotate-180" : "rotate-0"}`}
+                                                            className={`text-gray-500 transition-transform duration-300 shrink-0 ${activeDropdownId === rowKey ? "rotate-180" : "rotate-0"}`}
                                                         />
                                                     </Button>
                                                     <Dropdown
-                                                        isOpen={activeDropdownId === sv.sinhVienId}
+                                                        isOpen={activeDropdownId === rowKey}
                                                         onClose={closeDropdown}
                                                         className="w-48 mt-2 right-0"
                                                     >
@@ -1426,7 +1428,8 @@ export default function ThemSinhvienPage() {
                                                 </div>
                                             </TableCell>
                                         </TableRow>
-                                    ))
+                                        );
+                                    })
                                 )}
                             </TableBody>
                         </Table>
@@ -1504,9 +1507,11 @@ export default function ThemSinhvienPage() {
                                                 </TableCell>
                                             </TableRow>
                                         ) : (
-                                            paginatedDaHocLai.map((sv) => (
-                                                <TableRow
-                                                    key={`${sv.sinhVienId}-${sv.maMonHocTruot}-${sv.maLopHocPhanTruot}`}
+                                            paginatedDaHocLai.map((sv) => {
+                                                const rowKey = `${sv.sinhVienId}-${sv.maMonHocTruot}-${sv.maLopHocPhanTruot}`;
+                                                return (
+                                                    <TableRow
+                                                    key={rowKey}
                                                     className="grid grid-cols-[10%_18%_22%_18%_8%_10%_14%] items-center hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors"
                                                 >
                                                     <TableCell className="px-2 py-2 font-mono text-gray-800 dark:text-white/90"><span className="block truncate" title={sv.maSinhVien}>{sv.maSinhVien}</span></TableCell>
@@ -1522,16 +1527,16 @@ export default function ThemSinhvienPage() {
                                                             <Button
                                                                 variant="outline"
                                                                 size="sm"
-                                                                onClick={() => toggleDropdown(sv.sinhVienId)}
+                                                                onClick={() => toggleDropdown(rowKey)}
                                                                 className="dropdown-toggle flex items-center gap-1.5 min-w-[90px] justify-between px-3 py-2"
                                                             >
                                                                 Thao tác
                                                                 <FaAngleDown
-                                                                    className={`text-gray-500 transition-transform duration-300 shrink-0 ${activeDropdownId === sv.sinhVienId ? "rotate-180" : "rotate-0"}`}
+                                                                    className={`text-gray-500 transition-transform duration-300 shrink-0 ${activeDropdownId === rowKey ? "rotate-180" : "rotate-0"}`}
                                                                 />
                                                             </Button>
                                                             <Dropdown
-                                                                isOpen={activeDropdownId === sv.sinhVienId}
+                                                                isOpen={activeDropdownId === rowKey}
                                                                 onClose={closeDropdown}
                                                                 className="w-48 mt-2 right-0"
                                                             >
@@ -1559,7 +1564,8 @@ export default function ThemSinhvienPage() {
                                                         </div>
                                                     </TableCell>
                                                 </TableRow>
-                                            ))
+                                                );
+                                            })
                                         )}
                                     </TableBody>
                                 </Table>
