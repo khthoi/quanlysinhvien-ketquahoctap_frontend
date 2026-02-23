@@ -181,7 +181,7 @@ interface EditModalProps {
     item: DeXuatItem | null;
     selectedLopHocPhanId: number | null;
     onSelectedLopHocPhanChange: (lopHocPhanId: number | null) => void;
-    proposedCountByLopHocPhanId: Record<number, number>;
+    siSoMap: Map<string, number>;
     onSave: () => void;
     canSave: boolean;
 }
@@ -391,26 +391,69 @@ const EditModal: React.FC<EditModalProps> = ({
     item,
     selectedLopHocPhanId,
     onSelectedLopHocPhanChange,
-    proposedCountByLopHocPhanId,
+    siSoMap,
     onSave,
     canSave,
 }) => {
     if (!isOpen || !item) return null;
 
-    const options = item.cacLopHocPhanCoTheDangKy.map((lhp) => ({
-        value: lhp.lopHocPhanId.toString(),
-        label: lhp.laBestChoice ? `${lhp.maLopHocPhan} (Đề xuất)` : lhp.maLopHocPhan,
-        secondary: lhp.tenMonHoc,
-    }));
+    // Tạo Set để theo dõi các lopHocPhanId đã có trong options (tránh trùng)
+    const lhpIdSet = new Set<number>();
+    const lhpMap = new Map<number, LopHocPhanOption>(); // Map để lưu thông tin lớp học phần
 
-    const selectedLHP = item.cacLopHocPhanCoTheDangKy.find(
-        (l) => l.lopHocPhanId === selectedLopHocPhanId
-    );
-    const currentCountForLHP = selectedLopHocPhanId
-        ? proposedCountByLopHocPhanId[selectedLopHocPhanId] ?? 0
-        : 0;
-    const currentSiSo = selectedLHP?.siSo ?? 0;
-    const proposedSiSo = currentSiSo + currentCountForLHP;
+    // Tạo options từ cacLopHocPhanCoTheDangKy
+    const options = item.cacLopHocPhanCoTheDangKy.map((lhp) => {
+        lhpIdSet.add(lhp.lopHocPhanId);
+        lhpMap.set(lhp.lopHocPhanId, lhp);
+        return {
+            value: lhp.lopHocPhanId.toString(),
+            label: lhp.laBestChoice ? `${lhp.maLopHocPhan} (Đề xuất)` : lhp.maLopHocPhan,
+            secondary: lhp.tenMonHoc,
+        };
+    });
+
+    // Nếu bestChoiceLopHocPhan tồn tại và chưa có trong options, thêm vào
+    if (item.bestChoiceLopHocPhan && !lhpIdSet.has(item.bestChoiceLopHocPhan.lopHocPhanId)) {
+        options.unshift({
+            value: item.bestChoiceLopHocPhan.lopHocPhanId.toString(),
+            label: `${item.bestChoiceLopHocPhan.maLopHocPhan} (Đề xuất)`,
+            secondary: item.bestChoiceLopHocPhan.tenMonHoc,
+        });
+        lhpMap.set(item.bestChoiceLopHocPhan.lopHocPhanId, item.bestChoiceLopHocPhan);
+    }
+
+    // Tìm selectedLHP: ưu tiên tìm trong cacLopHocPhanCoTheDangKy, sau đó bestChoiceLopHocPhan
+    let selectedLHP: LopHocPhanOption | null = null;
+    if (selectedLopHocPhanId != null) {
+        // Tìm trong cacLopHocPhanCoTheDangKy trước
+        selectedLHP = item.cacLopHocPhanCoTheDangKy.find(
+            (l) => l.lopHocPhanId === selectedLopHocPhanId
+        ) ?? null;
+
+        // Nếu không tìm thấy, kiểm tra bestChoiceLopHocPhan
+        if (!selectedLHP && item.bestChoiceLopHocPhan?.lopHocPhanId === selectedLopHocPhanId) {
+            selectedLHP = item.bestChoiceLopHocPhan;
+        }
+
+        // Nếu vẫn không tìm thấy và selectedLopHocPhanId có trong lhpMap, lấy từ đó
+        if (!selectedLHP) {
+            selectedLHP = lhpMap.get(selectedLopHocPhanId) ?? null;
+        }
+
+        // Nếu selectedLHP tồn tại nhưng không có trong options, thêm vào đầu danh sách
+        if (selectedLHP && !lhpIdSet.has(selectedLHP.lopHocPhanId)) {
+            options.unshift({
+                value: selectedLHP.lopHocPhanId.toString(),
+                label: `${selectedLHP.maLopHocPhan}${selectedLHP.laBestChoice ? ' (Đề xuất)' : ''}`,
+                secondary: selectedLHP.tenMonHoc,
+            });
+            lhpIdSet.add(selectedLHP.lopHocPhanId);
+        }
+    }
+
+    // Tính sĩ số hiện tại từ siSoMap
+    const currentSiSo = selectedLHP ? (siSoMap.get(selectedLHP.maLopHocPhan) ?? selectedLHP.siSo) : 0;
+    const proposedSiSo = currentSiSo + 1; // Thêm 1 sinh viên này
     const isOverCapacity = proposedSiSo > 40;
 
     return (
@@ -448,11 +491,15 @@ const EditModal: React.FC<EditModalProps> = ({
                     <div className="md:col-span-2">
                         <Label>Lớp học phần đăng ký</Label>
                         <SearchableSelect
-                            key={item.sinhVienId}
+                            key={`${item.sinhVienId}-${selectedLopHocPhanId ?? 'none'}-${options.length}`}
                             options={options}
                             placeholder="Chọn lớp học phần"
                             onChange={(value) => onSelectedLopHocPhanChange(value ? Number(value) : null)}
-                            defaultValue={selectedLopHocPhanId?.toString() ?? ""}
+                            defaultValue={
+                                selectedLopHocPhanId != null && options.some(opt => opt.value === selectedLopHocPhanId.toString())
+                                    ? selectedLopHocPhanId.toString()
+                                    : ""
+                            }
                             showSecondary={true}
                             maxDisplayOptions={10}
                             searchPlaceholder="Tìm lớp học phần..."
@@ -463,8 +510,8 @@ const EditModal: React.FC<EditModalProps> = ({
                 {selectedLHP && (
                     <div
                         className={`mt-4 p-4 rounded-xl border ${isOverCapacity
-                                ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800/50"
-                                : "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/50"
+                            ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800/50"
+                            : "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/50"
                             }`}
                     >
                         <div className="flex items-start gap-3">
@@ -473,13 +520,36 @@ const EditModal: React.FC<EditModalProps> = ({
                                 className={`mt-0.5 ${isOverCapacity ? "text-red-500" : "text-amber-500"}`}
                             />
                             <div>
-                                <p className={`font-medium ${isOverCapacity ? "text-red-800 dark:text-red-300" : "text-amber-800 dark:text-amber-300"}`}>
+                                <p
+                                    className={`font-medium ${isOverCapacity
+                                            ? "text-red-800 dark:text-red-300"
+                                            : "text-amber-800 dark:text-amber-300"
+                                        }`}
+                                >
                                     {isOverCapacity ? "Vượt sĩ số cho phép" : "Cảnh báo sĩ số"}
                                 </p>
-                                <p className={`text-sm mt-1 ${isOverCapacity ? "text-red-600 dark:text-red-400" : "text-amber-700 dark:text-amber-400"}`}>
-                                    LHP {selectedLHP.maLopHocPhan}: sĩ số hiện tại {selectedLHP.siSo}, sau khi thêm sinh viên đề xuất: {proposedSiSo} sinh viên.
-                                    {isOverCapacity && " Tối đa 40. Không thể lưu."}
-                                </p>
+
+                                <ul
+                                    className={`text-sm mt-2 list-disc list-inside space-y-1 ${isOverCapacity
+                                            ? "text-red-600 dark:text-red-400"
+                                            : "text-amber-700 dark:text-amber-400"
+                                        }`}
+                                >
+                                    <li>
+                                        LHP {selectedLHP.maLopHocPhan}
+                                    </li>
+                                    <li>
+                                        Sĩ số hiện tại trong hệ thống: {selectedLHP.siSo}
+                                    </li>
+                                    <li>
+                                        Sĩ số dự kiến sau khi thêm các SV đang đăng ký ở trang này và SV này vào LHP: {proposedSiSo}
+                                    </li>
+                                    {isOverCapacity && (
+                                        <li className="font-medium">
+                                            Tối đa 40 sinh viên. Không thể lưu.
+                                        </li>
+                                    )}
+                                </ul>
                             </div>
                         </div>
                     </div>
@@ -585,8 +655,8 @@ const ConfirmAddResultModal: React.FC<ConfirmAddResultModalProps> = ({
                                 type="button"
                                 onClick={() => setActiveTab("success")}
                                 className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${activeTab === "success"
-                                        ? "bg-white dark:bg-gray-700 text-green-600 dark:text-green-400 shadow-sm ring-1 ring-green-200 dark:ring-green-800/50"
-                                        : "text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                                    ? "bg-white dark:bg-gray-700 text-green-600 dark:text-green-400 shadow-sm ring-1 ring-green-200 dark:ring-green-800/50"
+                                    : "text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50"
                                     }`}
                             >
                                 <FontAwesomeIcon icon={faCircleCheck} className={activeTab === "success" ? "text-green-500 dark:text-green-400" : "text-gray-400 dark:text-gray-500"} />
@@ -596,8 +666,8 @@ const ConfirmAddResultModal: React.FC<ConfirmAddResultModalProps> = ({
                                 type="button"
                                 onClick={() => setActiveTab("error")}
                                 className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 ${activeTab === "error"
-                                        ? "bg-white dark:bg-gray-700 text-red-600 dark:text-red-400 shadow-sm ring-1 ring-red-200 dark:ring-red-800/50"
-                                        : "text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                                    ? "bg-white dark:bg-gray-700 text-red-600 dark:text-red-400 shadow-sm ring-1 ring-red-200 dark:ring-red-800/50"
+                                    : "text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50"
                                     }`}
                             >
                                 <FontAwesomeIcon icon={faCircleExclamation} className={activeTab === "error" ? "text-red-500 dark:text-red-400" : "text-gray-400 dark:text-gray-500"} />
@@ -768,9 +838,13 @@ export default function ThemSinhvienPage() {
 
     const [fetchError, setFetchError] = useState<string | null>(null);
     const [removedIds, setRemovedIds] = useState<Set<number>>(new Set());
-    const [selectedLHPMap, setSelectedLHPMap] = useState<Record<number, number>>({});
+    // Map lưu lớp học phần đã chọn cho mỗi row: key là rowKey (sinhVienId-maLopHocPhanTruot), value là lopHocPhanId
+    const [selectedClassByStudent, setSelectedClassByStudent] = useState<Map<string, number>>(new Map());
     const [searchKeyword, setSearchKeyword] = useState("");
     const [searchKeywordDaHocLai, setSearchKeywordDaHocLai] = useState("");
+    const [filterLopHocPhanId, setFilterLopHocPhanId] = useState<number | null>(null);
+    // Map theo dõi sĩ số lớp học phần: key là maLopHocPhan (string), value là số lượng sinh viên
+    const [siSoMap, setSiSoMap] = useState<Map<string, number>>(new Map());
     const [currentPage, setCurrentPage] = useState(1);
     const [currentPageDaHocLai, setCurrentPageDaHocLai] = useState(1);
     const [activeDropdownId, setActiveDropdownId] = useState<string | null>(null);
@@ -888,14 +962,48 @@ export default function ThemSinhvienPage() {
                     items: data.items ?? [],
                 });
                 setRemovedIds(idsToKeepRemoved?.length ? new Set(idsToKeepRemoved) : new Set());
-                const nextMap: Record<number, number> = {};
+
+                // Khởi tạo selectedClassByStudent: lớp mặc định là bestChoiceLopHocPhan (chỉ gán khi có bestChoiceLopHocPhan)
+                // Sử dụng rowKey (sinhVienId-maLopHocPhanTruot) làm key để hỗ trợ một sinh viên có nhiều row
+                const newSelectedClassByStudent = new Map<string, number>();
                 (data.items ?? []).forEach((it: DeXuatItem) => {
-                    nextMap[it.sinhVienId] =
-                        it.bestChoiceLopHocPhan?.lopHocPhanId ??
-                        it.cacLopHocPhanCoTheDangKy?.[0]?.lopHocPhanId ??
-                        null;
+                    // Gán khi có bestChoiceLopHocPhan và lopHocPhanId hợp lệ
+                    if (it.bestChoiceLopHocPhan && it.bestChoiceLopHocPhan.lopHocPhanId != null && it.bestChoiceLopHocPhan.lopHocPhanId > 0) {
+                        const rowKey = `${it.sinhVienId}-${it.maLopHocPhanTruot}`;
+                        newSelectedClassByStudent.set(rowKey, it.bestChoiceLopHocPhan.lopHocPhanId);
+                    }
                 });
-                setSelectedLHPMap(nextMap);
+                setSelectedClassByStudent(newSelectedClassByStudent);
+
+                // Khởi tạo siSoMap: duyệt tất cả cacLopHocPhanCoTheDangKy để đảm bảo mỗi maLopHocPhan đều tồn tại
+                const newSiSoMap = new Map<string, number>();
+                const lhpInfoMap = new Map<string, LopHocPhanOption>(); // Lưu thông tin lớp để lấy siSo gốc
+
+                // Thu thập tất cả các lớp học phần từ cacLopHocPhanCoTheDangKy (tránh trùng theo maLopHocPhan)
+                (data.items ?? []).forEach((it: DeXuatItem) => {
+                    it.cacLopHocPhanCoTheDangKy?.forEach((lhp) => {
+                        const key = lhp.maLopHocPhan;
+                        if (!lhpInfoMap.has(key)) {
+                            lhpInfoMap.set(key, lhp);
+                        }
+                    });
+                });
+
+                // Khởi tạo map với sĩ số gốc từ API
+                lhpInfoMap.forEach((lhp, maLopHocPhan) => {
+                    newSiSoMap.set(maLopHocPhan, lhp.siSo);
+                });
+
+                // Cộng dồn số lượng sinh viên có bestChoiceLopHocPhan trùng với lớp đó
+                (data.items ?? []).forEach((it: DeXuatItem) => {
+                    if (it.bestChoiceLopHocPhan) {
+                        const maLopHocPhan = it.bestChoiceLopHocPhan.maLopHocPhan;
+                        const currentSiSo = newSiSoMap.get(maLopHocPhan) ?? it.bestChoiceLopHocPhan.siSo;
+                        newSiSoMap.set(maLopHocPhan, currentSiSo + 1);
+                    }
+                });
+
+                setSiSoMap(newSiSoMap);
             }
         } catch {
             // Silent error for de-xuat, thong-ke already handled
@@ -921,15 +1029,62 @@ export default function ThemSinhvienPage() {
         return apiData.items.filter((sv) => !removedIds.has(sv.sinhVienId));
     }, [apiData?.items, removedIds]);
 
+    // Map: 1 lớp học phần -> nhiều sinh viên (để dễ dàng lọc và hiển thị)
+    const lopHocPhanToSinhVienMap = useMemo(() => {
+        const map = new Map<number, Set<number>>(); // Key: lopHocPhanId, Value: Set<sinhVienId>
+        displayItems.forEach((sv) => {
+            const rowKey = `${sv.sinhVienId}-${sv.maLopHocPhanTruot}`;
+            // Lấy lớp học phần đã chọn từ selectedClassByStudent (nếu có)
+            const selectedLHPId = selectedClassByStudent.get(rowKey);
+            const lhpIdToUse = selectedLHPId ?? sv.bestChoiceLopHocPhan?.lopHocPhanId;
+
+            if (lhpIdToUse != null && lhpIdToUse > 0) {
+                if (!map.has(lhpIdToUse)) {
+                    map.set(lhpIdToUse, new Set());
+                }
+                map.get(lhpIdToUse)!.add(sv.sinhVienId);
+            }
+        });
+        return map;
+    }, [displayItems, selectedClassByStudent]);
+
     const filteredItems = useMemo(() => {
-        if (!searchKeyword.trim()) return displayItems;
-        const q = searchKeyword.trim().toLowerCase();
-        return displayItems.filter(
-            (sv) =>
-                sv.maSinhVien.toLowerCase().includes(q) ||
-                sv.hoTen.toLowerCase().includes(q)
-        );
-    }, [displayItems, searchKeyword]);
+        let filtered = displayItems;
+
+        // Lọc theo từ khóa tìm kiếm
+        if (searchKeyword.trim()) {
+            const q = searchKeyword.trim().toLowerCase();
+            filtered = filtered.filter(
+                (sv) =>
+                    sv.maSinhVien.toLowerCase().includes(q) ||
+                    sv.hoTen.toLowerCase().includes(q)
+            );
+        }
+
+        // Lọc theo lớp học phần (theo lopHocPhanId)
+        // Chỉ lọc các sinh viên có LHP đề xuất (selectedClassByStudent hoặc bestChoiceLopHocPhan) khớp với filter
+        if (filterLopHocPhanId != null) {
+            filtered = filtered.filter((sv) => {
+                const rowKey = `${sv.sinhVienId}-${sv.maLopHocPhanTruot}`;
+                // Lấy lớp học phần đã chọn từ selectedClassByStudent (ưu tiên)
+                const selectedLHPId = selectedClassByStudent.get(rowKey);
+                if (selectedLHPId != null && selectedLHPId === filterLopHocPhanId) {
+                    return true;
+                }
+
+                // Nếu chưa có trong selectedClassByStudent, kiểm tra bestChoiceLopHocPhan
+                const bestChoiceLHPId = sv.bestChoiceLopHocPhan?.lopHocPhanId;
+                if (bestChoiceLHPId != null && bestChoiceLHPId === filterLopHocPhanId) {
+                    return true;
+                }
+
+                // Không khớp với LHP đề xuất thì không hiển thị
+                return false;
+            });
+        }
+
+        return filtered;
+    }, [displayItems, searchKeyword, filterLopHocPhanId, selectedClassByStudent]);
 
     const totalFiltered = filteredItems.length;
     const totalPages = Math.max(1, Math.ceil(totalFiltered / PAGE_SIZE));
@@ -938,9 +1093,33 @@ export default function ThemSinhvienPage() {
         return filteredItems.slice(start, start + PAGE_SIZE);
     }, [filteredItems, currentPage]);
 
+    // Tạo danh sách các lớp học phần để hiển thị trong bộ lọc (tránh trùng theo maLopHocPhan)
+    const danhSachLopHocPhan = useMemo(() => {
+        const lhpSet = new Map<string, LopHocPhanOption>(); // Key là maLopHocPhan để tránh trùng
+        displayItems.forEach((sv) => {
+            // Thêm bestChoiceLopHocPhan nếu có
+            if (sv.bestChoiceLopHocPhan) {
+                const key = sv.bestChoiceLopHocPhan.maLopHocPhan;
+                if (!lhpSet.has(key)) {
+                    lhpSet.set(key, sv.bestChoiceLopHocPhan);
+                }
+            }
+            // Thêm các lớp học phần có thể đăng ký
+            sv.cacLopHocPhanCoTheDangKy?.forEach((lhp) => {
+                const key = lhp.maLopHocPhan;
+                if (!lhpSet.has(key)) {
+                    lhpSet.set(key, lhp);
+                }
+            });
+        });
+        return Array.from(lhpSet.values()).sort((a, b) =>
+            a.maLopHocPhan.localeCompare(b.maLopHocPhan)
+        );
+    }, [displayItems]);
+
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchKeyword]);
+    }, [searchKeyword, filterLopHocPhanId]);
 
     useEffect(() => {
         if (currentPage > totalPages && totalPages >= 1) setCurrentPage(totalPages);
@@ -949,11 +1128,14 @@ export default function ThemSinhvienPage() {
     const proposedCountByLopHocPhanId = useMemo(() => {
         const count: Record<number, number> = {};
         displayItems.forEach((sv) => {
-            const lhpId = selectedLHPMap[sv.sinhVienId];
-            if (lhpId != null) count[lhpId] = (count[lhpId] ?? 0) + 1;
+            const rowKey = `${sv.sinhVienId}-${sv.maLopHocPhanTruot}`;
+            const lhpId = selectedClassByStudent.get(rowKey) ?? sv.bestChoiceLopHocPhan?.lopHocPhanId;
+            if (lhpId != null && lhpId > 0) {
+                count[lhpId] = (count[lhpId] ?? 0) + 1;
+            }
         });
         return count;
-    }, [displayItems, selectedLHPMap]);
+    }, [displayItems, selectedClassByStudent]);
 
     const daHocLaiList = useMemo(
         () => thongKeData?.danhSachSinhVienDaHocLai ?? [],
@@ -988,28 +1170,143 @@ export default function ThemSinhvienPage() {
     };
     const closeDropdown = () => setActiveDropdownId(null);
 
+    // State để lưu rowKey của item đang edit
+    const [editModalRowKey, setEditModalRowKey] = useState<string | null>(null);
+    // State để lưu lớp học phần cũ khi mở modal (để tính sĩ số chính xác khi save)
+    const [editModalOldLHPId, setEditModalOldLHPId] = useState<number | null>(null);
+
     const openEditModal = (item: DeXuatItem) => {
         setEditModalItem(item);
+        const rowKey = `${item.sinhVienId}-${item.maLopHocPhanTruot}`;
+        setEditModalRowKey(rowKey);
+        // Lưu lớp học phần cũ (từ selectedClassByStudent hoặc bestChoiceLopHocPhan)
+        const oldLHPId = selectedClassByStudent.get(rowKey) ??
+            item.bestChoiceLopHocPhan?.lopHocPhanId ??
+            null;
+        setEditModalOldLHPId(oldLHPId);
     };
-    const closeEditModal = () => setEditModalItem(null);
-
-    const handleSaveEdit = () => {
-        if (editModalItem && selectedLHPMap[editModalItem.sinhVienId] != null) {
-            closeEditModal();
-        }
+    const closeEditModal = () => {
+        setEditModalItem(null);
+        setEditModalRowKey(null);
+        setEditModalOldLHPId(null);
     };
 
+    // Xử lý khi người dùng thay đổi lớp học phần trong modal
     const handleSelectedLopInModal = (lopHocPhanId: number | null) => {
-        if (!editModalItem) return;
-        setSelectedLHPMap((prev) => {
-            const next = { ...prev };
-            if (lopHocPhanId == null) delete next[editModalItem.sinhVienId];
-            else next[editModalItem.sinhVienId] = lopHocPhanId;
+        if (!editModalItem || !editModalRowKey) return;
+
+        const oldLHPId = selectedClassByStudent.get(editModalRowKey) ??
+            editModalItem.bestChoiceLopHocPhan?.lopHocPhanId ??
+            null;
+
+        // Nếu chọn lại chính lớp cũ thì không làm gì
+        if (lopHocPhanId === oldLHPId) return;
+
+        // Nếu chọn null thì chỉ cập nhật selectedClassByStudent
+        if (lopHocPhanId == null) {
+            setSelectedClassByStudent((prev) => {
+                const next = new Map(prev);
+                next.delete(editModalRowKey);
+                return next;
+            });
+            return;
+        }
+
+        // Tìm thông tin lớp mới
+        const newLHP = editModalItem.cacLopHocPhanCoTheDangKy?.find(l => l.lopHocPhanId === lopHocPhanId) ??
+            (editModalItem.bestChoiceLopHocPhan?.lopHocPhanId === lopHocPhanId ? editModalItem.bestChoiceLopHocPhan : null);
+
+        if (!newLHP) return;
+
+        const maLopHocPhanMoi = newLHP.maLopHocPhan;
+
+        // Kiểm tra thử sĩ số của lớp mới
+        const currentSiSo = siSoMap.get(maLopHocPhanMoi) ?? newLHP.siSo;
+        const newSiSo = currentSiSo + 1;
+
+        // Console log để debug sĩ số
+        console.log('[DEBUG] Lớp học phần được chọn:', {
+            lopHocPhanId: lopHocPhanId,
+            maLopHocPhan: maLopHocPhanMoi,
+            tenMonHoc: newLHP.tenMonHoc,
+            siSoGocTuAPI: newLHP.siSo,
+            siSoHienTaiTrongSiSoMap: siSoMap.get(maLopHocPhanMoi),
+            siSoHienTai: currentSiSo,
+            siSoDuKienSauKhiThem: newSiSo,
+            siSoMap: Object.fromEntries(siSoMap)
+        });
+
+        // Nếu vượt quá 40 thì cảnh báo và không đổi
+        if (newSiSo > 40) {
+            alert("Lớp đã đủ 40 sinh viên");
+            return;
+        }
+
+        // Cập nhật selectedClassByStudent (chưa cập nhật siSoMap, sẽ cập nhật khi save)
+        setSelectedClassByStudent((prev) => {
+            const next = new Map(prev);
+            next.set(editModalRowKey, lopHocPhanId);
             return next;
         });
     };
 
-    const editSelectedId = editModalItem ? selectedLHPMap[editModalItem.sinhVienId] ?? null : null;
+    // Xử lý khi người dùng xác nhận lưu
+    const handleSaveEdit = () => {
+        if (!editModalItem || !editModalRowKey) return;
+
+        const newLHPId = selectedClassByStudent.get(editModalRowKey) ??
+            editModalItem.bestChoiceLopHocPhan?.lopHocPhanId ??
+            null;
+
+        if (newLHPId == null) return;
+
+        // Tìm thông tin lớp mới và lớp cũ
+        const newLHP = editModalItem.cacLopHocPhanCoTheDangKy?.find(l => l.lopHocPhanId === newLHPId) ??
+            (editModalItem.bestChoiceLopHocPhan?.lopHocPhanId === newLHPId ? editModalItem.bestChoiceLopHocPhan : null);
+
+        if (!newLHP) return;
+
+        const maLopHocPhanMoi = newLHP.maLopHocPhan;
+
+        // Tìm lớp cũ (từ editModalOldLHPId đã lưu khi mở modal)
+        const oldLHPId = editModalOldLHPId;
+        const oldLHP = oldLHPId ?
+            (editModalItem.cacLopHocPhanCoTheDangKy?.find(l => l.lopHocPhanId === oldLHPId) ??
+                (editModalItem.bestChoiceLopHocPhan?.lopHocPhanId === oldLHPId ? editModalItem.bestChoiceLopHocPhan : null)) :
+            null;
+        const maLopHocPhanCu = oldLHP?.maLopHocPhan;
+
+        // Cập nhật siSoMap: giảm lớp cũ đi 1, tăng lớp mới lên 1
+        let finalSiSo = 0;
+        setSiSoMap((prev) => {
+            const next = new Map(prev);
+
+            // Giảm sĩ số lớp cũ (nếu có và khác lớp mới)
+            if (maLopHocPhanCu && maLopHocPhanCu !== maLopHocPhanMoi) {
+                const oldSiSo = next.get(maLopHocPhanCu) ?? (oldLHP?.siSo ?? 0);
+                const newOldSiSo = Math.max(0, oldSiSo - 1); // Không để sĩ số âm
+                next.set(maLopHocPhanCu, newOldSiSo);
+            }
+
+            // Tăng sĩ số lớp mới
+            const currentSiSo = next.get(maLopHocPhanMoi) ?? newLHP.siSo;
+            finalSiSo = Math.min(40, currentSiSo + 1); // Không vượt quá 40
+            next.set(maLopHocPhanMoi, finalSiSo);
+
+            return next;
+        });
+
+        // Hiển thị thông báo thành công
+        alert(`Đã cập nhật lớp học phần cho sinh viên ${editModalItem.maSinhVien} - ${editModalItem.hoTen}.\n\nLớp học phần: ${newLHP.maLopHocPhan}\nSĩ số sau khi cập nhật: ${finalSiSo}`);
+
+        closeEditModal();
+    };
+
+    const editSelectedId = editModalItem && editModalRowKey
+        ? selectedClassByStudent.get(editModalRowKey) ??
+        editModalItem.bestChoiceLopHocPhan?.lopHocPhanId ??
+        null
+        : null;
     const editCanSave = editModalItem != null && editSelectedId != null;
 
     const removeFromTable = (sinhVienId: number) => {
@@ -1027,7 +1324,12 @@ export default function ThemSinhvienPage() {
     };
 
     const handleConfirmAdd = async () => {
-        const toAdd = displayItems.filter((sv) => selectedLHPMap[sv.sinhVienId] != null);
+        // Lấy danh sách sinh viên có lớp học phần đã được gán (từ selectedClassByStudent hoặc bestChoiceLopHocPhan)
+        const toAdd = displayItems.filter((sv) => {
+            const rowKey = `${sv.sinhVienId}-${sv.maLopHocPhanTruot}`;
+            const selectedLHPId = selectedClassByStudent.get(rowKey);
+            return selectedLHPId != null || sv.bestChoiceLopHocPhan != null;
+        });
         if (toAdd.length === 0) return;
         setIsConfirmAddResultModalOpen(true);
         setConfirmSubmitting(true);
@@ -1039,9 +1341,14 @@ export default function ThemSinhvienPage() {
         const accessToken = getCookie("access_token");
 
         for (const sv of toAdd) {
-            const lhpId = selectedLHPMap[sv.sinhVienId];
+            // Lấy lớp học phần đã được gán (ưu tiên selectedClassByStudent, sau đó bestChoiceLopHocPhan)
+            const rowKey = `${sv.sinhVienId}-${sv.maLopHocPhanTruot}`;
+            const selectedLHPId = selectedClassByStudent.get(rowKey);
+            const lhpId = selectedLHPId ?? sv.bestChoiceLopHocPhan?.lopHocPhanId;
             if (lhpId == null) continue;
-            const lhp = sv.cacLopHocPhanCoTheDangKy.find((l) => l.lopHocPhanId === lhpId);
+
+            const lhp = sv.cacLopHocPhanCoTheDangKy.find((l) => l.lopHocPhanId === lhpId) ??
+                (sv.bestChoiceLopHocPhan?.lopHocPhanId === lhpId ? sv.bestChoiceLopHocPhan : null);
             const maLopHocPhan = lhp?.maLopHocPhan ?? String(lhpId);
             try {
                 const res = await fetch(
@@ -1105,7 +1412,7 @@ export default function ThemSinhvienPage() {
     // soSinhVienDaHocLai lấy từ thongKeData (danhSachSinhVienDaHocLai)
     const soSinhVienDaHocLai = daHocLaiList.length;
     const soSinhVienChuaHocLai = thongKeData?.soSinhVienChuaHocLai ?? displayItems.length;
-    
+
     // Đếm số sinh viên có LHP đề xuất (bestChoiceLopHocPhan khác null/rỗng)
     const soSinhVienCoLHPDeXuat = useMemo(() => {
         if (!apiData?.items) return 0;
@@ -1284,184 +1591,237 @@ export default function ThemSinhvienPage() {
                 {/* Tab Content: Sinh viên cần học lại */}
                 {activeMainTab === "de-xuat" && (
                     <>
-                <div className="flex flex-col gap-4 mb-6 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="w-full sm:max-w-md">
-                        <div className="relative">
-                            <button type="button" className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                                <FontAwesomeIcon icon={faMagnifyingGlass} className="h-5 w-5 text-gray-500 dark:text-gray-400" />
-                            </button>
-                            <input
-                                type="text"
-                                placeholder="Tìm theo mã sinh viên hoặc tên..."
-                                value={searchKeyword}
-                                onChange={(e) => setSearchKeyword(e.target.value)}
-                                className="h-11 w-full rounded-lg border border-gray-200 bg-transparent py-2.5 pl-12 pr-4 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-3 focus:ring-brand-500/10 dark:border-gray-800 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
-                            />
+                        <div className="flex flex-col gap-4 mb-6 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="flex flex-col sm:flex-row gap-3 w-full sm:max-w-2xl">
+                                <div className="w-full sm:max-w-md">
+                                    <div className="relative">
+                                        <button type="button" className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                                            <FontAwesomeIcon icon={faMagnifyingGlass} className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                                        </button>
+                                        <input
+                                            type="text"
+                                            placeholder="Tìm theo mã sinh viên hoặc tên..."
+                                            value={searchKeyword}
+                                            onChange={(e) => setSearchKeyword(e.target.value)}
+                                            className="h-11 w-full rounded-lg border border-gray-200 bg-transparent py-2.5 pl-12 pr-4 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-3 focus:ring-brand-500/10 dark:border-gray-800 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="w-full sm:max-w-md">
+                                    <SearchableSelect
+                                        options={[
+                                            ...danhSachLopHocPhan.map((lhp) => {
+                                                const siSo = siSoMap.get(lhp.maLopHocPhan) ?? lhp.siSo;
+                                                return {
+                                                    value: lhp.lopHocPhanId.toString(),
+                                                    label: lhp.maLopHocPhan,
+                                                    secondary: `${lhp.tenMonHoc} (Sĩ số: ${siSo})`,
+                                                };
+                                            }),
+                                        ]}
+                                        placeholder="Lọc theo lớp học phần"
+                                        onChange={(value) => setFilterLopHocPhanId(value ? Number(value) : null)}
+                                        defaultValue={filterLopHocPhanId?.toString() ?? ""}
+                                        showSecondary={true}
+                                        maxDisplayOptions={10}
+                                        searchPlaceholder="Tìm lớp học phần..."
+                                    />
+                                </div>
+                            </div>
+                            <Button
+                                startIcon={<FontAwesomeIcon icon={faUserPlus} />}
+                                onClick={openConfirmAddModal}
+                                disabled={displayItems.length === 0 || loadingDeXuat}
+                            >
+                                Xác nhận thêm sinh viên vào các lớp học phần
+                            </Button>
                         </div>
-                    </div>
-                    <Button
-                        startIcon={<FontAwesomeIcon icon={faUserPlus} />}
-                        onClick={openConfirmAddModal}
-                        disabled={displayItems.length === 0 || loadingDeXuat}
-                    >
-                        Xác nhận thêm sinh viên vào các lớp học phần
-                    </Button>
-                </div>
 
-                {/* Table: Sinh viên cần học lại (đề xuất) */}
-                <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
-                    <div className="max-w-full overflow-x-auto">
-                        <div className="min-w-[1000px] text-xs leading-tight">
-                            <Table>
-                                <TableHeader className="border-b border-gray-100 dark:border-white/[0.05] text-[11px]">
-                                    <TableRow className="grid grid-cols-[8%_14%_16%_7%_7%_7%_7%_7%_16%_11%]">
-                                        <TableCell isHeader className="px-2 py-2 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-left whitespace-nowrap">Mã SV</TableCell>
-                                        <TableCell isHeader className="px-2 py-2 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-left">Họ tên</TableCell>
-                                        <TableCell isHeader className="px-2 py-2 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-left whitespace-nowrap">LHP trượt</TableCell>
-                                        <TableCell isHeader className="px-2 py-2 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-center whitespace-nowrap">Điểm QT</TableCell>
-                                        <TableCell isHeader className="px-2 py-2 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-center whitespace-nowrap">Điểm TP</TableCell>
-                                        <TableCell isHeader className="px-2 py-2 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-center whitespace-nowrap">Điểm Thi</TableCell>
-                                        <TableCell isHeader className="px-2 py-2 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-center whitespace-nowrap">TBCHP</TableCell>
-                                        <TableCell isHeader className="px-2 py-2 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-center">Đánh giá</TableCell>
-                                        <TableCell isHeader className="px-2 py-2 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-left whitespace-nowrap">LHP đề xuất</TableCell>
-                                        <TableCell isHeader className="px-2 py-2 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-center whitespace-nowrap">Hành động</TableCell>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05] text-[11px] leading-tight">
-                                {paginatedItems.length === 0 ? (
-                                    <TableRow className="text-[11px] leading-tight">
-                                        <TableCell cols={10} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
-                                            {loadingDeXuat
-                                                ? (
-                                                    <div className="flex flex-col items-center justify-center py-4">
-                                                        <FontAwesomeIcon icon={faSpinner} className="animate-spin text-2xl text-brand-500 dark:text-brand-400 mb-2" />
-                                                        <p className="text-sm">Đang tải đề xuất...</p>
-                                                    </div>
-                                                )
-                                                : displayItems.length === 0
-                                                    ? (daHocLaiList.length > 0
-                                                        ? "Không có sinh viên cần học lại trong kỳ này (xem tab Đã/đang học lại)"
-                                                        : "Không có sinh viên cần học lại")
-                                                    : "Không có kết quả tìm kiếm"}
-                                        </TableCell>
-                                    </TableRow>
-                                ) : (
-                                    paginatedItems.map((sv) => {
-                                        const rowKey = `${sv.sinhVienId}-${sv.maLopHocPhanTruot}`;
-                                        return (
-                                            <TableRow
-                                            key={rowKey}
-                                            className="grid grid-cols-[8%_14%_16%_7%_7%_7%_7%_7%_16%_11%] items-center hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors"
-                                        >
-                                            <TableCell className="px-2 py-2 font-mono text-gray-800 dark:text-white/90 text-left"><span className="block truncate" title={sv.maSinhVien}>{sv.maSinhVien}</span></TableCell>
-                                            <TableCell className="px-2 py-2 text-gray-800 dark:text-white/90 text-left"><span className="block truncate" title={sv.hoTen}>{sv.hoTen}</span></TableCell>
-                                            <TableCell className="px-2 py-2 text-gray-800 dark:text-white/90 text-left"><span className="block truncate" title={sv.maLopHocPhanTruot}>{sv.maLopHocPhanTruot}</span></TableCell>
-                                            <TableCell className="px-2 py-2 text-gray-800 dark:text-white/90 text-center">{sv.diemQuaTrinh}</TableCell>
-                                            <TableCell className="px-2 py-2 text-gray-800 dark:text-white/90 text-center">{sv.diemThanhPhan}</TableCell>
-                                            <TableCell className="px-2 py-2 text-gray-800 dark:text-white/90 text-center">{sv.diemThi}</TableCell>
-                                            <TableCell className="px-2 py-2 text-gray-800 dark:text-white/90 text-center">{sv.diemTBCHP}</TableCell>
-                                            <TableCell className="px-2 py-2 text-center">
-                                                <Badge variant="light" color="error" size="sm" className="text-[11px]">{formatDanhGia(sv.danhGia)}</Badge>
-                                            </TableCell>
-                                            <TableCell className="px-2 py-2 text-left">
-                                                <span className="block truncate font-mono text-gray-800 dark:text-white/90" title={sv.bestChoiceLopHocPhan?.maLopHocPhan ?? "Chưa có"}>
-                                                    {sv.bestChoiceLopHocPhan ? `${sv.bestChoiceLopHocPhan.maLopHocPhan} (${sv.bestChoiceLopHocPhan.siSo} SV)` : "Chưa có"}
-                                                </span>
-                                            </TableCell>
-                                            <TableCell className="px-2 py-2 text-center">
-                                                <div className="relative inline-block">
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        onClick={() => toggleDropdown(rowKey)}
-                                                        className="dropdown-toggle flex items-center gap-1.5 min-w-[90px] justify-between px-3 py-2"
-                                                    >
-                                                        Thao tác
-                                                        <FaAngleDown
-                                                            className={`text-gray-500 transition-transform duration-300 shrink-0 ${activeDropdownId === rowKey ? "rotate-180" : "rotate-0"}`}
-                                                        />
-                                                    </Button>
-                                                    <Dropdown
-                                                        isOpen={activeDropdownId === rowKey}
-                                                        onClose={closeDropdown}
-                                                        className="w-48 mt-2 right-0"
-                                                    >
-                                                        <div className="py-1">
-                                                            <DropdownItem
-                                                                tag="button"
-                                                                onItemClick={closeDropdown}
-                                                                onClick={() => { setDetailDeXuatItem(sv); }}
-                                                                className="flex items-center gap-2 px-3 py-2"
-                                                            >
-                                                                <FontAwesomeIcon icon={faEye} className="w-4" />
-                                                                Xem thêm
-                                                            </DropdownItem>
-                                                            <DropdownItem
-                                                                tag="button"
-                                                                onItemClick={closeDropdown}
-                                                                onClick={() => openEditModal(sv)}
-                                                                className="flex items-center gap-2 px-3 py-2"
-                                                            >
-                                                                <FontAwesomeIcon icon={faEdit} className="w-4" />
-                                                                Sửa
-                                                            </DropdownItem>
-                                                            <DropdownItem
-                                                                tag="button"
-                                                                onItemClick={closeDropdown}
-                                                                onClick={() => handleViewBangDiem(sv.sinhVienId)}
-                                                                className="flex items-center gap-2 px-3 py-2"
-                                                            >
-                                                                <FontAwesomeIcon icon={faFileInvoice} className="w-4" />
-                                                                Bảng điểm
-                                                            </DropdownItem>
-                                                            <DropdownItem
-                                                                tag="button"
-                                                                onItemClick={closeDropdown}
-                                                                onClick={() => removeFromTable(sv.sinhVienId)}
-                                                                className="flex items-center gap-2 px-3 py-2 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30"
-                                                            >
-                                                                <FontAwesomeIcon icon={faTrash} className="w-4" />
-                                                                Xóa
-                                                            </DropdownItem>
-                                                        </div>
-                                                    </Dropdown>
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                        );
-                                    })
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
-                </div>
-                </div>
+                        {/* Table: Sinh viên cần học lại (đề xuất) */}
+                        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
+                            <div className="max-w-full overflow-x-auto">
+                                <div className="min-w-[1000px] text-xs leading-tight">
+                                    <Table>
+                                        <TableHeader className="border-b border-gray-100 dark:border-white/[0.05] text-[11px]">
+                                            <TableRow className="grid grid-cols-[8%_14%_16%_7%_7%_7%_7%_7%_16%_11%]">
+                                                <TableCell isHeader className="px-2 py-2 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-left whitespace-nowrap">Mã SV</TableCell>
+                                                <TableCell isHeader className="px-2 py-2 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-left">Họ tên</TableCell>
+                                                <TableCell isHeader className="px-2 py-2 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-left whitespace-nowrap">LHP trượt</TableCell>
+                                                <TableCell isHeader className="px-2 py-2 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-center whitespace-nowrap">Điểm QT</TableCell>
+                                                <TableCell isHeader className="px-2 py-2 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-center whitespace-nowrap">Điểm TP</TableCell>
+                                                <TableCell isHeader className="px-2 py-2 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-center whitespace-nowrap">Điểm Thi</TableCell>
+                                                <TableCell isHeader className="px-2 py-2 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-center whitespace-nowrap">TBCHP</TableCell>
+                                                <TableCell isHeader className="px-2 py-2 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-center">Đánh giá</TableCell>
+                                                <TableCell isHeader className="px-2 py-2 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-left whitespace-nowrap">LHP đề xuất</TableCell>
+                                                <TableCell isHeader className="px-2 py-2 font-medium text-gray-500 text-theme-xs dark:text-gray-400 text-center whitespace-nowrap">Hành động</TableCell>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05] text-[11px] leading-tight">
+                                            {paginatedItems.length === 0 ? (
+                                                <TableRow className="text-[11px] leading-tight">
+                                                    <TableCell cols={10} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+                                                        {loadingDeXuat
+                                                            ? (
+                                                                <div className="flex flex-col items-center justify-center py-4">
+                                                                    <FontAwesomeIcon icon={faSpinner} className="animate-spin text-2xl text-brand-500 dark:text-brand-400 mb-2" />
+                                                                    <p className="text-sm">Đang tải đề xuất...</p>
+                                                                </div>
+                                                            )
+                                                            : displayItems.length === 0
+                                                                ? (daHocLaiList.length > 0
+                                                                    ? "Không có sinh viên cần học lại trong kỳ này (xem tab Đã/đang học lại)"
+                                                                    : "Không có sinh viên cần học lại")
+                                                                : "Không có kết quả tìm kiếm"}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ) : (
+                                                paginatedItems.map((sv) => {
+                                                    const rowKey = `${sv.sinhVienId}-${sv.maLopHocPhanTruot}`;
+                                                    return (
+                                                        <TableRow
+                                                            key={rowKey}
+                                                            className="grid grid-cols-[8%_14%_16%_7%_7%_7%_7%_7%_16%_11%] items-center hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors"
+                                                        >
+                                                            <TableCell className="px-2 py-2 font-mono text-gray-800 dark:text-white/90 text-left"><span className="block truncate" title={sv.maSinhVien}>{sv.maSinhVien}</span></TableCell>
+                                                            <TableCell className="px-2 py-2 text-gray-800 dark:text-white/90 text-left"><span className="block truncate" title={sv.hoTen}>{sv.hoTen}</span></TableCell>
+                                                            <TableCell className="px-2 py-2 text-gray-800 dark:text-white/90 text-left"><span className="block truncate" title={sv.maLopHocPhanTruot}>{sv.maLopHocPhanTruot}</span></TableCell>
+                                                            <TableCell className="px-2 py-2 text-gray-800 dark:text-white/90 text-center">{sv.diemQuaTrinh}</TableCell>
+                                                            <TableCell className="px-2 py-2 text-gray-800 dark:text-white/90 text-center">{sv.diemThanhPhan}</TableCell>
+                                                            <TableCell className="px-2 py-2 text-gray-800 dark:text-white/90 text-center">{sv.diemThi}</TableCell>
+                                                            <TableCell className="px-2 py-2 text-gray-800 dark:text-white/90 text-center">{sv.diemTBCHP}</TableCell>
+                                                            <TableCell className="px-2 py-2 text-center">
+                                                                <Badge variant="light" color="error" size="sm" className="text-[11px]">{formatDanhGia(sv.danhGia)}</Badge>
+                                                            </TableCell>
+                                                            <TableCell className="px-2 py-2 text-left">
+                                                                {(() => {
+                                                                    // Lấy lớp học phần đã được gán (ưu tiên selectedClassByStudent, sau đó bestChoiceLopHocPhan)
+                                                                    const rowKey = `${sv.sinhVienId}-${sv.maLopHocPhanTruot}`;
+                                                                    const selectedLHPId = selectedClassByStudent.get(rowKey);
+                                                                    let lhpToShow: LopHocPhanOption | null = null;
 
-                {/* Pagination & items count */}
-                <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="text-sm text-gray-500 dark:text-gray-400">
-                        Hiển thị{" "}
-                        <span className="font-medium text-gray-700 dark:text-gray-300">
-                            {totalFiltered === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1}
-                        </span>
-                        {" - "}
-                        <span className="font-medium text-gray-700 dark:text-gray-300">
-                            {Math.min(currentPage * PAGE_SIZE, totalFiltered)}
-                        </span>
-                        {" trên "}
-                        <span className="font-medium text-gray-700 dark:text-gray-300">{totalFiltered}</span>
-                        {" kết quả"}
-                    </div>
-                    {totalPages > 1 && (
-                        <div className="flex justify-center sm:justify-end">
-                            <Pagination
-                                currentPage={currentPage}
-                                totalPages={totalPages}
-                                onPageChange={setCurrentPage}
-                            />
+                                                                    if (selectedLHPId != null) {
+                                                                        // Tìm trong cacLopHocPhanCoTheDangKy trước
+                                                                        lhpToShow = sv.cacLopHocPhanCoTheDangKy?.find(l => l.lopHocPhanId === selectedLHPId) ?? null;
+                                                                        // Nếu không tìm thấy, kiểm tra xem có phải bestChoiceLopHocPhan không
+                                                                        if (!lhpToShow && sv.bestChoiceLopHocPhan?.lopHocPhanId === selectedLHPId) {
+                                                                            lhpToShow = sv.bestChoiceLopHocPhan;
+                                                                        }
+                                                                    }
+
+                                                                    // Nếu vẫn chưa có, dùng bestChoiceLopHocPhan
+                                                                    if (!lhpToShow && sv.bestChoiceLopHocPhan) {
+                                                                        lhpToShow = sv.bestChoiceLopHocPhan;
+                                                                    }
+
+                                                                    if (lhpToShow) {
+                                                                        const siSo = siSoMap.get(lhpToShow.maLopHocPhan) ?? lhpToShow.siSo;
+                                                                        return (
+                                                                            <span className="block truncate font-mono text-gray-800 dark:text-white/90" title={lhpToShow.maLopHocPhan}>
+                                                                                {lhpToShow.maLopHocPhan} ({siSo} SV)
+                                                                            </span>
+                                                                        );
+                                                                    }
+                                                                    return (
+                                                                        <span className="block truncate font-mono text-gray-800 dark:text-white/90" title="Chưa có">
+                                                                            Chưa có
+                                                                        </span>
+                                                                    );
+                                                                })()}
+                                                            </TableCell>
+                                                            <TableCell className="px-2 py-2 text-center">
+                                                                <div className="relative inline-block">
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        onClick={() => toggleDropdown(rowKey)}
+                                                                        className="dropdown-toggle flex items-center gap-1.5 min-w-[90px] justify-between px-3 py-2"
+                                                                    >
+                                                                        Thao tác
+                                                                        <FaAngleDown
+                                                                            className={`text-gray-500 transition-transform duration-300 shrink-0 ${activeDropdownId === rowKey ? "rotate-180" : "rotate-0"}`}
+                                                                        />
+                                                                    </Button>
+                                                                    <Dropdown
+                                                                        isOpen={activeDropdownId === rowKey}
+                                                                        onClose={closeDropdown}
+                                                                        className="w-48 mt-2 right-0"
+                                                                    >
+                                                                        <div className="py-1">
+                                                                            <DropdownItem
+                                                                                tag="button"
+                                                                                onItemClick={closeDropdown}
+                                                                                onClick={() => { setDetailDeXuatItem(sv); }}
+                                                                                className="flex items-center gap-2 px-3 py-2"
+                                                                            >
+                                                                                <FontAwesomeIcon icon={faEye} className="w-4" />
+                                                                                Xem thêm
+                                                                            </DropdownItem>
+                                                                            <DropdownItem
+                                                                                tag="button"
+                                                                                onItemClick={closeDropdown}
+                                                                                onClick={() => openEditModal(sv)}
+                                                                                className="flex items-center gap-2 px-3 py-2"
+                                                                            >
+                                                                                <FontAwesomeIcon icon={faEdit} className="w-4" />
+                                                                                Sửa
+                                                                            </DropdownItem>
+                                                                            <DropdownItem
+                                                                                tag="button"
+                                                                                onItemClick={closeDropdown}
+                                                                                onClick={() => handleViewBangDiem(sv.sinhVienId)}
+                                                                                className="flex items-center gap-2 px-3 py-2"
+                                                                            >
+                                                                                <FontAwesomeIcon icon={faFileInvoice} className="w-4" />
+                                                                                Bảng điểm
+                                                                            </DropdownItem>
+                                                                            <DropdownItem
+                                                                                tag="button"
+                                                                                onItemClick={closeDropdown}
+                                                                                onClick={() => removeFromTable(sv.sinhVienId)}
+                                                                                className="flex items-center gap-2 px-3 py-2 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/30"
+                                                                            >
+                                                                                <FontAwesomeIcon icon={faTrash} className="w-4" />
+                                                                                Xóa
+                                                                            </DropdownItem>
+                                                                        </div>
+                                                                    </Dropdown>
+                                                                </div>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    );
+                                                })
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            </div>
                         </div>
-                    )}
-                </div>
+
+                        {/* Pagination & items count */}
+                        <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="text-sm text-gray-500 dark:text-gray-400">
+                                Hiển thị{" "}
+                                <span className="font-medium text-gray-700 dark:text-gray-300">
+                                    {totalFiltered === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1}
+                                </span>
+                                {" - "}
+                                <span className="font-medium text-gray-700 dark:text-gray-300">
+                                    {Math.min(currentPage * PAGE_SIZE, totalFiltered)}
+                                </span>
+                                {" trên "}
+                                <span className="font-medium text-gray-700 dark:text-gray-300">{totalFiltered}</span>
+                                {" kết quả"}
+                            </div>
+                            {totalPages > 1 && (
+                                <div className="flex justify-center sm:justify-end">
+                                    <Pagination
+                                        currentPage={currentPage}
+                                        totalPages={totalPages}
+                                        onPageChange={setCurrentPage}
+                                    />
+                                </div>
+                            )}
+                        </div>
                     </>
                 )}
 
@@ -1498,79 +1858,79 @@ export default function ThemSinhvienPage() {
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05] text-[11px] leading-tight">
-                                        {paginatedDaHocLai.length === 0 ? (
-                                            <TableRow className="text-[11px] leading-tight">
-                                                <TableCell cols={7} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
-                                                    {filteredDaHocLai.length === 0 && searchKeywordDaHocLai.trim()
-                                                        ? "Không có kết quả tìm kiếm"
-                                                        : "Không có dữ liệu"}
-                                                </TableCell>
-                                            </TableRow>
-                                        ) : (
-                                            paginatedDaHocLai.map((sv) => {
-                                                const rowKey = `${sv.sinhVienId}-${sv.maMonHocTruot}-${sv.maLopHocPhanTruot}`;
-                                                return (
-                                                    <TableRow
-                                                    key={rowKey}
-                                                    className="grid grid-cols-[10%_18%_22%_18%_8%_10%_14%] items-center hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors"
-                                                >
-                                                    <TableCell className="px-2 py-2 font-mono text-gray-800 dark:text-white/90"><span className="block truncate" title={sv.maSinhVien}>{sv.maSinhVien}</span></TableCell>
-                                                    <TableCell className="px-2 py-2 text-gray-800 dark:text-white/90"><span className="block truncate" title={sv.hoTen}>{sv.hoTen}</span></TableCell>
-                                                    <TableCell className="px-2 py-2 text-gray-800 dark:text-white/90"><span className="block truncate" title={sv.tenMonHocTruot}>{sv.tenMonHocTruot}</span></TableCell>
-                                                    <TableCell className="px-2 py-2 font-mono text-gray-800 dark:text-white/90"><span className="block truncate" title={sv.maLopHocPhanTruot}>{sv.maLopHocPhanTruot}</span></TableCell>
-                                                    <TableCell className="px-2 py-2 text-center text-gray-800 dark:text-white/90">{sv.diemTBCHPTruot}</TableCell>
-                                                    <TableCell className="px-2 py-2 text-center">
-                                                        <Badge variant="light" color="info" size="sm" className="text-[11px]">{sv.cacLanHocLai.length}</Badge>
-                                                    </TableCell>
-                                                    <TableCell className="px-2 py-2 text-center">
-                                                        <div className="relative inline-block">
-                                                            <Button
-                                                                variant="outline"
-                                                                size="sm"
-                                                                onClick={() => toggleDropdown(rowKey)}
-                                                                className="dropdown-toggle flex items-center gap-1.5 min-w-[90px] justify-between px-3 py-2"
-                                                            >
-                                                                Thao tác
-                                                                <FaAngleDown
-                                                                    className={`text-gray-500 transition-transform duration-300 shrink-0 ${activeDropdownId === rowKey ? "rotate-180" : "rotate-0"}`}
-                                                                />
-                                                            </Button>
-                                                            <Dropdown
-                                                                isOpen={activeDropdownId === rowKey}
-                                                                onClose={closeDropdown}
-                                                                className="w-48 mt-2 right-0"
-                                                            >
-                                                                <div className="py-1">
-                                                                    <DropdownItem
-                                                                        tag="button"
-                                                                        onItemClick={closeDropdown}
-                                                                        onClick={() => setDetailDaHocLaiItem(sv)}
-                                                                        className="flex items-center gap-2 px-3 py-2"
-                                                                    >
-                                                                        <FontAwesomeIcon icon={faEye} className="w-4" />
-                                                                        Xem chi tiết
-                                                                    </DropdownItem>
-                                                                    <DropdownItem
-                                                                        tag="button"
-                                                                        onItemClick={closeDropdown}
-                                                                        onClick={() => handleViewBangDiem(sv.sinhVienId)}
-                                                                        className="flex items-center gap-2 px-3 py-2"
-                                                                    >
-                                                                        <FontAwesomeIcon icon={faFileInvoice} className="w-4" />
-                                                                        Bảng điểm
-                                                                    </DropdownItem>
-                                                                </div>
-                                                            </Dropdown>
-                                                        </div>
+                                            {paginatedDaHocLai.length === 0 ? (
+                                                <TableRow className="text-[11px] leading-tight">
+                                                    <TableCell cols={7} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+                                                        {filteredDaHocLai.length === 0 && searchKeywordDaHocLai.trim()
+                                                            ? "Không có kết quả tìm kiếm"
+                                                            : "Không có dữ liệu"}
                                                     </TableCell>
                                                 </TableRow>
-                                                );
-                                            })
-                                        )}
-                                    </TableBody>
-                                </Table>
+                                            ) : (
+                                                paginatedDaHocLai.map((sv) => {
+                                                    const rowKey = `${sv.sinhVienId}-${sv.maMonHocTruot}-${sv.maLopHocPhanTruot}`;
+                                                    return (
+                                                        <TableRow
+                                                            key={rowKey}
+                                                            className="grid grid-cols-[10%_18%_22%_18%_8%_10%_14%] items-center hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors"
+                                                        >
+                                                            <TableCell className="px-2 py-2 font-mono text-gray-800 dark:text-white/90"><span className="block truncate" title={sv.maSinhVien}>{sv.maSinhVien}</span></TableCell>
+                                                            <TableCell className="px-2 py-2 text-gray-800 dark:text-white/90"><span className="block truncate" title={sv.hoTen}>{sv.hoTen}</span></TableCell>
+                                                            <TableCell className="px-2 py-2 text-gray-800 dark:text-white/90"><span className="block truncate" title={sv.tenMonHocTruot}>{sv.tenMonHocTruot}</span></TableCell>
+                                                            <TableCell className="px-2 py-2 font-mono text-gray-800 dark:text-white/90"><span className="block truncate" title={sv.maLopHocPhanTruot}>{sv.maLopHocPhanTruot}</span></TableCell>
+                                                            <TableCell className="px-2 py-2 text-center text-gray-800 dark:text-white/90">{sv.diemTBCHPTruot}</TableCell>
+                                                            <TableCell className="px-2 py-2 text-center">
+                                                                <Badge variant="light" color="info" size="sm" className="text-[11px]">{sv.cacLanHocLai.length}</Badge>
+                                                            </TableCell>
+                                                            <TableCell className="px-2 py-2 text-center">
+                                                                <div className="relative inline-block">
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        onClick={() => toggleDropdown(rowKey)}
+                                                                        className="dropdown-toggle flex items-center gap-1.5 min-w-[90px] justify-between px-3 py-2"
+                                                                    >
+                                                                        Thao tác
+                                                                        <FaAngleDown
+                                                                            className={`text-gray-500 transition-transform duration-300 shrink-0 ${activeDropdownId === rowKey ? "rotate-180" : "rotate-0"}`}
+                                                                        />
+                                                                    </Button>
+                                                                    <Dropdown
+                                                                        isOpen={activeDropdownId === rowKey}
+                                                                        onClose={closeDropdown}
+                                                                        className="w-48 mt-2 right-0"
+                                                                    >
+                                                                        <div className="py-1">
+                                                                            <DropdownItem
+                                                                                tag="button"
+                                                                                onItemClick={closeDropdown}
+                                                                                onClick={() => setDetailDaHocLaiItem(sv)}
+                                                                                className="flex items-center gap-2 px-3 py-2"
+                                                                            >
+                                                                                <FontAwesomeIcon icon={faEye} className="w-4" />
+                                                                                Xem chi tiết
+                                                                            </DropdownItem>
+                                                                            <DropdownItem
+                                                                                tag="button"
+                                                                                onItemClick={closeDropdown}
+                                                                                onClick={() => handleViewBangDiem(sv.sinhVienId)}
+                                                                                className="flex items-center gap-2 px-3 py-2"
+                                                                            >
+                                                                                <FontAwesomeIcon icon={faFileInvoice} className="w-4" />
+                                                                                Bảng điểm
+                                                                            </DropdownItem>
+                                                                        </div>
+                                                                    </Dropdown>
+                                                                </div>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    );
+                                                })
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                </div>
                             </div>
-                        </div>
                         </div>
                         <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                             <div className="text-sm text-gray-500 dark:text-gray-400">
@@ -1616,7 +1976,7 @@ export default function ThemSinhvienPage() {
                 item={editModalItem}
                 selectedLopHocPhanId={editSelectedId}
                 onSelectedLopHocPhanChange={handleSelectedLopInModal}
-                proposedCountByLopHocPhanId={proposedCountByLopHocPhanId}
+                siSoMap={siSoMap}
                 onSave={handleSaveEdit}
                 canSave={editCanSave}
             />
@@ -1632,9 +1992,13 @@ export default function ThemSinhvienPage() {
                             Xác nhận thêm sinh viên
                         </h3>
                         <p className="text-gray-600 dark:text-gray-400 mb-4">
-                            Bạn sẽ thêm {displayItems.filter((sv) => selectedLHPMap[sv.sinhVienId] != null).length} sinh viên vào các lớp học phần tương ứng. Tiếp tục?
+                            Bạn sẽ thêm {displayItems.filter((sv) => {
+                                const rowKey = `${sv.sinhVienId}-${sv.maLopHocPhanTruot}`;
+                                const selectedLHPId = selectedClassByStudent.get(rowKey);
+                                return selectedLHPId != null || sv.bestChoiceLopHocPhan != null;
+                            }).length} sinh viên vào các lớp học phần tương ứng. Tiếp tục?
                         </p>
-                        
+
                         {/* Table hiển thị danh sách sinh viên sẽ thêm */}
                         <div className="mb-6 overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
                             <div className="max-w-full overflow-x-auto">
@@ -1650,10 +2014,33 @@ export default function ThemSinhvienPage() {
                                         </TableHeader>
                                         <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05] text-[11px] leading-tight">
                                             {displayItems
-                                                .filter((sv) => selectedLHPMap[sv.sinhVienId] != null)
+                                                .filter((sv) => {
+                                                    // Lọc sinh viên có lớp học phần đã được gán (từ selectedClassByStudent hoặc bestChoiceLopHocPhan)
+                                                    const rowKey = `${sv.sinhVienId}-${sv.maLopHocPhanTruot}`;
+                                                    const selectedLHPId = selectedClassByStudent.get(rowKey);
+                                                    return selectedLHPId != null || sv.bestChoiceLopHocPhan != null;
+                                                })
                                                 .map((sv) => {
-                                                    const lhpId = selectedLHPMap[sv.sinhVienId];
-                                                    const lhp = sv.cacLopHocPhanCoTheDangKy.find((l) => l.lopHocPhanId === lhpId);
+                                                    // Lấy lớp học phần đã được gán (ưu tiên selectedClassByStudent, sau đó bestChoiceLopHocPhan)
+                                                    const rowKey = `${sv.sinhVienId}-${sv.maLopHocPhanTruot}`;
+                                                    const selectedLHPId = selectedClassByStudent.get(rowKey);
+                                                    let lhpToAdd: LopHocPhanOption | null = null;
+
+                                                    if (selectedLHPId != null) {
+                                                        // Tìm trong cacLopHocPhanCoTheDangKy trước
+                                                        lhpToAdd = sv.cacLopHocPhanCoTheDangKy.find((l) => l.lopHocPhanId === selectedLHPId) ?? null;
+                                                        // Nếu không tìm thấy, kiểm tra xem có phải bestChoiceLopHocPhan không
+                                                        if (!lhpToAdd && sv.bestChoiceLopHocPhan?.lopHocPhanId === selectedLHPId) {
+                                                            lhpToAdd = sv.bestChoiceLopHocPhan;
+                                                        }
+                                                    }
+
+                                                    // Nếu vẫn chưa có, dùng bestChoiceLopHocPhan
+                                                    if (!lhpToAdd && sv.bestChoiceLopHocPhan) {
+                                                        lhpToAdd = sv.bestChoiceLopHocPhan;
+                                                    }
+
+                                                    const siSo = lhpToAdd ? (siSoMap.get(lhpToAdd.maLopHocPhan) ?? lhpToAdd.siSo) : 0;
                                                     return (
                                                         <TableRow
                                                             key={`${sv.sinhVienId}-${sv.maLopHocPhanTruot}`}
@@ -1665,7 +2052,7 @@ export default function ThemSinhvienPage() {
                                                                 {sv.bestChoiceLopHocPhan?.maLopHocPhan ?? "Chưa có"}
                                                             </TableCell>
                                                             <TableCell className="px-2 py-2 font-mono text-gray-800 dark:text-white/90">
-                                                                {lhp ? `${lhp.maLopHocPhan} (sĩ số: ${lhp.siSo})` : "N/A"}
+                                                                {lhpToAdd ? `${lhpToAdd.maLopHocPhan} (sĩ số: ${siSo})` : "N/A"}
                                                             </TableCell>
                                                         </TableRow>
                                                     );
@@ -1737,7 +2124,7 @@ export default function ThemSinhvienPage() {
                                 <div className="text-sm text-amber-700 dark:text-amber-300">
                                     <p className="font-medium mb-1">Lưu ý:</p>
                                     <p className="text-amber-600 dark:text-amber-400">
-                                        Chỉ các sinh viên không có lớp học phần đề xuất mới cần tạo lớp học phần mới. 
+                                        Chỉ các sinh viên không có lớp học phần đề xuất mới cần tạo lớp học phần mới.
                                         Nếu sinh viên đã có lớp học phần đề xuất, bạn nên thêm họ vào lớp đó thay vì tạo lớp mới.
                                     </p>
                                 </div>
